@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gholt/brimtime"
-	"github.com/gholt/experimental-valuestore"
+	"github.com/gholt/valuestore"
 	"github.com/pandemicsyn/photon/rediscache"
 	"github.com/spaolacci/murmur3"
 )
