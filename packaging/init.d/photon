@@ -1,0 +1,75 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:          photond
+# Required-Start:    $local_fs $remote_fs $network $syslog
+# Required-Stop:     $local_fs $remote_fs $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: photon
+### END INIT INFO
+
+DAEMON_OPTS="-s map"
+
+pid() {
+  if [ -f /usr/local/bin/photond ]; then
+    pidof /usr/local/bin/photond
+  fi
+}
+
+stop() {
+  if pidof /usr/local/bin/photond >/dev/null; then
+    kill -9 "$(pid)"
+  else
+    echo "photond not runned"
+    exit 1
+  fi
+}
+
+start() {
+  if pidof /usr/local/bin/photond >/dev/null; then
+    echo "photond already running"
+    exit 1
+  else
+    nohup photond $DAEMON_OPTS > /var/log/photond.log  2>&1 &
+  fi
+}
+
+restart() {
+  if pidof /usr/local/bin/photond >/dev/null; then
+    kill -9 "$(pid)"
+    nohup photond $DAEMON_OPTS > /var/log/photond.log  2>&1 &
+    exit 0
+  else
+    nohup photond $DAEMON_OPTS > /var/log/photond.log  2>&1 &
+    exit 0
+  fi
+}
+
+status() {
+  if pidof /usr/local/bin/photond >/dev/null; then
+    echo "photond with pid $(pid) is running"
+  else
+    echo "photond is not running"
+  fi
+  exit 0
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        restart
+        ;;
+  status)
+        status
+        ;;
+  *)
+        echo "Usage: service photond {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
