@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pandemicsyn/photon/mapstore"
+	"github.com/pandemicsyn/ort/mapstore"
 )
 
 func TEst_ByteToInt(t *testing.T) {

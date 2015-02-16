@@ -8,7 +8,7 @@ import (
 
 	"github.com/gholt/brimtime"
 	"github.com/gholt/valuestore"
-	"github.com/pandemicsyn/photon/rediscache"
+	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/spaolacci/murmur3"
 )
 

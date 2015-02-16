@@ -2,7 +2,7 @@
 # systemd unit file
 #
 [Unit]
-Description=photon
+Description=ort
 # start us only once the network and logging subsystems are available
 After=syslog.target network.target
 
@@ -11,7 +11,7 @@ After=syslog.target network.target
 # http://0pointer.de/public/systemd-man/systemd.exec.html
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/photond -s "map"
+ExecStart=/usr/local/bin/ortd -s "map"
 
 # if we crash, restart
 RestartSec=1
@@ -20,7 +20,7 @@ Restart=on-failure
 # use syslog for logging
 StandardOutput=syslog
 StandardError=syslog
-SyslogIdentifier=photond
+SyslogIdentifier=ortd
 
 [Install]
 WantedBy=multi-user.target
