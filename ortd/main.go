@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"github.com/pandemicsyn/ort/atomicstore"
 	"github.com/pandemicsyn/ort/mapstore"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/pandemicsyn/ort/valuestore"
+	"github.com/spf13/viper"
 	"net"
 	"os"
 )
@@ -25,13 +25,23 @@ func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 var storeType string
 var listenAddr string
 
-func init() {
-	flag.StringVar(&listenAddr, "l", "127.0.0.1:6379", "host:port to listen on")
-	flag.StringVar(&storeType, "s", "map", "which value store backend to use: [map|valuestore|atomic]")
-	flag.Parse()
-}
-
 func main() {
+
+	viper.SetDefault("listenAddr", "127.0.0.1:6379")
+	viper.SetDefault("storeType", "map")
+
+	viper.SetEnvPrefix("ort")
+
+	viper.BindEnv("listenAddr")
+	viper.BindEnv("storeType")
+
+	viper.SetConfigName("ortd")        // name of config file (without extension)
+	viper.AddConfigPath("/etc/ort/")   // path to look for the config file in
+	viper.AddConfigPath("$HOME/.ortd") // call multiple times to add many search paths
+	viper.ReadInConfig()               // Find and read the config file
+
+	storeType := viper.GetString("storeType")
+	listenAddr := viper.GetString("listenAddr")
 
 	var cache rediscache.Cache
 
