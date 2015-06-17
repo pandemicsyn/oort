@@ -6,9 +6,11 @@
 
 ### Installation
 
+You need godep.
+
 * go get -u github.com/pandemicsyn/ort
 * cd $GOPATH/src/github.com/pandemicsyn/ort
-* go install ./ortd or go build it
+* make build or make run or make packages
 
 ### Daemons/Binaries/Backends
 
@@ -17,3 +19,6 @@
 * mapstore - The map based kv storage
 * valuestore - gholt's sstable/bitcask like persistent value store
 
+# Building packages
+
+Requires fpm.

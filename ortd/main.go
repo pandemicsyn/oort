@@ -3,13 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/pandemicsyn/ort/atomicstore"
+	"net"
+	"os"
+
 	"github.com/pandemicsyn/ort/mapstore"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/pandemicsyn/ort/valuestore"
 	"github.com/spf13/viper"
-	"net"
-	"os"
 )
 
 func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
@@ -28,12 +28,10 @@ var listenAddr string
 func main() {
 
 	viper.SetDefault("listenAddr", "127.0.0.1:6379")
-	viper.SetDefault("storeType", "map")
 
 	viper.SetEnvPrefix("ort")
 
 	viper.BindEnv("listenAddr")
-	viper.BindEnv("storeType")
 
 	viper.SetConfigName("ortd")        // name of config file (without extension)
 	viper.AddConfigPath("/etc/ort/")   // path to look for the config file in
@@ -44,7 +42,6 @@ func main() {
 	listenAddr := viper.GetString("listenAddr")
 
 	var cache rediscache.Cache
-
 	switch storeType {
 	case "map":
 		fmt.Println("Using map cache")
@@ -52,17 +49,14 @@ func main() {
 	case "valuestore":
 		fmt.Println("Using valuestore")
 		cache = valuestore.New()
-	case "atomic":
-		fmt.Println("Using atomic cache")
-		cache = atomicstore.New(&atomicstore.VSConfig{})
 	default:
 		fmt.Println("Nope:", storeType, "isn't a valid backend")
 		fmt.Println("Try: map|valuestore|atomic")
 		fmt.Println()
 		os.Exit(2)
 	}
+	cache = valuestore.New()
 
-	fmt.Println("Starting...")
 	readerChan := make(chan *bufio.Reader, 1024)
 	for i := 0; i < cap(readerChan); i++ {
 		readerChan <- nil

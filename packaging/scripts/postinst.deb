@@ -1,0 +1,103 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+  abort-upgrade|abort-remove|abort-deconfigure|configure)
+    ;;
+
+  *)
+    echo "postinst called with unknown argument \`$1'" >&2
+    exit 1
+    ;;
+esac
+
+if [ -f /etc/ort/ortd.toml-sample ]; then
+  chmod 600 /etc/ort/ortd.toml-sample
+fi
+
+dist() {
+  lsb_release -i | awk '{print tolower($3)}' | sed -e 's/^ *//' -e 's/ *$//'
+}
+
+version() {
+  lsb_release -r | awk '{print $2}' | sed -e 's/^ *//' -e 's/ *$//' | awk -F. '{ print $1 }'
+}
+
+upstart() {
+  if [ -d /etc/init ]; then
+    echo "Your system $(dist) $(version): using upstart to control Stalkerd"
+    if [ -f /usr/local/bin/ortd ]; then
+      if pidof /usr/local/bin/ortd >/dev/null; then
+        initctl stop ortd || :
+      fi
+    fi
+
+    cp -r /usr/share/ort/init/ortd.conf /etc/init/ortd.conf
+    initctl start ortd || :
+  else
+    echo "Couldn't find upstart to control Stalkerd, cannot proceed."
+    echo "Open an issue and tell us about your system."
+    exit 1
+  fi
+}
+
+sysv() {
+  if [ -d /etc/init.d ]; then
+    echo "Your system $(dist) $(version): using SysV to control Stalkerd"
+    if [ -f /usr/local/bin/ortd ] && [ -f /etc/init.d/ortd ]; then
+      if pidof /usr/local/bin/ortd >/dev/null; then
+        /etc/init.d/ortd stop
+      fi
+    fi
+
+    cp -r /usr/share/ort/init.d/ortd /etc/init.d/ortd
+    chmod 0755 /etc/init.d/ortd
+    update-rc.d ortd defaults
+    exec /etc/init.d/ortd start || :
+  else
+    echo "Couldn't find SysV to control Stalkerd, cannot proceed."
+    echo "Open an issue and tell us about your system."
+    exit 1
+  fi
+}
+
+systemd() {
+  if which systemctl > /dev/null; then
+    cp /usr/share/ort/systemd/ortd.service /lib/systemd/system/ortd.service
+
+    systemctl daemon-reload || :
+    if [ "$1" = "configure" ] ; then
+      echo "Your system $(dist) $(version): using systemd to control Stalkerd"
+      systemctl enable ortd || :
+      systemctl restart ortd || :
+    fi
+  else
+    echo "Couldn't find systemd to control Stalkerd, cannot proceed."
+    echo "Open an issue and tell us about your system."
+    exit 1
+  fi
+}
+
+case "$(dist)" in
+  debian)
+    if [ "$(version)" -lt "8" ]; then
+      sysv
+    else
+      systemd $1
+    fi
+    ;;
+  ubuntu)
+    if [ "$(version)" -lt "15" ]; then
+      upstart
+    else
+      systemd $1
+    fi
+    ;;
+  *)
+    echo "\033[33m Your system $(dist) $(version) \033[0m"
+    echo "\033[33m This system is not supported, you can install service manually \033[0m"
+    ;;
+esac
+
+exit 0
