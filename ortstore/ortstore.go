@@ -16,6 +16,7 @@ import (
 type OrtStore struct {
 	vs    valuestore.ValueStore
 	rfile string
+	r     ring.Ring
 }
 
 func getMsgRing(filename string) (ring.MsgRing, error) {
@@ -28,12 +29,29 @@ func getMsgRing(filename string) (ring.MsgRing, error) {
 	return ring.NewTCPMsgRing(r), nil
 }
 
-func New(rfile string) *OrtStore {
-	mr, err := getMsgRing(rfile)
+func New(rfile string, localid int) *OrtStore {
+	//mr, err := getMsgRing(rfile)
+
+	s := &OrtStore{}
+	s.rfile = rfile
+
+	f, err := os.Open(rfile)
 	if err != nil {
 		panic(err)
 	}
-	s := &OrtStore{vs: valuestore.New(valuestore.OptMsgRing(mr))}
+	s.r, err = ring.LoadRing(f)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Ring entries:")
+	for k, _ := range s.r.Nodes() {
+		fmt.Println(s.r.Nodes()[k].ID(), s.r.Nodes()[k].Addresses())
+	}
+	fmt.Println("Pretending to be:", s.r.Nodes()[localid].ID(), s.r.Nodes()[localid].Addresses())
+	s.r.SetLocalNode(s.r.Nodes()[localid].ID())
+	t := ring.NewTCPMsgRing(s.r)
+	go t.Listen()
+	s.vs = valuestore.New(valuestore.OptMsgRing(t))
 	s.vs.EnableAll()
 	return s
 }

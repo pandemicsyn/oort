@@ -30,12 +30,14 @@ func main() {
 	viper.SetDefault("listenAddr", "127.0.0.1:6379")
 	viper.SetDefault("ringFile", "/etc/ort/ort.ring")
 	viper.SetDefault("storeType", "map")
+	viper.SetDefault("localID", 0)
 
 	viper.SetEnvPrefix("ort")
 
 	viper.BindEnv("listenAddr")
 	viper.BindEnv("ringFile")
 	viper.BindEnv("storeType")
+	viper.BindEnv("localID")
 
 	viper.SetConfigName("ortd")        // name of config file (without extension)
 	viper.AddConfigPath("/etc/ort/")   // path to look for the config file in
@@ -44,6 +46,7 @@ func main() {
 
 	storeType := viper.GetString("storeType")
 	listenAddr := viper.GetString("listenAddr")
+	ringLocalID := viper.GetInt("localID")
 
 	var cache rediscache.Cache
 	switch storeType {
@@ -52,7 +55,7 @@ func main() {
 		cache = mapstore.NewMapCache()
 	case "ortstore":
 		fmt.Println("Using ortstore (the gholt valuestore)")
-		cache = ortstore.New(viper.GetString("ringFile"))
+		cache = ortstore.New(viper.GetString("ringFile"), ringLocalID)
 	default:
 		fmt.Println("Nope:", storeType, "isn't a valid backend")
 		fmt.Println("Try: map|ortstore")
@@ -82,7 +85,7 @@ func main() {
 		fmt.Println("Error starting: ", err)
 		return
 	}
-	fmt.Println("Listening on 6379")
+	fmt.Println("Listening on:", listenAddr)
 	for {
 		conn, _ := server.AcceptTCP()
 		reader := <-readerChan

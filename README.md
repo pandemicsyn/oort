@@ -22,3 +22,11 @@ You need godep.
 # Building packages
 
 Requires fpm.
+
+# Testing it out
+
+1. make ring
+2. Fire up instance0: `VALUESTORE_PATH=/tmp/store0 VALUESTORE_PATHTOC=/tmp/store0 VALUESTORE_OUTPUSHREPLICATIONWORKERS=2 ORT_LOCALID=0 ORT_STORETYPE=ortstore ORT_RINGFILE=/tmp/ort.ring ORT_LISTENADDR=127.0.0.1:6379 go run ortd/main.go`
+3. Fire up instance1: `VALUESTORE_PATH=/tmp/store1 VALUESTORE_PATHTOC=/tmp/store1 VALUESTORE_OUTPUSHREPLICATIONWORKERS=2 ORT_LOCALID=1 ORT_STORETYPE=ortstore ORT_RINGFILE=/tmp/ort.ring ORT_LISTENADDR=127.0.0.1:6479 go run ortd/main.go`
+4. Fire up instance2: `VALUESTORE_PATH=/tmp/store2 VALUESTORE_PATHTOC=/tmp/store2 VALUESTORE_OUTPUSHREPLICATIONWORKERS=2 ORT_LOCALID=2 ORT_STORETYPE=ortstore ORT_RINGFILE=/tmp/ort.ring ORT_LISTENADDR=127.0.0.1:6579 go run ortd/main.go`
+
