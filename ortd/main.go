@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/pandemicsyn/ort/mapstore"
+	"github.com/pandemicsyn/ort/ortstore"
 	"github.com/pandemicsyn/ort/rediscache"
-	"github.com/pandemicsyn/ort/valuestore"
 	"github.com/spf13/viper"
 )
 
@@ -28,10 +28,14 @@ var listenAddr string
 func main() {
 
 	viper.SetDefault("listenAddr", "127.0.0.1:6379")
+	viper.SetDefault("ringFile", "/etc/ort/ort.ring")
+	viper.SetDefault("storeType", "map")
 
 	viper.SetEnvPrefix("ort")
 
 	viper.BindEnv("listenAddr")
+	viper.BindEnv("ringFile")
+	viper.BindEnv("storeType")
 
 	viper.SetConfigName("ortd")        // name of config file (without extension)
 	viper.AddConfigPath("/etc/ort/")   // path to look for the config file in
@@ -46,16 +50,15 @@ func main() {
 	case "map":
 		fmt.Println("Using map cache")
 		cache = mapstore.NewMapCache()
-	case "valuestore":
-		fmt.Println("Using valuestore")
-		cache = valuestore.New()
+	case "ortstore":
+		fmt.Println("Using ortstore (the gholt valuestore)")
+		cache = ortstore.New(viper.GetString("ringFile"))
 	default:
 		fmt.Println("Nope:", storeType, "isn't a valid backend")
-		fmt.Println("Try: map|valuestore|atomic")
+		fmt.Println("Try: map|ortstore")
 		fmt.Println()
 		os.Exit(2)
 	}
-	cache = valuestore.New()
 
 	readerChan := make(chan *bufio.Reader, 1024)
 	for i := 0; i < cap(readerChan); i++ {
