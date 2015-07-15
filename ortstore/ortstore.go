@@ -3,14 +3,14 @@ package ortstore
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"time"
-
 	"github.com/gholt/brimtime"
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/spaolacci/murmur3"
+	"log"
+	"os"
+	"time"
 )
 
 type OrtStore struct {
@@ -50,8 +50,13 @@ func New(rfile string, localid int) *OrtStore {
 	fmt.Println("Pretending to be:", s.r.Nodes()[localid].ID(), s.r.Nodes()[localid].Addresses())
 	s.r.SetLocalNode(s.r.Nodes()[localid].ID())
 	t := ring.NewTCPMsgRing(s.r)
-	go t.Listen()
-	s.vs = valuestore.New(valuestore.OptMsgRing(t))
+	go func() {
+		for {
+			t.Listen()
+		}
+	}()
+	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
+	s.vs = valuestore.New(valuestore.OptMsgRing(t), valuestore.OptLogDebug(l))
 	s.vs.EnableAll()
 	return s
 }
