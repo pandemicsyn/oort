@@ -20,6 +20,13 @@ run:
 test:
 	@godep go test ./...
 
+ring:
+	ring /tmp/ort.builder create replicas=3
+	ring /tmp/ort.builder add active=true capacity=1000 tier0=server1 tier1=z1 address0=127.0.0.1:8001 address1=127.0.0.2:8001 meta=onmetalv1
+	ring /tmp/ort.builder add active=true capacity=1000 tier0=server2 tier1=z2 address0=127.0.0.1:8002 address1=127.0.0.2:8002 meta=onmetalv1
+	ring /tmp/ort.builder add active=true capacity=1000 tier0=server3 tier1=z3 address0=127.0.0.1:8003 address1=127.0.0.2:8003 meta=onmetalv1
+	ring /tmp/ort.builder ring
+
 packages: clean build deb
 
 deb:
