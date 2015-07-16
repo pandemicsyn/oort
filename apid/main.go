@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/garyburd/redigo/redis"
-	pb "github.com/pandemicsyn/ort/ort-api/proto"
+	pb "github.com/pandemicsyn/ort/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -140,8 +140,8 @@ func main() {
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
 	s := grpc.NewServer(opts...)
-	pb.RegisterFileInterfaceServer(s, newFileServer())
-	pb.RegisterDirInterfaceServer(s, newDirServer())
+	pb.RegisterFileApiServer(s, newFileServer())
+	pb.RegisterDirApiServer(s, newDirServer())
 	grpclog.Printf("Starting up on %d...\n", *port)
 	s.Serve(l)
 }

@@ -2,19 +2,22 @@ syntax = "proto3";
 
 package proto;
 
-service FileInterface {
+// FileApi interface for file operations
+service FileApi {
     rpc GetAttr(FileRequest) returns (FileAttr)     {}
     rpc SetAttr(FileAttr) returns (FileAttr) {}
     rpc Read(FileRequest) returns (File) {}
     rpc Write(File) returns (WriteResponse) {}
 }
 
+// FileRequest is the file path we want to operate on
 message FileRequest {
     string fpath = 1;
 }
 
-// fields are optional by default in proto3, so clients don't have
-// to send all fields when performing a attr update for example.
+// FileAttr. Fields are optional by default in proto3, so
+// clients don't have to send all fields when performing an
+// attr update for example.
 message FileAttr {
     string parent = 1;
     string name = 2;
@@ -23,36 +26,44 @@ message FileAttr {
     int64 mtime = 5;
 }
 
+// File contains the files name and its contents
 message File {
     string name = 1;
     bytes payload = 2;
 }
 
+// WriteRepsonse place holder. Maybe use an enum so
+// we can map to fuse errors ?
 message WriteResponse {
     int32 status = 1;
 }
 
-service DirInterface {
+// DirApi interface for directory operations
+service DirApi {
     rpc Create(DirEnt) returns (WriteResponse) {}
     rpc Remove(DirEnt) returns (WriteResponse) {}
     rpc Lookup(DirRequest) returns (DirEnt) {}
     rpc ReadDirAll(DirRequest) returns (DirEntries) {}
 }
 
+// DirRequest is the dir we want to operate on
 message DirRequest {
     string name = 1;
 }
 
+// DirEntries just contains a list of directory entries
 message DirEntries {
     repeated DirEnt Entries = 1;
 }
 
+// DirEnt is a directory entry
 message DirEnt {
     string name = 1;
     string type = 2;
     DirAttr attr = 3;
 }
 
+// DirAttr ...a directories attr
 message DirAttr {
     string name = 1;
     string mode = 2;

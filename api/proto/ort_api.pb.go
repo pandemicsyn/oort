@@ -34,6 +34,7 @@ var _ grpc.ClientConn
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
 
+// FileRequest is the file path we want to operate on
 type FileRequest struct {
 	Fpath string `protobuf:"bytes,1,opt,name=fpath" json:"fpath,omitempty"`
 }
@@ -42,8 +43,9 @@ func (m *FileRequest) Reset()         { *m = FileRequest{} }
 func (m *FileRequest) String() string { return proto1.CompactTextString(m) }
 func (*FileRequest) ProtoMessage()    {}
 
-// fields are optional by default in proto3, so clients don't have
-// to send all fields when performing a attr update for example.
+// FileAttr. Fields are optional by default in proto3, so
+// clients don't have to send all fields when performing an
+// attr update for example.
 type FileAttr struct {
 	Parent string `protobuf:"bytes,1,opt,name=parent" json:"parent,omitempty"`
 	Name   string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
@@ -56,6 +58,7 @@ func (m *FileAttr) Reset()         { *m = FileAttr{} }
 func (m *FileAttr) String() string { return proto1.CompactTextString(m) }
 func (*FileAttr) ProtoMessage()    {}
 
+// File contains the files name and its contents
 type File struct {
 	Name    string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Payload []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
@@ -65,6 +68,8 @@ func (m *File) Reset()         { *m = File{} }
 func (m *File) String() string { return proto1.CompactTextString(m) }
 func (*File) ProtoMessage()    {}
 
+// WriteRepsonse place holder. Maybe use an enum so
+// we can map to fuse errors ?
 type WriteResponse struct {
 	Status int32 `protobuf:"varint,1,opt,name=status" json:"status,omitempty"`
 }
@@ -73,6 +78,7 @@ func (m *WriteResponse) Reset()         { *m = WriteResponse{} }
 func (m *WriteResponse) String() string { return proto1.CompactTextString(m) }
 func (*WriteResponse) ProtoMessage()    {}
 
+// DirRequest is the dir we want to operate on
 type DirRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 }
@@ -81,6 +87,7 @@ func (m *DirRequest) Reset()         { *m = DirRequest{} }
 func (m *DirRequest) String() string { return proto1.CompactTextString(m) }
 func (*DirRequest) ProtoMessage()    {}
 
+// DirEntries just contains a list of directory entries
 type DirEntries struct {
 	Entries []*DirEnt `protobuf:"bytes,1,rep" json:"Entries,omitempty"`
 }
@@ -96,6 +103,7 @@ func (m *DirEntries) GetEntries() []*DirEnt {
 	return nil
 }
 
+// DirEnt is a directory entry
 type DirEnt struct {
 	Name string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Type string   `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
@@ -113,6 +121,7 @@ func (m *DirEnt) GetAttr() *DirAttr {
 	return nil
 }
 
+// DirAttr ...a directories attr
 type DirAttr struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Mode string `protobuf:"bytes,2,opt,name=mode" json:"mode,omitempty"`
@@ -122,277 +131,277 @@ func (m *DirAttr) Reset()         { *m = DirAttr{} }
 func (m *DirAttr) String() string { return proto1.CompactTextString(m) }
 func (*DirAttr) ProtoMessage()    {}
 
-// Client API for FileInterface service
+// Client API for FileApi service
 
-type FileInterfaceClient interface {
+type FileApiClient interface {
 	GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*FileAttr, error)
 	SetAttr(ctx context.Context, in *FileAttr, opts ...grpc.CallOption) (*FileAttr, error)
 	Read(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*File, error)
 	Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error)
 }
 
-type fileInterfaceClient struct {
+type fileApiClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewFileInterfaceClient(cc *grpc.ClientConn) FileInterfaceClient {
-	return &fileInterfaceClient{cc}
+func NewFileApiClient(cc *grpc.ClientConn) FileApiClient {
+	return &fileApiClient{cc}
 }
 
-func (c *fileInterfaceClient) GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*FileAttr, error) {
+func (c *fileApiClient) GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*FileAttr, error) {
 	out := new(FileAttr)
-	err := grpc.Invoke(ctx, "/proto.FileInterface/GetAttr", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.FileApi/GetAttr", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fileInterfaceClient) SetAttr(ctx context.Context, in *FileAttr, opts ...grpc.CallOption) (*FileAttr, error) {
+func (c *fileApiClient) SetAttr(ctx context.Context, in *FileAttr, opts ...grpc.CallOption) (*FileAttr, error) {
 	out := new(FileAttr)
-	err := grpc.Invoke(ctx, "/proto.FileInterface/SetAttr", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.FileApi/SetAttr", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fileInterfaceClient) Read(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*File, error) {
+func (c *fileApiClient) Read(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*File, error) {
 	out := new(File)
-	err := grpc.Invoke(ctx, "/proto.FileInterface/Read", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.FileApi/Read", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fileInterfaceClient) Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *fileApiClient) Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
-	err := grpc.Invoke(ctx, "/proto.FileInterface/Write", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.FileApi/Write", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for FileInterface service
+// Server API for FileApi service
 
-type FileInterfaceServer interface {
+type FileApiServer interface {
 	GetAttr(context.Context, *FileRequest) (*FileAttr, error)
 	SetAttr(context.Context, *FileAttr) (*FileAttr, error)
 	Read(context.Context, *FileRequest) (*File, error)
 	Write(context.Context, *File) (*WriteResponse, error)
 }
 
-func RegisterFileInterfaceServer(s *grpc.Server, srv FileInterfaceServer) {
-	s.RegisterService(&_FileInterface_serviceDesc, srv)
+func RegisterFileApiServer(s *grpc.Server, srv FileApiServer) {
+	s.RegisterService(&_FileApi_serviceDesc, srv)
 }
 
-func _FileInterface_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _FileApi_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(FileRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(FileInterfaceServer).GetAttr(ctx, in)
+	out, err := srv.(FileApiServer).GetAttr(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _FileInterface_SetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _FileApi_SetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(FileAttr)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(FileInterfaceServer).SetAttr(ctx, in)
+	out, err := srv.(FileApiServer).SetAttr(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _FileInterface_Read_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _FileApi_Read_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(FileRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(FileInterfaceServer).Read(ctx, in)
+	out, err := srv.(FileApiServer).Read(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _FileInterface_Write_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _FileApi_Write_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(File)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(FileInterfaceServer).Write(ctx, in)
+	out, err := srv.(FileApiServer).Write(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-var _FileInterface_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.FileInterface",
-	HandlerType: (*FileInterfaceServer)(nil),
+var _FileApi_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.FileApi",
+	HandlerType: (*FileApiServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetAttr",
-			Handler:    _FileInterface_GetAttr_Handler,
+			Handler:    _FileApi_GetAttr_Handler,
 		},
 		{
 			MethodName: "SetAttr",
-			Handler:    _FileInterface_SetAttr_Handler,
+			Handler:    _FileApi_SetAttr_Handler,
 		},
 		{
 			MethodName: "Read",
-			Handler:    _FileInterface_Read_Handler,
+			Handler:    _FileApi_Read_Handler,
 		},
 		{
 			MethodName: "Write",
-			Handler:    _FileInterface_Write_Handler,
+			Handler:    _FileApi_Write_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
 }
 
-// Client API for DirInterface service
+// Client API for DirApi service
 
-type DirInterfaceClient interface {
+type DirApiClient interface {
 	Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
 	Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
 	Lookup(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEnt, error)
 	ReadDirAll(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEntries, error)
 }
 
-type dirInterfaceClient struct {
+type dirApiClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewDirInterfaceClient(cc *grpc.ClientConn) DirInterfaceClient {
-	return &dirInterfaceClient{cc}
+func NewDirApiClient(cc *grpc.ClientConn) DirApiClient {
+	return &dirApiClient{cc}
 }
 
-func (c *dirInterfaceClient) Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *dirApiClient) Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
-	err := grpc.Invoke(ctx, "/proto.DirInterface/Create", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.DirApi/Create", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dirInterfaceClient) Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *dirApiClient) Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
-	err := grpc.Invoke(ctx, "/proto.DirInterface/Remove", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.DirApi/Remove", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dirInterfaceClient) Lookup(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEnt, error) {
+func (c *dirApiClient) Lookup(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEnt, error) {
 	out := new(DirEnt)
-	err := grpc.Invoke(ctx, "/proto.DirInterface/Lookup", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.DirApi/Lookup", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dirInterfaceClient) ReadDirAll(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEntries, error) {
+func (c *dirApiClient) ReadDirAll(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEntries, error) {
 	out := new(DirEntries)
-	err := grpc.Invoke(ctx, "/proto.DirInterface/ReadDirAll", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.DirApi/ReadDirAll", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for DirInterface service
+// Server API for DirApi service
 
-type DirInterfaceServer interface {
+type DirApiServer interface {
 	Create(context.Context, *DirEnt) (*WriteResponse, error)
 	Remove(context.Context, *DirEnt) (*WriteResponse, error)
 	Lookup(context.Context, *DirRequest) (*DirEnt, error)
 	ReadDirAll(context.Context, *DirRequest) (*DirEntries, error)
 }
 
-func RegisterDirInterfaceServer(s *grpc.Server, srv DirInterfaceServer) {
-	s.RegisterService(&_DirInterface_serviceDesc, srv)
+func RegisterDirApiServer(s *grpc.Server, srv DirApiServer) {
+	s.RegisterService(&_DirApi_serviceDesc, srv)
 }
 
-func _DirInterface_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _DirApi_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(DirEnt)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(DirInterfaceServer).Create(ctx, in)
+	out, err := srv.(DirApiServer).Create(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _DirInterface_Remove_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _DirApi_Remove_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(DirEnt)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(DirInterfaceServer).Remove(ctx, in)
+	out, err := srv.(DirApiServer).Remove(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _DirInterface_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _DirApi_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(DirRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(DirInterfaceServer).Lookup(ctx, in)
+	out, err := srv.(DirApiServer).Lookup(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _DirInterface_ReadDirAll_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _DirApi_ReadDirAll_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(DirRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(DirInterfaceServer).ReadDirAll(ctx, in)
+	out, err := srv.(DirApiServer).ReadDirAll(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-var _DirInterface_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.DirInterface",
-	HandlerType: (*DirInterfaceServer)(nil),
+var _DirApi_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.DirApi",
+	HandlerType: (*DirApiServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Create",
-			Handler:    _DirInterface_Create_Handler,
+			Handler:    _DirApi_Create_Handler,
 		},
 		{
 			MethodName: "Remove",
-			Handler:    _DirInterface_Remove_Handler,
+			Handler:    _DirApi_Remove_Handler,
 		},
 		{
 			MethodName: "Lookup",
-			Handler:    _DirInterface_Lookup_Handler,
+			Handler:    _DirApi_Lookup_Handler,
 		},
 		{
 			MethodName: "ReadDirAll",
-			Handler:    _DirInterface_ReadDirAll_Handler,
+			Handler:    _DirApi_ReadDirAll_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
