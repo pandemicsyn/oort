@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/garyburd/redigo/redis"
 	pb "github.com/pandemicsyn/ort/ort-api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -12,6 +13,7 @@ import (
 
 	"net"
 	"sync"
+	"time"
 )
 
 var (
@@ -19,6 +21,7 @@ var (
 	certFile = flag.String("cert_file", "server.crt", "The TLS cert file")
 	keyFile  = flag.String("key_file", "server.key", "The TLS key file")
 	port     = flag.Int("port", 8443, "The server port")
+	ortHost  = flag.String("orthost", "127.0.0.1:6379", "host:port to use when connecting to ort")
 )
 
 func FatalIf(err error, msg string) {
@@ -29,7 +32,7 @@ func FatalIf(err error, msg string) {
 
 type dirServer struct {
 	sync.RWMutex
-	test string
+	rpool *redis.Pool
 }
 
 func (s *dirServer) Create(ctx context.Context, f *pb.DirEnt) (*pb.WriteResponse, error) {
@@ -50,35 +53,78 @@ func (s *dirServer) Remove(ctx context.Context, f *pb.DirEnt) (*pb.WriteResponse
 
 type fileServer struct {
 	sync.RWMutex
-	test string
+	rpool *redis.Pool
 }
 
-func (s *fileServer) GetAttr(ctx context.Context, f *pb.FileRequest) (*pb.FileAttr, error) {
-	return &pb.FileAttr{}, nil
+func (s *fileServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.FileAttr, error) {
+	f := &pb.FileAttr{
+		Parent: "wat",
+		Name:   r.Fpath,
+		Mode:   "0777",
+		Size:   42,
+		Mtime:  42,
+	}
+	return f, nil
 }
 
-func (s *fileServer) SetAttr(ctx context.Context, f *pb.FileAttr) (*pb.FileAttr, error) {
-	return &pb.FileAttr{}, nil
+func (s *fileServer) SetAttr(ctx context.Context, r *pb.FileAttr) (*pb.FileAttr, error) {
+	f := &pb.FileAttr{
+		Parent: "wat",
+		Name:   r.Name,
+		Mode:   r.Mode,
+		Size:   42,
+		Mtime:  r.Mtime,
+	}
+	return f, nil
 }
 
-func (s *fileServer) Read(ctx context.Context, f *pb.FileRequest) (*pb.File, error) {
-	return &pb.File{}, nil
+func (s *fileServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, error) {
+	var err error
+	rc := s.rpool.Get()
+	defer rc.Close()
+	data, err := redis.Bytes(rc.Do("GET", r.Fpath))
+	if err != nil {
+		return &pb.File{}, err
+	}
+	f := &pb.File{Name: r.Fpath, Payload: data}
+	return f, nil
 }
 
-func (s *fileServer) Write(ctx context.Context, f *pb.File) (*pb.WriteResponse, error) {
-	return &pb.WriteResponse{}, nil
+func (s *fileServer) Write(ctx context.Context, r *pb.File) (*pb.WriteResponse, error) {
+	rc := s.rpool.Get()
+	defer rc.Close()
+	_, err := rc.Do("SET", r.Name, r.Payload)
+	if err != nil {
+		return &pb.WriteResponse{Status: 1}, err
+	}
+	rc.Close()
+	return &pb.WriteResponse{Status: 0}, nil
 }
 
 func newDirServer() *dirServer {
 	s := new(dirServer)
-	s.test = "wat"
+	s.rpool = newRedisPool(*ortHost)
 	return s
 }
 
 func newFileServer() *fileServer {
 	s := new(fileServer)
-	s.test = "wat"
+	s.rpool = newRedisPool(*ortHost)
 	return s
+}
+
+func newRedisPool(server string) *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", server)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+	}
 }
 
 func main() {
