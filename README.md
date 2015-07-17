@@ -12,12 +12,19 @@ You need godep.
 * cd $GOPATH/src/github.com/pandemicsyn/ort
 * make build or make run or make packages
 
-### Daemons/Binaries/Backends
+### Ort Daemons/Binaries/Backends
 
 * ortd - The redis speaking storage daemon
 * ort-bench - The redis speaking simple benchmark utility
 * mapstore - The map based kv storage
 * valuestore - gholt's sstable/bitcask like persistent value store
+
+
+### Other temporary (i.e. testing) stuff
+
+* cfs - A test fuse file system you don't want to use for anything.
+* apid - The frontend api server that's the relay between fuse and ortd
+
 
 # Building packages
 

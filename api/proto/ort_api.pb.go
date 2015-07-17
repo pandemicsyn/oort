@@ -49,7 +49,7 @@ func (*FileRequest) ProtoMessage()    {}
 type FileAttr struct {
 	Parent string `protobuf:"bytes,1,opt,name=parent" json:"parent,omitempty"`
 	Name   string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	Mode   string `protobuf:"bytes,3,opt,name=mode" json:"mode,omitempty"`
+	Mode   uint32 `protobuf:"varint,3,opt,name=mode" json:"mode,omitempty"`
 	Size   uint64 `protobuf:"varint,4,opt,name=size" json:"size,omitempty"`
 	Mtime  int64  `protobuf:"varint,5,opt,name=mtime" json:"mtime,omitempty"`
 }

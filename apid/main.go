@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"github.com/garyburd/redigo/redis"
-	pb "github.com/pandemicsyn/ort/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
+
+	pb "github.com/pandemicsyn/ort/api/proto"
 
 	"net"
 	"sync"
