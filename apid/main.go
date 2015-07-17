@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/garyburd/redigo/redis"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
@@ -13,7 +12,6 @@ import (
 	pb "github.com/pandemicsyn/ort/api/proto"
 
 	"net"
-	"sync"
 	"time"
 )
 
@@ -29,77 +27,6 @@ func FatalIf(err error, msg string) {
 	if err != nil {
 		grpclog.Fatalf("%s: %v", msg, err)
 	}
-}
-
-type dirServer struct {
-	sync.RWMutex
-	rpool *redis.Pool
-}
-
-func (s *dirServer) Create(ctx context.Context, f *pb.DirEnt) (*pb.WriteResponse, error) {
-	return &pb.WriteResponse{}, nil
-}
-
-func (s *dirServer) Lookup(ctx context.Context, f *pb.DirRequest) (*pb.DirEnt, error) {
-	return &pb.DirEnt{}, nil
-}
-
-func (s *dirServer) ReadDirAll(ctx context.Context, f *pb.DirRequest) (*pb.DirEntries, error) {
-	return &pb.DirEntries{}, nil
-}
-
-func (s *dirServer) Remove(ctx context.Context, f *pb.DirEnt) (*pb.WriteResponse, error) {
-	return &pb.WriteResponse{}, nil
-}
-
-type fileServer struct {
-	sync.RWMutex
-	rpool *redis.Pool
-}
-
-func (s *fileServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.FileAttr, error) {
-	f := &pb.FileAttr{
-		Parent: "wat",
-		Name:   r.Fpath,
-		Mode:   "0777",
-		Size:   42,
-		Mtime:  42,
-	}
-	return f, nil
-}
-
-func (s *fileServer) SetAttr(ctx context.Context, r *pb.FileAttr) (*pb.FileAttr, error) {
-	f := &pb.FileAttr{
-		Parent: "wat",
-		Name:   r.Name,
-		Mode:   r.Mode,
-		Size:   42,
-		Mtime:  r.Mtime,
-	}
-	return f, nil
-}
-
-func (s *fileServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, error) {
-	var err error
-	rc := s.rpool.Get()
-	defer rc.Close()
-	data, err := redis.Bytes(rc.Do("GET", r.Fpath))
-	if err != nil {
-		return &pb.File{}, err
-	}
-	f := &pb.File{Name: r.Fpath, Payload: data}
-	return f, nil
-}
-
-func (s *fileServer) Write(ctx context.Context, r *pb.File) (*pb.WriteResponse, error) {
-	rc := s.rpool.Get()
-	defer rc.Close()
-	_, err := rc.Do("SET", r.Name, r.Payload)
-	if err != nil {
-		return &pb.WriteResponse{Status: 1}, err
-	}
-	rc.Close()
-	return &pb.WriteResponse{Status: 0}, nil
 }
 
 func newDirServer() *dirServer {

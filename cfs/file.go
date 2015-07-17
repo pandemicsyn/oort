@@ -22,7 +22,7 @@ type File struct {
 }
 
 func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
-	f.RLock()
+	f.Lock()
 	grpclog.Printf("Getting attrs for %s", f.path)
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -35,7 +35,7 @@ func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
 	f.attr.Size = a.Size
 	f.attr.Mtime = time.Unix(a.Mtime, 0)
 	*o = f.attr
-	f.RUnlock()
+	f.Unlock()
 	return nil
 }
 
@@ -72,6 +72,20 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 		f.data = append(f.data, make([]byte, delta)...)
 		f.attr.Size = uint64(len(f.data))
 		atomic.AddInt64(&f.fs.size, int64(delta))
+		grpclog.Printf("Updating attrs for %s", f.path)
+		a := &pb.FileAttr{
+			Parent: "something",
+			Name:   f.path,
+			Mode:   uint32(f.attr.Mode),
+			Size:   f.attr.Size,
+			Mtime:  f.attr.Mtime.Unix(),
+		}
+		rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		rf, err := f.fs.fc.SetAttr(rctx, a)
+		if err != nil {
+			grpclog.Fatalf("%v.SetAttr(_) = _, %v: ", f.fs.fc, err)
+		}
+		grpclog.Printf("%v, Updated attrs: %+v", f.path, rf)
 	}
 	copy(f.data[req.Offset:end], req.Data)
 	grpclog.Printf("Writing to backend for %s", f.path)
