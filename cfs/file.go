@@ -21,8 +21,9 @@ type File struct {
 	data []byte
 }
 
+// TODO: Fix race (I rlock but then modify attrs).
 func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
-	f.Lock()
+	f.RLock()
 	grpclog.Printf("Getting attrs for %s", f.path)
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -35,7 +36,7 @@ func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
 	f.attr.Size = a.Size
 	f.attr.Mtime = time.Unix(a.Mtime, 0)
 	*o = f.attr
-	f.Unlock()
+	f.RUnlock()
 	return nil
 }
 

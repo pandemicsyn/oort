@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/garyburd/redigo/redis"
 	pb "github.com/pandemicsyn/ort/api/proto"
 	"golang.org/x/net/context"
@@ -20,7 +19,7 @@ func (s *fileServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.FileAt
 	if attr, ok := s.files[r.Fpath]; ok {
 		return attr, nil
 	}
-	return &pb.FileAttr{}, fmt.Errorf("File entry missing on api server")
+	return &pb.FileAttr{Name: r.Fpath}, nil
 }
 
 func (s *fileServer) SetAttr(ctx context.Context, r *pb.FileAttr) (*pb.FileAttr, error) {
@@ -43,6 +42,10 @@ func (s *fileServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, err
 	defer rc.Close()
 	data, err := redis.Bytes(rc.Do("GET", r.Fpath))
 	if err != nil {
+		if err == redis.ErrNil {
+			//file is empty or doesn't exist yet.
+			return &pb.File{}, nil
+		}
 		return &pb.File{}, err
 	}
 	f := &pb.File{Name: r.Fpath, Payload: data}
