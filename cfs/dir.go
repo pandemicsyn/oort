@@ -125,7 +125,7 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error
 		return nil, fuse.EEXIST
 	}
 
-	n := d.fs.newDir(req.Mode)
+	n := d.fs.newDir(req.Mode, req.Name)
 	d.nodes[req.Name] = n
 	atomic.AddUint64(&d.fs.nodeCount, 1)
 

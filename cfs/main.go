@@ -50,7 +50,7 @@ func NewCFS(conn *grpc.ClientConn) *CFS {
 		fc:        pb.NewFileApiClient(conn),
 		dc:        pb.NewDirApiClient(conn),
 	}
-	fs.root = fs.newDir(os.ModeDir | 0777)
+	fs.root = fs.newDir(os.ModeDir|0777, "/")
 	if fs.root.attr.Inode != 1 {
 		panic("Root node should have been assigned id 1")
 	}
@@ -127,9 +127,10 @@ func (m *CFS) nextID() uint64 {
 	return atomic.AddUint64(&m.nodeID, 1)
 }
 
-func (m *CFS) newDir(mode os.FileMode) *Dir {
+func (m *CFS) newDir(mode os.FileMode, name string) *Dir {
 	n := time.Now()
 	return &Dir{
+		path: name,
 		attr: fuse.Attr{
 			Inode:  m.nextID(),
 			Atime:  n,
