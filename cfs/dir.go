@@ -26,6 +26,10 @@ type Dir struct {
 //doneish
 func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
 	d.RLock()
+	if d.path == "/" {
+		*o = d.attr
+		return nil
+	}
 	grpclog.Printf("Getting attrs for %s", d.path)
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -60,6 +64,10 @@ func (d *Dir) genFsNode(a *pb.DirAttr) fs.Node {
 
 //doneish
 func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	if name == "/" {
+		return d.nodes[name], nil
+	}
+
 	grpclog.Printf("Running Lookup for %s", name)
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
