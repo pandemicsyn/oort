@@ -40,6 +40,7 @@ message WriteResponse {
 
 // DirApi interface for directory operations
 service DirApi {
+    rpc GetAttr(DirRequest) returns (FileAttr)  {}
     rpc Create(DirEnt) returns (WriteResponse) {}
     rpc Remove(DirEnt) returns (WriteResponse) {}
     rpc Lookup(DirRequest) returns (DirEnt) {}
@@ -59,12 +60,17 @@ message DirEntries {
 // DirEnt is a directory entry
 message DirEnt {
     string name = 1;
-    string type = 2;
-    DirAttr attr = 3;
+    DirAttr attr = 2;
 }
 
 // DirAttr ...a directories attr
 message DirAttr {
     string name = 1;
-    string mode = 2;
+    uint64 inode = 2;
+    int64 atime = 3;
+    int64 mtime = 4;
+    int64 ctime = 5;
+    int64 crtime = 6;
+    uint32 mode = 7;
+    int32 valid = 9;
 }

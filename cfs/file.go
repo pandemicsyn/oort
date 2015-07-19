@@ -22,6 +22,7 @@ type File struct {
 }
 
 // TODO: Fix race (I rlock but then modify attrs).
+// Probably need to acquire lock on the api server.
 func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
 	f.RLock()
 	grpclog.Printf("Getting attrs for %s", f.path)

@@ -106,8 +106,7 @@ func (m *DirEntries) GetEntries() []*DirEnt {
 // DirEnt is a directory entry
 type DirEnt struct {
 	Name string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Type string   `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
-	Attr *DirAttr `protobuf:"bytes,3,opt,name=attr" json:"attr,omitempty"`
+	Attr *DirAttr `protobuf:"bytes,2,opt,name=attr" json:"attr,omitempty"`
 }
 
 func (m *DirEnt) Reset()         { *m = DirEnt{} }
@@ -123,8 +122,14 @@ func (m *DirEnt) GetAttr() *DirAttr {
 
 // DirAttr ...a directories attr
 type DirAttr struct {
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Mode string `protobuf:"bytes,2,opt,name=mode" json:"mode,omitempty"`
+	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Inode  uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
+	Atime  int64  `protobuf:"varint,3,opt,name=atime" json:"atime,omitempty"`
+	Mtime  int64  `protobuf:"varint,4,opt,name=mtime" json:"mtime,omitempty"`
+	Ctime  int64  `protobuf:"varint,5,opt,name=ctime" json:"ctime,omitempty"`
+	Crtime int64  `protobuf:"varint,6,opt,name=crtime" json:"crtime,omitempty"`
+	Mode   uint32 `protobuf:"varint,7,opt,name=mode" json:"mode,omitempty"`
+	Valid  int32  `protobuf:"varint,9,opt,name=valid" json:"valid,omitempty"`
 }
 
 func (m *DirAttr) Reset()         { *m = DirAttr{} }
@@ -272,6 +277,7 @@ var _FileApi_serviceDesc = grpc.ServiceDesc{
 // Client API for DirApi service
 
 type DirApiClient interface {
+	GetAttr(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*FileAttr, error)
 	Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
 	Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
 	Lookup(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEnt, error)
@@ -284,6 +290,15 @@ type dirApiClient struct {
 
 func NewDirApiClient(cc *grpc.ClientConn) DirApiClient {
 	return &dirApiClient{cc}
+}
+
+func (c *dirApiClient) GetAttr(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*FileAttr, error) {
+	out := new(FileAttr)
+	err := grpc.Invoke(ctx, "/proto.DirApi/GetAttr", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *dirApiClient) Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
@@ -325,6 +340,7 @@ func (c *dirApiClient) ReadDirAll(ctx context.Context, in *DirRequest, opts ...g
 // Server API for DirApi service
 
 type DirApiServer interface {
+	GetAttr(context.Context, *DirRequest) (*FileAttr, error)
 	Create(context.Context, *DirEnt) (*WriteResponse, error)
 	Remove(context.Context, *DirEnt) (*WriteResponse, error)
 	Lookup(context.Context, *DirRequest) (*DirEnt, error)
@@ -333,6 +349,18 @@ type DirApiServer interface {
 
 func RegisterDirApiServer(s *grpc.Server, srv DirApiServer) {
 	s.RegisterService(&_DirApi_serviceDesc, srv)
+}
+
+func _DirApi_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(DirRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(DirApiServer).GetAttr(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func _DirApi_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
@@ -387,6 +415,10 @@ var _DirApi_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.DirApi",
 	HandlerType: (*DirApiServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetAttr",
+			Handler:    _DirApi_GetAttr_Handler,
+		},
 		{
 			MethodName: "Create",
 			Handler:    _DirApi_Create_Handler,

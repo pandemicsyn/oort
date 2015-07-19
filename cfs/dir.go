@@ -3,39 +3,80 @@ package main
 import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
+	pb "github.com/pandemicsyn/ort/api/proto"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/grpclog"
+
+	"os"
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 type Dir struct {
 	sync.RWMutex
-	attr fuse.Attr
-
+	attr   fuse.Attr
+	path   string
 	fs     *CFS
 	parent *Dir
 	nodes  map[string]fs.Node
 }
 
+//doneish
 func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
 	d.RLock()
+	grpclog.Printf("Getting attrs for %s", d.path)
+
+	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+	a, err := d.fs.dc.GetAttr(rctx, &pb.DirRequest{Name: d.path})
+	if err != nil {
+		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", d.fs.dc, err)
+	}
+	d.attr.Mode = os.FileMode(a.Mode)
+	d.attr.Size = a.Size
+	d.attr.Mtime = time.Unix(a.Mtime, 0)
 	*o = d.attr
 	d.RUnlock()
 	return nil
 }
 
-func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
-	d.RLock()
-	n, exist := d.nodes[name]
-	d.RUnlock()
+func (d *Dir) genFsNode(a *pb.DirAttr) fs.Node {
+	return &Dir{
+		attr: fuse.Attr{
+			Inode:  a.Inode,
+			Atime:  time.Unix(a.Atime, 0),
+			Mtime:  time.Unix(a.Mtime, 0),
+			Ctime:  time.Unix(a.Ctime, 0),
+			Crtime: time.Unix(a.Crtime, 0),
+			Mode:   os.FileMode(a.Mode),
+			Valid:  5 * time.Second,
+		},
+		fs:    d.fs,
+		nodes: make(map[string]fs.Node),
+	}
+}
 
-	if !exist {
+//doneish
+func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	grpclog.Printf("Running Lookup for %s", name)
+
+	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+	l, err := d.fs.dc.Lookup(rctx, &pb.DirRequest{Name: name})
+	if err != nil {
+		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", d.fs.dc, err)
+	}
+	//if our struct comes back with no name the entry wasn't found
+	if l.Name != name {
 		return nil, fuse.ENOENT
 	}
+	n := d.genFsNode(l.Attr)
 	return n, nil
 }
 
+//TODO: all the things
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	d.RLock()
 	dirs := make([]fuse.Dirent, len(d.nodes)+2)
@@ -76,7 +117,6 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	d.RUnlock()
 	return dirs, nil
 }
-
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
 	d.Lock()
 	defer d.Unlock()
@@ -92,8 +132,7 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error
 	return n, nil
 }
 
-func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest,
-	resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
+func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	d.Lock()
 	defer d.Unlock()
 

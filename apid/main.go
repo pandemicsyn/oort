@@ -32,6 +32,7 @@ func FatalIf(err error, msg string) {
 func newDirServer() *dirServer {
 	s := new(dirServer)
 	s.rpool = newRedisPool(*ortHost)
+	s.dirs = make(map[string]Dir)
 	return s
 }
 
