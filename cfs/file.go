@@ -75,7 +75,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 		f.attr.Size = uint64(len(f.data))
 		atomic.AddInt64(&f.fs.size, int64(delta))
 		grpclog.Printf("Updating attrs for %s", f.path)
-		a := &pb.FileAttr{
+		a := &pb.Attr{
 			Parent: "something",
 			Name:   f.path,
 			Mode:   uint32(f.attr.Mode),
@@ -142,7 +142,7 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 
 	resp.Attr = f.attr
 	grpclog.Printf("Writing attrs for %s", f.path)
-	a := &pb.FileAttr{
+	a := &pb.Attr{
 		Parent: "something",
 		Name:   f.path,
 		Mode:   uint32(f.attr.Mode),

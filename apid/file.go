@@ -10,22 +10,22 @@ import (
 type fileServer struct {
 	sync.RWMutex
 	rpool *redis.Pool
-	files map[string]*pb.FileAttr //temp in memory stuff
+	files map[string]*pb.Attr //temp in memory stuff
 }
 
-func (s *fileServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.FileAttr, error) {
+func (s *fileServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.Attr, error) {
 	s.RLock()
 	defer s.RUnlock()
 	if attr, ok := s.files[r.Fpath]; ok {
 		return attr, nil
 	}
-	return &pb.FileAttr{Name: r.Fpath}, nil
+	return &pb.Attr{Name: r.Fpath}, nil
 }
 
-func (s *fileServer) SetAttr(ctx context.Context, r *pb.FileAttr) (*pb.FileAttr, error) {
+func (s *fileServer) SetAttr(ctx context.Context, r *pb.Attr) (*pb.Attr, error) {
 	s.Lock()
 	defer s.Unlock()
-	f := &pb.FileAttr{
+	f := &pb.Attr{
 		Parent: "wat",
 		Name:   r.Name,
 		Mode:   r.Mode,

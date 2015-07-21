@@ -10,13 +10,13 @@ It is generated from these files:
 
 It has these top-level messages:
 	FileRequest
-	FileAttr
+	Attr
 	File
 	WriteResponse
 	DirRequest
 	DirEntries
 	DirEnt
-	DirAttr
+	FileEnt
 */
 package proto
 
@@ -43,20 +43,26 @@ func (m *FileRequest) Reset()         { *m = FileRequest{} }
 func (m *FileRequest) String() string { return proto1.CompactTextString(m) }
 func (*FileRequest) ProtoMessage()    {}
 
-// FileAttr. Fields are optional by default in proto3, so
+// Attr. fields are optional by default in proto3, so
 // clients don't have to send all fields when performing an
-// attr update for example.
-type FileAttr struct {
-	Parent string `protobuf:"bytes,1,opt,name=parent" json:"parent,omitempty"`
-	Name   string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	Mode   uint32 `protobuf:"varint,3,opt,name=mode" json:"mode,omitempty"`
-	Size   uint64 `protobuf:"varint,4,opt,name=size" json:"size,omitempty"`
-	Mtime  int64  `protobuf:"varint,5,opt,name=mtime" json:"mtime,omitempty"`
+// attr update for example. These might not all be needed
+// but i got tired of constantly forgetting fields.
+type Attr struct {
+	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Inode  uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
+	Atime  int64  `protobuf:"varint,3,opt,name=atime" json:"atime,omitempty"`
+	Mtime  int64  `protobuf:"varint,4,opt,name=mtime" json:"mtime,omitempty"`
+	Ctime  int64  `protobuf:"varint,5,opt,name=ctime" json:"ctime,omitempty"`
+	Crtime int64  `protobuf:"varint,6,opt,name=crtime" json:"crtime,omitempty"`
+	Mode   uint32 `protobuf:"varint,7,opt,name=mode" json:"mode,omitempty"`
+	Valid  int32  `protobuf:"varint,9,opt,name=valid" json:"valid,omitempty"`
+	Parent string `protobuf:"bytes,10,opt,name=parent" json:"parent,omitempty"`
+	Size   uint64 `protobuf:"varint,11,opt,name=size" json:"size,omitempty"`
 }
 
-func (m *FileAttr) Reset()         { *m = FileAttr{} }
-func (m *FileAttr) String() string { return proto1.CompactTextString(m) }
-func (*FileAttr) ProtoMessage()    {}
+func (m *Attr) Reset()         { *m = Attr{} }
+func (m *Attr) String() string { return proto1.CompactTextString(m) }
+func (*Attr) ProtoMessage()    {}
 
 // File contains the files name and its contents
 type File struct {
@@ -89,58 +95,66 @@ func (*DirRequest) ProtoMessage()    {}
 
 // DirEntries just contains a list of directory entries
 type DirEntries struct {
-	Entries []*DirEnt `protobuf:"bytes,1,rep" json:"Entries,omitempty"`
+	DirEntries  []*DirEnt  `protobuf:"bytes,1,rep" json:"DirEntries,omitempty"`
+	FileEntries []*FileEnt `protobuf:"bytes,2,rep" json:"FileEntries,omitempty"`
 }
 
 func (m *DirEntries) Reset()         { *m = DirEntries{} }
 func (m *DirEntries) String() string { return proto1.CompactTextString(m) }
 func (*DirEntries) ProtoMessage()    {}
 
-func (m *DirEntries) GetEntries() []*DirEnt {
+func (m *DirEntries) GetDirEntries() []*DirEnt {
 	if m != nil {
-		return m.Entries
+		return m.DirEntries
+	}
+	return nil
+}
+
+func (m *DirEntries) GetFileEntries() []*FileEnt {
+	if m != nil {
+		return m.FileEntries
 	}
 	return nil
 }
 
 // DirEnt is a directory entry
 type DirEnt struct {
-	Name string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Attr *DirAttr `protobuf:"bytes,2,opt,name=attr" json:"attr,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Attr *Attr  `protobuf:"bytes,2,opt,name=attr" json:"attr,omitempty"`
 }
 
 func (m *DirEnt) Reset()         { *m = DirEnt{} }
 func (m *DirEnt) String() string { return proto1.CompactTextString(m) }
 func (*DirEnt) ProtoMessage()    {}
 
-func (m *DirEnt) GetAttr() *DirAttr {
+func (m *DirEnt) GetAttr() *Attr {
 	if m != nil {
 		return m.Attr
 	}
 	return nil
 }
 
-// DirAttr ...a directories attr
-type DirAttr struct {
-	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Inode  uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
-	Atime  int64  `protobuf:"varint,3,opt,name=atime" json:"atime,omitempty"`
-	Mtime  int64  `protobuf:"varint,4,opt,name=mtime" json:"mtime,omitempty"`
-	Ctime  int64  `protobuf:"varint,5,opt,name=ctime" json:"ctime,omitempty"`
-	Crtime int64  `protobuf:"varint,6,opt,name=crtime" json:"crtime,omitempty"`
-	Mode   uint32 `protobuf:"varint,7,opt,name=mode" json:"mode,omitempty"`
-	Valid  int32  `protobuf:"varint,9,opt,name=valid" json:"valid,omitempty"`
+type FileEnt struct {
+	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Attr *Attr  `protobuf:"bytes,2,opt,name=attr" json:"attr,omitempty"`
 }
 
-func (m *DirAttr) Reset()         { *m = DirAttr{} }
-func (m *DirAttr) String() string { return proto1.CompactTextString(m) }
-func (*DirAttr) ProtoMessage()    {}
+func (m *FileEnt) Reset()         { *m = FileEnt{} }
+func (m *FileEnt) String() string { return proto1.CompactTextString(m) }
+func (*FileEnt) ProtoMessage()    {}
+
+func (m *FileEnt) GetAttr() *Attr {
+	if m != nil {
+		return m.Attr
+	}
+	return nil
+}
 
 // Client API for FileApi service
 
 type FileApiClient interface {
-	GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*FileAttr, error)
-	SetAttr(ctx context.Context, in *FileAttr, opts ...grpc.CallOption) (*FileAttr, error)
+	GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*Attr, error)
+	SetAttr(ctx context.Context, in *Attr, opts ...grpc.CallOption) (*Attr, error)
 	Read(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*File, error)
 	Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error)
 }
@@ -153,8 +167,8 @@ func NewFileApiClient(cc *grpc.ClientConn) FileApiClient {
 	return &fileApiClient{cc}
 }
 
-func (c *fileApiClient) GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*FileAttr, error) {
-	out := new(FileAttr)
+func (c *fileApiClient) GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*Attr, error) {
+	out := new(Attr)
 	err := grpc.Invoke(ctx, "/proto.FileApi/GetAttr", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -162,8 +176,8 @@ func (c *fileApiClient) GetAttr(ctx context.Context, in *FileRequest, opts ...gr
 	return out, nil
 }
 
-func (c *fileApiClient) SetAttr(ctx context.Context, in *FileAttr, opts ...grpc.CallOption) (*FileAttr, error) {
-	out := new(FileAttr)
+func (c *fileApiClient) SetAttr(ctx context.Context, in *Attr, opts ...grpc.CallOption) (*Attr, error) {
+	out := new(Attr)
 	err := grpc.Invoke(ctx, "/proto.FileApi/SetAttr", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -192,8 +206,8 @@ func (c *fileApiClient) Write(ctx context.Context, in *File, opts ...grpc.CallOp
 // Server API for FileApi service
 
 type FileApiServer interface {
-	GetAttr(context.Context, *FileRequest) (*FileAttr, error)
-	SetAttr(context.Context, *FileAttr) (*FileAttr, error)
+	GetAttr(context.Context, *FileRequest) (*Attr, error)
+	SetAttr(context.Context, *Attr) (*Attr, error)
 	Read(context.Context, *FileRequest) (*File, error)
 	Write(context.Context, *File) (*WriteResponse, error)
 }
@@ -215,7 +229,7 @@ func _FileApi_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.C
 }
 
 func _FileApi_SetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(FileAttr)
+	in := new(Attr)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -277,8 +291,9 @@ var _FileApi_serviceDesc = grpc.ServiceDesc{
 // Client API for DirApi service
 
 type DirApiClient interface {
-	GetAttr(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*FileAttr, error)
-	Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
+	GetAttr(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*Attr, error)
+	MkDir(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*DirEnt, error)
+	Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*FileEnt, error)
 	Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
 	Lookup(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEnt, error)
 	ReadDirAll(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEntries, error)
@@ -292,8 +307,8 @@ func NewDirApiClient(cc *grpc.ClientConn) DirApiClient {
 	return &dirApiClient{cc}
 }
 
-func (c *dirApiClient) GetAttr(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*FileAttr, error) {
-	out := new(FileAttr)
+func (c *dirApiClient) GetAttr(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*Attr, error) {
+	out := new(Attr)
 	err := grpc.Invoke(ctx, "/proto.DirApi/GetAttr", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -301,8 +316,17 @@ func (c *dirApiClient) GetAttr(ctx context.Context, in *DirRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *dirApiClient) Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
-	out := new(WriteResponse)
+func (c *dirApiClient) MkDir(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*DirEnt, error) {
+	out := new(DirEnt)
+	err := grpc.Invoke(ctx, "/proto.DirApi/MkDir", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dirApiClient) Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*FileEnt, error) {
+	out := new(FileEnt)
 	err := grpc.Invoke(ctx, "/proto.DirApi/Create", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -340,8 +364,9 @@ func (c *dirApiClient) ReadDirAll(ctx context.Context, in *DirRequest, opts ...g
 // Server API for DirApi service
 
 type DirApiServer interface {
-	GetAttr(context.Context, *DirRequest) (*FileAttr, error)
-	Create(context.Context, *DirEnt) (*WriteResponse, error)
+	GetAttr(context.Context, *DirRequest) (*Attr, error)
+	MkDir(context.Context, *DirEnt) (*DirEnt, error)
+	Create(context.Context, *FileEnt) (*FileEnt, error)
 	Remove(context.Context, *DirEnt) (*WriteResponse, error)
 	Lookup(context.Context, *DirRequest) (*DirEnt, error)
 	ReadDirAll(context.Context, *DirRequest) (*DirEntries, error)
@@ -363,8 +388,20 @@ func _DirApi_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Co
 	return out, nil
 }
 
-func _DirApi_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _DirApi_MkDir_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(DirEnt)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(DirApiServer).MkDir(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _DirApi_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(FileEnt)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -418,6 +455,10 @@ var _DirApi_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAttr",
 			Handler:    _DirApi_GetAttr_Handler,
+		},
+		{
+			MethodName: "MkDir",
+			Handler:    _DirApi_MkDir_Handler,
 		},
 		{
 			MethodName: "Create",

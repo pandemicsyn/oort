@@ -4,8 +4,8 @@ package proto;
 
 // FileApi interface for file operations
 service FileApi {
-    rpc GetAttr(FileRequest) returns (FileAttr)     {}
-    rpc SetAttr(FileAttr) returns (FileAttr) {}
+    rpc GetAttr(FileRequest) returns (Attr)     {}
+    rpc SetAttr(Attr) returns (Attr) {}
     rpc Read(FileRequest) returns (File) {}
     rpc Write(File) returns (WriteResponse) {}
 }
@@ -15,15 +15,21 @@ message FileRequest {
     string fpath = 1;
 }
 
-// FileAttr. Fields are optional by default in proto3, so
+// Attr. fields are optional by default in proto3, so
 // clients don't have to send all fields when performing an
-// attr update for example.
-message FileAttr {
-    string parent = 1;
-    string name = 2;
-    uint32 mode = 3;
-    uint64 size = 4;
-    int64 mtime = 5;
+// attr update for example. These might not all be needed
+// but i got tired of constantly forgetting fields.
+message Attr {
+    string name = 1;
+    uint64 inode = 2;
+    int64 atime = 3;
+    int64 mtime = 4;
+    int64 ctime = 5;
+    int64 crtime = 6;
+    uint32 mode = 7;
+    int32 valid = 9;
+    string parent = 10;
+    uint64 size = 11;
 }
 
 // File contains the files name and its contents
@@ -40,8 +46,9 @@ message WriteResponse {
 
 // DirApi interface for directory operations
 service DirApi {
-    rpc GetAttr(DirRequest) returns (FileAttr)  {}
-    rpc Create(DirEnt) returns (WriteResponse) {}
+    rpc GetAttr(DirRequest) returns (Attr)  {}
+    rpc MkDir(DirEnt) returns (DirEnt) {}
+    rpc Create(FileEnt) returns (FileEnt) {}
     rpc Remove(DirEnt) returns (WriteResponse) {}
     rpc Lookup(DirRequest) returns (DirEnt) {}
     rpc ReadDirAll(DirRequest) returns (DirEntries) {}
@@ -54,23 +61,17 @@ message DirRequest {
 
 // DirEntries just contains a list of directory entries
 message DirEntries {
-    repeated DirEnt Entries = 1;
+    repeated DirEnt DirEntries = 1;
+    repeated FileEnt FileEntries = 2;
 }
 
 // DirEnt is a directory entry
 message DirEnt {
     string name = 1;
-    DirAttr attr = 2;
+    Attr attr = 2;
 }
 
-// DirAttr ...a directories attr
-message DirAttr {
+message FileEnt {
     string name = 1;
-    uint64 inode = 2;
-    int64 atime = 3;
-    int64 mtime = 4;
-    int64 ctime = 5;
-    int64 crtime = 6;
-    uint32 mode = 7;
-    int32 valid = 9;
+    Attr attr = 2;
 }

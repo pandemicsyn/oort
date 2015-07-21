@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/garyburd/redigo/redis"
 	"google.golang.org/grpc"
@@ -29,17 +30,25 @@ func FatalIf(err error, msg string) {
 	}
 }
 
+func genUUID() string {
+	f, _ := os.Open("/dev/urandom")
+	b := make([]byte, 16)
+	f.Read(b)
+	f.Close()
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+}
+
 func newDirServer() *dirServer {
 	s := new(dirServer)
 	s.rpool = newRedisPool(*ortHost)
-	s.dirs = make(map[string]Dir)
+	s.nodes = make(map[string]*Entry)
 	return s
 }
 
 func newFileServer() *fileServer {
 	s := new(fileServer)
 	s.rpool = newRedisPool(*ortHost)
-	s.files = make(map[string]*pb.FileAttr)
+	s.files = make(map[string]*pb.Attr)
 	return s
 }
 

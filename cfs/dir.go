@@ -47,7 +47,7 @@ func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
 	return nil
 }
 
-func (d *Dir) genFsNode(a *pb.DirAttr) fs.Node {
+func (d *Dir) genDirFsNode(a *pb.Attr) fs.Node {
 	return &Dir{
 		attr: fuse.Attr{
 			Inode:  a.Inode,
@@ -60,6 +60,21 @@ func (d *Dir) genFsNode(a *pb.DirAttr) fs.Node {
 		},
 		fs:    d.fs,
 		nodes: make(map[string]fs.Node),
+	}
+}
+
+func (d *Dir) genFileFsNode(a *pb.Attr) fs.Node {
+	return &File{
+		attr: fuse.Attr{
+			Inode:  a.Inode,
+			Atime:  time.Unix(a.Atime, 0),
+			Mtime:  time.Unix(a.Mtime, 0),
+			Ctime:  time.Unix(a.Ctime, 0),
+			Crtime: time.Unix(a.Crtime, 0),
+			Mode:   os.FileMode(a.Mode),
+			Valid:  5 * time.Second,
+		},
+		fs: d.fs,
 	}
 }
 
@@ -76,14 +91,14 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 
 	l, err := d.fs.dc.Lookup(rctx, &pb.DirRequest{Name: name})
 	if err != nil {
-		grpclog.Fatalf("%v.Lookup(_) = _, %v: ", d.fs.dc, err)
+		grpclog.Fatalf("%v.Lookup(%+v) = _, %+v: ", d.fs.dc, name, err)
 	}
 	//if our struct comes back with no name the entry wasn't found
 	if l.Name != name {
 		grpclog.Printf("ENOENT %v.Lookup(%s) = _, %+v: %+v", d.fs.dc, name, l, d)
 		return nil, fuse.ENOENT
 	}
-	n := d.genFsNode(l.Attr)
+	n := d.genDirFsNode(l.Attr)
 	return n, nil
 }
 
@@ -129,51 +144,62 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	d.RUnlock()
 	return dirs, nil
 }
+
+//doneish.
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
-	grpclog.Println("in mkdir")
 	d.Lock()
 	defer d.Unlock()
-	grpclog.Println("mkdir for", req.Name)
-	/*
-		if _, exists := d.nodes[req.Name]; exists {
-			return nil, fuse.EEXIST
-		}*/
-
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-
-	l, err := d.fs.dc.Lookup(rctx, &pb.DirRequest{Name: req.Name})
+	m, err := d.fs.dc.MkDir(rctx, &pb.DirEnt{})
 	if err != nil {
-		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", d.fs.dc, err)
+		grpclog.Fatalf("%v.MkDir(%+v) = _, %+v: ", d.fs.dc, req, err)
 	}
-	//if our struct comes back with name the entry already exists
-	if l.Name == req.Name {
+	//if our struct comes back without a name the entry already exists
+	if m.Name != req.Name {
 		return nil, fuse.EEXIST
 	}
-
-	n := d.fs.newDir(req.Mode, req.Name)
-	d.nodes[req.Name] = n
-	atomic.AddUint64(&d.fs.nodeCount, 1)
-	grpclog.Println("returning")
+	/*
+		n := d.fs.newDir(req.Mode, req.Name)
+		d.nodes[req.Name] = n
+		atomic.AddUint64(&d.fs.nodeCount, 1)
+		grpclog.Println("returning")
+	*/
+	n := d.genDirFsNode(m.Attr)
 	return n, nil
 }
 
 func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
-	grpclog.Println("in create")
 	d.Lock()
 	defer d.Unlock()
-	grpclog.Println("create got lock")
 
-	if _, exists := d.nodes[req.Name]; exists {
+	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	c, err := d.fs.dc.Create(rctx, &pb.FileEnt{})
+	if err != nil {
+		grpclog.Fatalf("%v.MkDir(%+v) = _, %+v: ", d.fs.dc, req, err)
+	}
+	//if our struct comes back without a name the entry already exists
+	if c.Name != req.Name {
 		return nil, nil, fuse.EEXIST
 	}
 
-	n := d.fs.newFile(req.Mode, req.Name)
-	n.fs = d.fs
-	d.nodes[req.Name] = n
-	atomic.AddUint64(&d.fs.nodeCount, 1)
+	/*
+		n := d.fs.newFile(req.Mode, req.Name)
+		n.fs = d.fs
+		d.nodes[req.Name] = n
+		atomic.AddUint64(&d.fs.nodeCount, 1)
 
-	resp.Attr = n.attr
-
+		resp.Attr = n.attr
+	*/
+	n := d.genFileFsNode(c.Attr)
+	resp.Attr = fuse.Attr{
+		Inode:  c.Attr.Inode,
+		Atime:  time.Unix(c.Attr.Atime, 0),
+		Mtime:  time.Unix(c.Attr.Mtime, 0),
+		Ctime:  time.Unix(c.Attr.Ctime, 0),
+		Crtime: time.Unix(c.Attr.Crtime, 0),
+		Mode:   os.FileMode(c.Attr.Mode),
+		Valid:  5 * time.Second,
+	}
 	return n, n, nil
 }
 
