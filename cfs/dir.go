@@ -49,6 +49,7 @@ func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
 
 func (d *Dir) genDirFsNode(a *pb.Attr) fs.Node {
 	return &Dir{
+		path: a.Name,
 		attr: fuse.Attr{
 			Inode:  a.Inode,
 			Atime:  time.Unix(a.Atime, 0),
@@ -65,6 +66,7 @@ func (d *Dir) genDirFsNode(a *pb.Attr) fs.Node {
 
 func (d *Dir) genFileFsNode(a *pb.Attr) fs.Node {
 	return &File{
+		path: a.Name,
 		attr: fuse.Attr{
 			Inode:  a.Inode,
 			Atime:  time.Unix(a.Atime, 0),
