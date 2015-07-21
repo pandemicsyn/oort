@@ -53,6 +53,7 @@ func (s *dirServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, err
 		Ctime:  ts,
 		Crtime: ts,
 		Mode:   uint32(0777),
+		Name:   r.Name,
 	}
 	s.nodes[r.Name] = n
 	atomic.AddUint64(&s.nodeCount, 1)
@@ -75,6 +76,7 @@ func (s *dirServer) MkDir(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error)
 		Ctime:  ts,
 		Crtime: ts,
 		Mode:   uint32(os.ModeDir | 0777),
+		Name:   r.Name,
 	}
 	s.nodes[r.Name] = n
 	atomic.AddUint64(&s.nodeCount, 1)

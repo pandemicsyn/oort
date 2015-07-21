@@ -150,13 +150,13 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error
 	d.Lock()
 	defer d.Unlock()
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	m, err := d.fs.dc.MkDir(rctx, &pb.DirEnt{})
+	m, err := d.fs.dc.MkDir(rctx, &pb.DirEnt{Name: req.Name})
 	if err != nil {
 		grpclog.Fatalf("%v.MkDir(%+v) = _, %+v: ", d.fs.dc, req, err)
 	}
 	//if our struct comes back without a name the entry already exists
 	if m.Name != req.Name {
-		grpclog.Fatalf("%v.MkDir(%+v) = %+v ", d.fs.dc, req, m)
+		grpclog.Printf("%v.MkDir(%+v) = %+v ", d.fs.dc, req, m)
 		return nil, fuse.EEXIST
 	}
 	/*
@@ -180,7 +180,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	}
 	//if our struct comes back without a name the entry already exists
 	if c.Name != req.Name {
-		grpclog.Fatalf("%v.Create(%+v) = %+v ", d.fs.dc, req, c)
+		grpclog.Printf("%v.Create(%+v) = %+v ", d.fs.dc, req, c)
 		return nil, nil, fuse.EEXIST
 	}
 
