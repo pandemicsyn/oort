@@ -41,8 +41,8 @@ func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
 	return nil
 }
 
-func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle,
-	error) {
+func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	grpclog.Printf("Calling open for %v", req)
 	return f, nil
 }
 

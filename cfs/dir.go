@@ -25,7 +25,9 @@ type Dir struct {
 
 //doneish
 func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
+	grpclog.Println("in dir attr")
 	d.RLock()
+	defer d.RUnlock()
 	if d.path == "/" {
 		*o = d.attr
 		return nil
@@ -42,7 +44,6 @@ func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
 	d.attr.Size = a.Size
 	d.attr.Mtime = time.Unix(a.Mtime, 0)
 	*o = d.attr
-	d.RUnlock()
 	return nil
 }
 
@@ -64,20 +65,22 @@ func (d *Dir) genFsNode(a *pb.DirAttr) fs.Node {
 
 //doneish
 func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	d.RLock()
+	defer d.RUnlock()
 	if name == "/" {
 		return d.nodes[name], nil
 	}
-
 	grpclog.Printf("Running Lookup for %s", name)
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	l, err := d.fs.dc.Lookup(rctx, &pb.DirRequest{Name: name})
 	if err != nil {
-		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", d.fs.dc, err)
+		grpclog.Fatalf("%v.Lookup(_) = _, %v: ", d.fs.dc, err)
 	}
 	//if our struct comes back with no name the entry wasn't found
 	if l.Name != name {
+		grpclog.Printf("ENOENT %v.Lookup(%s) = _, %+v: %+v", d.fs.dc, name, l, d)
 		return nil, fuse.ENOENT
 	}
 	n := d.genFsNode(l.Attr)
@@ -86,6 +89,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 
 //TODO: all the things
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	grpclog.Println("in readdirall")
 	d.RLock()
 	dirs := make([]fuse.Dirent, len(d.nodes)+2)
 
@@ -126,23 +130,38 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	return dirs, nil
 }
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
+	grpclog.Println("in mkdir")
 	d.Lock()
 	defer d.Unlock()
+	grpclog.Println("mkdir for", req.Name)
+	/*
+		if _, exists := d.nodes[req.Name]; exists {
+			return nil, fuse.EEXIST
+		}*/
 
-	if _, exists := d.nodes[req.Name]; exists {
+	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+	l, err := d.fs.dc.Lookup(rctx, &pb.DirRequest{Name: req.Name})
+	if err != nil {
+		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", d.fs.dc, err)
+	}
+	//if our struct comes back with name the entry already exists
+	if l.Name == req.Name {
 		return nil, fuse.EEXIST
 	}
 
 	n := d.fs.newDir(req.Mode, req.Name)
 	d.nodes[req.Name] = n
 	atomic.AddUint64(&d.fs.nodeCount, 1)
-
+	grpclog.Println("returning")
 	return n, nil
 }
 
 func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
+	grpclog.Println("in create")
 	d.Lock()
 	defer d.Unlock()
+	grpclog.Println("create got lock")
 
 	if _, exists := d.nodes[req.Name]; exists {
 		return nil, nil, fuse.EEXIST
