@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bazil.org/fuse/fs"
-	"github.com/garyburd/redigo/redis"
-	pb "github.com/pandemicsyn/ort/api/proto"
-	"golang.org/x/net/context"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"bazil.org/fuse/fs"
+	"github.com/garyburd/redigo/redis"
+	pb "github.com/pandemicsyn/ort/api/proto"
+	"golang.org/x/net/context"
 )
 
 type dirServer struct {
@@ -86,23 +87,11 @@ func (s *dirServer) MkDir(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error)
 func (s *dirServer) Lookup(ctx context.Context, r *pb.DirRequest) (*pb.DirEnt, error) {
 	s.RLock()
 	defer s.RUnlock()
-	_, exists := s.nodes[r.Name]
+	entry, exists := s.nodes[r.Name]
 	if !exists {
 		return &pb.DirEnt{}, nil
 	}
-	// fake for now
-	ts := time.Now().Unix()
-	dattr := &pb.Attr{
-		Name:   r.Name,
-		Inode:  uint64(time.Now().UnixNano()),
-		Atime:  ts,
-		Mtime:  ts,
-		Ctime:  ts,
-		Crtime: ts,
-		Mode:   1777,
-		Valid:  5,
-	}
-	return &pb.DirEnt{Name: r.Name, Attr: dattr}, nil
+	return &pb.DirEnt{Name: r.Name, Attr: entry.attr}, nil
 }
 
 func (s *dirServer) ReadDirAll(ctx context.Context, f *pb.DirRequest) (*pb.DirEntries, error) {
