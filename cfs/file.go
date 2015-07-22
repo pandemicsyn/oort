@@ -89,9 +89,9 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 		grpclog.Printf("%v, Updated attrs: %+v", f.path, rf)
 	}
 	copy(f.data[req.Offset:end], req.Data)
-	grpclog.Printf("Writing to backend for %s", f.path)
+	grpclog.Printf("Writing to backend for %s | f.attr.Inode", f.path)
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	rf, err := f.fs.fc.Write(rctx, &pb.File{Name: f.path, Payload: f.data})
+	rf, err := f.fs.fc.Write(rctx, &pb.File{Name: f.path, Inode: f.attr.Inode, Payload: f.data})
 	if err != nil {
 		grpclog.Fatalf("%v.Write(_) = _, %v: ", f.fs.fc, err)
 	}
