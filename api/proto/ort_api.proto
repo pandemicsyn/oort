@@ -13,6 +13,7 @@ service FileApi {
 // FileRequest is the file path we want to operate on
 message FileRequest {
     string fpath = 1;
+    uint64 inode = 2;
 }
 
 // Attr. fields are optional by default in proto3, so
@@ -35,7 +36,8 @@ message Attr {
 // File contains the files name and its contents
 message File {
     string name = 1;
-    bytes payload = 2;
+    uint64 inode = 2;
+    bytes payload = 3;
 }
 
 // WriteRepsonse place holder. Maybe use an enum so
@@ -57,6 +59,7 @@ service DirApi {
 // DirRequest is the dir we want to operate on
 message DirRequest {
     string name = 1;
+    uint64 inode = 2;
 }
 
 // DirEntries just contains a list of directory entries

@@ -37,6 +37,7 @@ var _ = proto1.Marshal
 // FileRequest is the file path we want to operate on
 type FileRequest struct {
 	Fpath string `protobuf:"bytes,1,opt,name=fpath" json:"fpath,omitempty"`
+	Inode uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
 }
 
 func (m *FileRequest) Reset()         { *m = FileRequest{} }
@@ -67,7 +68,8 @@ func (*Attr) ProtoMessage()    {}
 // File contains the files name and its contents
 type File struct {
 	Name    string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Payload []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	Inode   uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
+	Payload []byte `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 }
 
 func (m *File) Reset()         { *m = File{} }
@@ -86,7 +88,8 @@ func (*WriteResponse) ProtoMessage()    {}
 
 // DirRequest is the dir we want to operate on
 type DirRequest struct {
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name  string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Inode uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
 }
 
 func (m *DirRequest) Reset()         { *m = DirRequest{} }

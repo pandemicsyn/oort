@@ -48,7 +48,7 @@ func newDirServer() *dirServer {
 func newFileServer() *fileServer {
 	s := new(fileServer)
 	s.rpool = newRedisPool(*ortHost)
-	s.files = make(map[string]*pb.Attr)
+	s.files = make(map[uint64]*pb.Attr)
 	return s
 }
 

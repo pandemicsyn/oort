@@ -25,11 +25,11 @@ type File struct {
 // Probably need to acquire lock on the api server.
 func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
 	f.RLock()
-	grpclog.Printf("Getting attrs for %s", f.path)
+	grpclog.Printf("Getting attrs for %s | %d", f.path, f.attr.Inode)
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-	a, err := f.fs.fc.GetAttr(rctx, &pb.FileRequest{Fpath: f.path})
+	a, err := f.fs.fc.GetAttr(rctx, &pb.FileRequest{Fpath: f.path, Inode: f.attr.Inode})
 	if err != nil {
 		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", f.fs.fc, err)
 	}
@@ -49,9 +49,9 @@ func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenR
 func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
 	f.RLock()
 	out := make([]byte, len(f.data))
-	grpclog.Printf("Getting attrs for %s", f.path)
+	grpclog.Printf("Getting attrs for %s | %d", f.path, f.attr.Inode)
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	rf, err := f.fs.fc.Read(rctx, &pb.FileRequest{Fpath: f.path})
+	rf, err := f.fs.fc.Read(rctx, &pb.FileRequest{Fpath: f.path, Inode: f.attr.Inode})
 	if err != nil {
 		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", f.fs.fc, err)
 	}
@@ -74,7 +74,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 		f.data = append(f.data, make([]byte, delta)...)
 		f.attr.Size = uint64(len(f.data))
 		atomic.AddInt64(&f.fs.size, int64(delta))
-		grpclog.Printf("Updating attrs for %s", f.path)
+		grpclog.Printf("Updating attrs for %s | %d", f.path, f.attr.Inode)
 		a := &pb.Attr{
 			Parent: "something",
 			Name:   f.path,
