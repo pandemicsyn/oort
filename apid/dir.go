@@ -36,6 +36,8 @@ func (s *dirServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, err
 		path:     r.Name,
 		UUIDNode: time.Now().UnixNano(),
 		isdir:    false,
+		entries:  make(map[string]uint64),
+		ientries: make(map[uint64]string),
 	}
 	ts := time.Now().Unix()
 	n.attr = &pb.Attr{
@@ -64,6 +66,8 @@ func (s *dirServer) MkDir(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error)
 		path:     r.Name,
 		UUIDNode: time.Now().UnixNano(),
 		isdir:    true,
+		entries:  make(map[string]uint64),
+		ientries: make(map[uint64]string),
 	}
 	ts := time.Now().Unix()
 	n.attr = &pb.Attr{

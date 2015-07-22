@@ -97,7 +97,28 @@ func main() {
 		FatalIf(err, "Couldn't load cert from file")
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
+
 	fs := &InMemFS{nodes: make(map[uint64]*Entry)}
+	// need to add root always
+	n := &Entry{
+		path:     "/",
+		UUIDNode: 1,
+		isdir:    true,
+		entries:  make(map[string]uint64),
+		ientries: make(map[uint64]string),
+	}
+	ts := time.Now().Unix()
+	n.attr = &pb.Attr{
+		Inode:  uint64(n.UUIDNode),
+		Atime:  ts,
+		Mtime:  ts,
+		Ctime:  ts,
+		Crtime: ts,
+		Mode:   uint32(os.ModeDir | 0777),
+		Name:   "/",
+	}
+	fs.nodes[n.attr.Inode] = n
+
 	s := grpc.NewServer(opts...)
 	pb.RegisterFileApiServer(s, newFileServer(fs))
 	pb.RegisterDirApiServer(s, newDirServer(fs))
