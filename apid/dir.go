@@ -1,50 +1,41 @@
 package main
 
 import (
+	"github.com/garyburd/redigo/redis"
+	pb "github.com/pandemicsyn/ort/api/proto"
+	"golang.org/x/net/context"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"bazil.org/fuse/fs"
-	"github.com/garyburd/redigo/redis"
-	pb "github.com/pandemicsyn/ort/api/proto"
-	"golang.org/x/net/context"
 )
 
 type dirServer struct {
 	sync.RWMutex
 	rpool     *redis.Pool
-	nodes     map[string]*Entry
+	fs        *InMemFS
 	nodeCount uint64
 }
 
-type Entry struct {
-	path  string
-	isdir bool
-	sync.RWMutex
-	attr     *pb.Attr
-	parent   string
-	nodes    map[string]fs.Node
-	UUIDNode int64
-}
-
 func (s *dirServer) GetAttr(ctx context.Context, r *pb.DirRequest) (*pb.Attr, error) {
-	s.RLock()
-	defer s.RUnlock()
-	if entry, ok := s.nodes[r.Name]; ok {
+	s.fs.RLock()
+	defer s.fs.RUnlock()
+	if entry, ok := s.fs.nodes[r.Inode]; ok {
 		return entry.attr, nil
 	}
-	return &pb.Attr{Name: r.Name}, nil
+	return &pb.Attr{Name: r.Name, Inode: r.Inode}, nil
 }
 
 func (s *dirServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, error) {
-	if _, exists := s.nodes[r.Name]; exists {
+	s.fs.Lock()
+	defer s.fs.Unlock()
+	if _, exists := s.fs.nodes[r.Parent].entries[r.Name]; exists {
 		return &pb.FileEnt{}, nil
 	}
 	n := &Entry{
 		path:     r.Name,
 		UUIDNode: time.Now().UnixNano(),
+		isdir:    false,
 	}
 	ts := time.Now().Unix()
 	n.attr = &pb.Attr{
@@ -56,18 +47,23 @@ func (s *dirServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, err
 		Mode:   uint32(0777),
 		Name:   r.Name,
 	}
-	s.nodes[r.Name] = n
-	atomic.AddUint64(&s.nodeCount, 1)
+	s.fs.nodes[n.attr.Inode] = n
+	s.fs.nodes[r.Parent].entries[r.Name] = n.attr.Inode
+	s.fs.nodes[r.Parent].ientries[n.attr.Inode] = r.Name
+	atomic.AddUint64(&s.fs.nodes[r.Parent].nodeCount, 1)
 	return &pb.FileEnt{Name: n.path, Attr: n.attr}, nil
 }
 
 func (s *dirServer) MkDir(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error) {
-	if _, exists := s.nodes[r.Name]; exists {
+	s.fs.Lock()
+	defer s.fs.Unlock()
+	if _, exists := s.fs.nodes[r.Parent].entries[r.Name]; exists {
 		return &pb.DirEnt{}, nil
 	}
 	n := &Entry{
 		path:     r.Name,
 		UUIDNode: time.Now().UnixNano(),
+		isdir:    true,
 	}
 	ts := time.Now().Unix()
 	n.attr = &pb.Attr{
@@ -79,25 +75,34 @@ func (s *dirServer) MkDir(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error)
 		Mode:   uint32(os.ModeDir | 0777),
 		Name:   r.Name,
 	}
-	s.nodes[r.Name] = n
-	atomic.AddUint64(&s.nodeCount, 1)
+	s.fs.nodes[n.attr.Inode] = n
+	s.fs.nodes[r.Parent].entries[r.Name] = n.attr.Inode
+	s.fs.nodes[r.Parent].ientries[n.attr.Inode] = r.Name
+	atomic.AddUint64(&s.fs.nodes[r.Parent].nodeCount, 1)
 	return &pb.DirEnt{Name: n.path, Attr: n.attr}, nil
 }
 
-func (s *dirServer) Lookup(ctx context.Context, r *pb.DirRequest) (*pb.DirEnt, error) {
-	s.RLock()
-	defer s.RUnlock()
-	entry, exists := s.nodes[r.Name]
+func (s *dirServer) Lookup(ctx context.Context, r *pb.LookupRequest) (*pb.DirEnt, error) {
+	s.fs.RLock()
+	defer s.fs.RUnlock()
+	//find parent based on r.Parent
+	//check if r.Name in r.Parent
+	inode, exists := s.fs.nodes[r.Parent].entries[r.Name]
 	if !exists {
 		return &pb.DirEnt{}, nil
 	}
-	return &pb.DirEnt{Name: r.Name, Attr: entry.attr}, nil
+	entry := s.fs.nodes[inode]
+	return &pb.DirEnt{Name: entry.path, Attr: entry.attr}, nil
 }
 
 func (s *dirServer) ReadDirAll(ctx context.Context, f *pb.DirRequest) (*pb.DirEntries, error) {
+	s.fs.RLock()
+	defer s.fs.RUnlock()
 	return &pb.DirEntries{}, nil
 }
 
 func (s *dirServer) Remove(ctx context.Context, f *pb.DirEnt) (*pb.WriteResponse, error) {
+	s.fs.RLock()
+	defer s.fs.RUnlock()
 	return &pb.WriteResponse{}, nil
 }

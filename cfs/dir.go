@@ -36,7 +36,7 @@ func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-	a, err := d.fs.dc.GetAttr(rctx, &pb.DirRequest{Name: d.path})
+	a, err := d.fs.dc.GetAttr(rctx, &pb.DirRequest{Name: d.path, Inode: d.attr.Inode})
 	if err != nil {
 		grpclog.Fatalf("%v.GetAttr(_) = _, %v: ", d.fs.dc, err)
 	}
@@ -91,7 +91,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-	l, err := d.fs.dc.Lookup(rctx, &pb.DirRequest{Name: name})
+	l, err := d.fs.dc.Lookup(rctx, &pb.LookupRequest{Name: name, Parent: d.attr.Inode})
 	if err != nil {
 		grpclog.Fatalf("%v.Lookup(%+v) = _, %+v: ", d.fs.dc, name, err)
 	}
@@ -152,7 +152,7 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error
 	d.Lock()
 	defer d.Unlock()
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	m, err := d.fs.dc.MkDir(rctx, &pb.DirEnt{Name: req.Name})
+	m, err := d.fs.dc.MkDir(rctx, &pb.DirEnt{Name: req.Name, Parent: d.attr.Inode})
 	if err != nil {
 		grpclog.Fatalf("%v.MkDir(%+v) = _, %+v: ", d.fs.dc, req, err)
 	}
@@ -176,7 +176,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	defer d.Unlock()
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	c, err := d.fs.dc.Create(rctx, &pb.FileEnt{Name: req.Name})
+	c, err := d.fs.dc.Create(rctx, &pb.FileEnt{Name: req.Name, Parent: d.attr.Inode})
 	if err != nil {
 		grpclog.Fatalf("%v.Create(%+v) = _, %+v: ", d.fs.dc, req, err)
 	}

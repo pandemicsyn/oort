@@ -21,10 +21,9 @@ type File struct {
 	data []byte
 }
 
-// TODO: Fix race (I rlock but then modify attrs).
 // Probably need to acquire lock on the api server.
 func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
-	f.RLock()
+	f.Lock()
 	grpclog.Printf("Getting attrs for %s | %d", f.path, f.attr.Inode)
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -37,7 +36,7 @@ func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
 	f.attr.Size = a.Size
 	f.attr.Mtime = time.Unix(a.Mtime, 0)
 	*o = f.attr
-	f.RUnlock()
+	f.Unlock()
 	return nil
 }
 

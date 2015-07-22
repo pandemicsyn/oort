@@ -12,30 +12,29 @@ import (
 type fileServer struct {
 	sync.RWMutex
 	rpool *redis.Pool
+	fs    *InMemFS
 	files map[uint64]*pb.Attr //temp in memory stuff
 }
 
 func (s *fileServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.Attr, error) {
-	s.RLock()
-	defer s.RUnlock()
-	if attr, ok := s.files[r.Inode]; ok {
-		return attr, nil
+	s.fs.RLock()
+	defer s.fs.RUnlock()
+	if entry, ok := s.fs.nodes[r.Inode]; ok {
+		return entry.attr, nil
 	}
-	return &pb.Attr{Name: r.Fpath}, nil
+	return &pb.Attr{}, nil
 }
 
 func (s *fileServer) SetAttr(ctx context.Context, r *pb.Attr) (*pb.Attr, error) {
-	s.Lock()
-	defer s.Unlock()
-	f := &pb.Attr{
-		Parent: "wat",
-		Name:   r.Name,
-		Mode:   r.Mode,
-		Size:   r.Size,
-		Mtime:  r.Mtime,
+	s.fs.Lock()
+	defer s.fs.Unlock()
+	if entry, ok := s.fs.nodes[r.Inode]; ok {
+		entry.attr.Mode = r.Mode
+		entry.attr.Size = r.Size
+		entry.attr.Mtime = r.Mtime
+		return entry.attr, nil
 	}
-	s.files[r.Inode] = f
-	return f, nil
+	return &pb.Attr{}, nil
 }
 
 func (s *fileServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, error) {
@@ -55,8 +54,8 @@ func (s *fileServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, err
 }
 
 func (s *fileServer) Write(ctx context.Context, r *pb.File) (*pb.WriteResponse, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.fs.Lock()
+	defer s.fs.Unlock()
 	rc := s.rpool.Get()
 	defer rc.Close()
 	_, err := rc.Do("SET", strconv.FormatUint(r.Inode, 10), r.Payload)
@@ -64,7 +63,7 @@ func (s *fileServer) Write(ctx context.Context, r *pb.File) (*pb.WriteResponse, 
 		return &pb.WriteResponse{Status: 1}, err
 	}
 	rc.Close()
-	s.files[r.Inode].Size = uint64(len(r.Payload))
-	s.files[r.Inode].Mtime = time.Now().Unix()
+	s.fs.nodes[r.Inode].attr.Size = uint64(len(r.Payload))
+	s.fs.nodes[r.Inode].attr.Mtime = time.Now().Unix()
 	return &pb.WriteResponse{Status: 0}, nil
 }

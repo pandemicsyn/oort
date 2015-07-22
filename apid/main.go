@@ -13,6 +13,7 @@ import (
 	pb "github.com/pandemicsyn/ort/api/proto"
 
 	"net"
+	"sync"
 	"time"
 )
 
@@ -38,16 +39,17 @@ func genUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-func newDirServer() *dirServer {
+func newDirServer(fs *InMemFS) *dirServer {
 	s := new(dirServer)
 	s.rpool = newRedisPool(*ortHost)
-	s.nodes = make(map[string]*Entry)
+	s.fs = fs
 	return s
 }
 
-func newFileServer() *fileServer {
+func newFileServer(fs *InMemFS) *fileServer {
 	s := new(fileServer)
 	s.rpool = newRedisPool(*ortHost)
+	s.fs = fs
 	s.files = make(map[uint64]*pb.Attr)
 	return s
 }
@@ -66,6 +68,23 @@ func newRedisPool(server string) *redis.Pool {
 	}
 }
 
+type InMemFS struct {
+	sync.RWMutex
+	nodes map[uint64]*Entry
+}
+
+type Entry struct {
+	path  string
+	isdir bool
+	sync.RWMutex
+	attr      *pb.Attr
+	parent    uint64
+	UUIDNode  int64
+	entries   map[string]uint64
+	ientries  map[uint64]string
+	nodeCount uint64
+}
+
 func main() {
 	flag.Parse()
 
@@ -78,9 +97,10 @@ func main() {
 		FatalIf(err, "Couldn't load cert from file")
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
+	fs := &InMemFS{nodes: make(map[uint64]*Entry)}
 	s := grpc.NewServer(opts...)
-	pb.RegisterFileApiServer(s, newFileServer())
-	pb.RegisterDirApiServer(s, newDirServer())
+	pb.RegisterFileApiServer(s, newFileServer(fs))
+	pb.RegisterDirApiServer(s, newDirServer(fs))
 	grpclog.Printf("Starting up on %d...\n", *port)
 	s.Serve(l)
 }

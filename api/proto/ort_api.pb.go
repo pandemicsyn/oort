@@ -13,6 +13,7 @@ It has these top-level messages:
 	Attr
 	File
 	WriteResponse
+	LookupRequest
 	DirRequest
 	DirEntries
 	DirEnt
@@ -87,6 +88,17 @@ func (m *WriteResponse) String() string { return proto1.CompactTextString(m) }
 func (*WriteResponse) ProtoMessage()    {}
 
 // DirRequest is the dir we want to operate on
+type LookupRequest struct {
+	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Inode  uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
+	Parent uint64 `protobuf:"varint,3,opt,name=parent" json:"parent,omitempty"`
+}
+
+func (m *LookupRequest) Reset()         { *m = LookupRequest{} }
+func (m *LookupRequest) String() string { return proto1.CompactTextString(m) }
+func (*LookupRequest) ProtoMessage()    {}
+
+// DirRequest is the dir we want to operate on
 type DirRequest struct {
 	Name  string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Inode uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
@@ -122,8 +134,9 @@ func (m *DirEntries) GetFileEntries() []*FileEnt {
 
 // DirEnt is a directory entry
 type DirEnt struct {
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Attr *Attr  `protobuf:"bytes,2,opt,name=attr" json:"attr,omitempty"`
+	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Parent uint64 `protobuf:"varint,2,opt,name=parent" json:"parent,omitempty"`
+	Attr   *Attr  `protobuf:"bytes,3,opt,name=attr" json:"attr,omitempty"`
 }
 
 func (m *DirEnt) Reset()         { *m = DirEnt{} }
@@ -138,8 +151,9 @@ func (m *DirEnt) GetAttr() *Attr {
 }
 
 type FileEnt struct {
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Attr *Attr  `protobuf:"bytes,2,opt,name=attr" json:"attr,omitempty"`
+	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Parent uint64 `protobuf:"varint,2,opt,name=parent" json:"parent,omitempty"`
+	Attr   *Attr  `protobuf:"bytes,3,opt,name=attr" json:"attr,omitempty"`
 }
 
 func (m *FileEnt) Reset()         { *m = FileEnt{} }
@@ -298,7 +312,7 @@ type DirApiClient interface {
 	MkDir(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*DirEnt, error)
 	Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*FileEnt, error)
 	Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
-	Lookup(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEnt, error)
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*DirEnt, error)
 	ReadDirAll(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEntries, error)
 }
 
@@ -346,7 +360,7 @@ func (c *dirApiClient) Remove(ctx context.Context, in *DirEnt, opts ...grpc.Call
 	return out, nil
 }
 
-func (c *dirApiClient) Lookup(ctx context.Context, in *DirRequest, opts ...grpc.CallOption) (*DirEnt, error) {
+func (c *dirApiClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*DirEnt, error) {
 	out := new(DirEnt)
 	err := grpc.Invoke(ctx, "/proto.DirApi/Lookup", in, out, c.cc, opts...)
 	if err != nil {
@@ -371,7 +385,7 @@ type DirApiServer interface {
 	MkDir(context.Context, *DirEnt) (*DirEnt, error)
 	Create(context.Context, *FileEnt) (*FileEnt, error)
 	Remove(context.Context, *DirEnt) (*WriteResponse, error)
-	Lookup(context.Context, *DirRequest) (*DirEnt, error)
+	Lookup(context.Context, *LookupRequest) (*DirEnt, error)
 	ReadDirAll(context.Context, *DirRequest) (*DirEntries, error)
 }
 
@@ -428,7 +442,7 @@ func _DirApi_Remove_Handler(srv interface{}, ctx context.Context, codec grpc.Cod
 }
 
 func _DirApi_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(DirRequest)
+	in := new(LookupRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}

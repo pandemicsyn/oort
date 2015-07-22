@@ -52,8 +52,15 @@ service DirApi {
     rpc MkDir(DirEnt) returns (DirEnt) {}
     rpc Create(FileEnt) returns (FileEnt) {}
     rpc Remove(DirEnt) returns (WriteResponse) {}
-    rpc Lookup(DirRequest) returns (DirEnt) {}
+    rpc Lookup(LookupRequest) returns (DirEnt) {}
     rpc ReadDirAll(DirRequest) returns (DirEntries) {}
+}
+
+// DirRequest is the dir we want to operate on
+message LookupRequest {
+    string name = 1;
+    uint64 inode = 2;
+    uint64 parent = 3; //where to lookup
 }
 
 // DirRequest is the dir we want to operate on
@@ -71,10 +78,12 @@ message DirEntries {
 // DirEnt is a directory entry
 message DirEnt {
     string name = 1;
-    Attr attr = 2;
+    uint64 parent = 2;
+    Attr attr = 3;
 }
 
 message FileEnt {
     string name = 1;
-    Attr attr = 2;
+    uint64 parent = 2;
+    Attr attr = 3;
 }
