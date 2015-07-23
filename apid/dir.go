@@ -12,9 +12,8 @@ import (
 
 type dirServer struct {
 	sync.RWMutex
-	rpool     *redis.Pool
-	fs        *InMemFS
-	nodeCount uint64
+	rpool *redis.Pool
+	fs    *InMemFS
 }
 
 func (s *dirServer) GetAttr(ctx context.Context, r *pb.DirRequest) (*pb.Attr, error) {
@@ -89,8 +88,6 @@ func (s *dirServer) MkDir(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error)
 func (s *dirServer) Lookup(ctx context.Context, r *pb.LookupRequest) (*pb.DirEnt, error) {
 	s.fs.RLock()
 	defer s.fs.RUnlock()
-	//find parent based on r.Parent
-	//check if r.Name in r.Parent
 	inode, exists := s.fs.nodes[r.Parent].entries[r.Name]
 	if !exists {
 		return &pb.DirEnt{}, nil

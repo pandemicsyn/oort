@@ -33,6 +33,7 @@ func debugLog(msg interface{}) {
 	fmt.Fprintf(os.Stderr, "%v\n", msg)
 }
 
+// CFS is our file fuse file system
 type CFS struct {
 	root      *Dir
 	nodeID    uint64
@@ -43,6 +44,7 @@ type CFS struct {
 	dc        pb.DirApiClient
 }
 
+// NewCFS just requires a setup grpc connection
 func NewCFS(conn *grpc.ClientConn) *CFS {
 	fs := &CFS{
 		nodeCount: 1,
@@ -57,6 +59,37 @@ func NewCFS(conn *grpc.ClientConn) *CFS {
 	return fs
 }
 
+// newDir isn't really used for anything anymore other than creating /
+func (m *CFS) newDir(mode os.FileMode, name string) *Dir {
+	n := time.Now()
+	return &Dir{
+		path: name,
+		attr: fuse.Attr{
+			Inode:  1,
+			Atime:  n,
+			Mtime:  n,
+			Ctime:  n,
+			Crtime: n,
+			Mode:   os.ModeDir | mode,
+			Valid:  5 * time.Second,
+		},
+		fs:    m,
+		nodes: make(map[string]fs.Node),
+	}
+}
+
+//Root is just needed to find the root of the fs
+func (m *CFS) Root() (fs.Node, error) {
+	return m.root, nil
+}
+
+// Statfs for /
+func (m *CFS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) error {
+	resp.Blocks = uint64((atomic.LoadInt64(&m.size) + 511) / 512)
+	resp.Bsize = 512
+	resp.Files = atomic.LoadUint64(&m.nodeCount)
+	return nil
+}
 func main() {
 	flag.Usage = usage
 	flag.Parse()
@@ -122,54 +155,3 @@ var _ fs.Node = (*File)(nil)
 var _ fs.NodeOpener = (*File)(nil)
 var _ fs.NodeSetattrer = (*File)(nil)
 */
-
-func (m *CFS) nextID() uint64 {
-	return atomic.AddUint64(&m.nodeID, 1)
-}
-
-func (m *CFS) newDir(mode os.FileMode, name string) *Dir {
-	n := time.Now()
-	return &Dir{
-		path: name,
-		attr: fuse.Attr{
-			Inode:  m.nextID(),
-			Atime:  n,
-			Mtime:  n,
-			Ctime:  n,
-			Crtime: n,
-			Mode:   os.ModeDir | mode,
-			Valid:  5 * time.Second,
-		},
-		fs:    m,
-		nodes: make(map[string]fs.Node),
-	}
-}
-
-func (m *CFS) newFile(mode os.FileMode, name string) *File {
-	n := time.Now()
-	return &File{
-		path: name,
-		attr: fuse.Attr{
-			Inode:  m.nextID(),
-			Atime:  n,
-			Mtime:  n,
-			Ctime:  n,
-			Crtime: n,
-			Mode:   mode,
-			Valid:  10 * time.Second,
-		},
-		data: make([]byte, 0),
-	}
-}
-
-func (m *CFS) Root() (fs.Node, error) {
-	return m.root, nil
-}
-
-func (m *CFS) Statfs(ctx context.Context, req *fuse.StatfsRequest,
-	resp *fuse.StatfsResponse) error {
-	resp.Blocks = uint64((atomic.LoadInt64(&m.size) + 511) / 512)
-	resp.Bsize = 512
-	resp.Files = atomic.LoadUint64(&m.nodeCount)
-	return nil
-}

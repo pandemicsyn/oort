@@ -13,9 +13,9 @@ type fileServer struct {
 	sync.RWMutex
 	rpool *redis.Pool
 	fs    *InMemFS
-	files map[uint64]*pb.Attr //temp in memory stuff
 }
 
+// GetAttr either here or client side should start setting the "valid" field as well.
 func (s *fileServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.Attr, error) {
 	s.fs.RLock()
 	defer s.fs.RUnlock()
@@ -53,6 +53,9 @@ func (s *fileServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, err
 	return f, nil
 }
 
+//Write still needs to handle chunks, and validate inodes
+//which means our Entry for files aslo needs to be sure to track
+//blocks used in the attrs.
 func (s *fileServer) Write(ctx context.Context, r *pb.File) (*pb.WriteResponse, error) {
 	s.fs.Lock()
 	defer s.fs.Unlock()

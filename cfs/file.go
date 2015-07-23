@@ -21,7 +21,6 @@ type File struct {
 	data []byte
 }
 
-// Probably need to acquire lock on the api server.
 func (f *File) Attr(ctx context.Context, o *fuse.Attr) error {
 	f.Lock()
 	grpclog.Printf("Getting attrs for %s | %d", f.path, f.attr.Inode)
@@ -142,7 +141,7 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest,
 	resp.Attr = f.attr
 	grpclog.Printf("Writing attrs for %s", f.path)
 	a := &pb.Attr{
-		Parent: "something",
+		Parent: "ishouldtracktheparent",
 		Name:   f.path,
 		Mode:   uint32(f.attr.Mode),
 		Size:   f.attr.Size,

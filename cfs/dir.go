@@ -23,7 +23,6 @@ type Dir struct {
 	nodes  map[string]fs.Node
 }
 
-//doneish
 func (d *Dir) Attr(ctx context.Context, o *fuse.Attr) error {
 	grpclog.Println("in dir attr")
 	d.RLock()
@@ -80,7 +79,6 @@ func (d *Dir) genFileFsNode(a *pb.Attr) fs.Node {
 	}
 }
 
-//doneish
 func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	d.RLock()
 	defer d.RUnlock()
@@ -104,7 +102,7 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	return n, nil
 }
 
-//TODO: all the things
+//TODO: all the things, still a hold over from the origin in memory fuse example
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	grpclog.Println("in readdirall")
 	d.RLock()
@@ -147,7 +145,6 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	return dirs, nil
 }
 
-//doneish.
 func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
 	d.Lock()
 	defer d.Unlock()
@@ -161,12 +158,6 @@ func (d *Dir) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error
 		grpclog.Printf("%v.MkDir(%+v) = %+v ", d.fs.dc, req, m)
 		return nil, fuse.EEXIST
 	}
-	/*
-		n := d.fs.newDir(req.Mode, req.Name)
-		d.nodes[req.Name] = n
-		atomic.AddUint64(&d.fs.nodeCount, 1)
-		grpclog.Println("returning")
-	*/
 	n := d.genDirFsNode(m.Attr)
 	return n, nil
 }
@@ -185,15 +176,6 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 		grpclog.Printf("%v.Create(%+v) = %+v ", d.fs.dc, req, c)
 		return nil, nil, fuse.EEXIST
 	}
-
-	/*
-		n := d.fs.newFile(req.Mode, req.Name)
-		n.fs = d.fs
-		d.nodes[req.Name] = n
-		atomic.AddUint64(&d.fs.nodeCount, 1)
-
-		resp.Attr = n.attr
-	*/
 	n := d.genFileFsNode(c.Attr)
 	resp.Attr = fuse.Attr{
 		Inode:  c.Attr.Inode,
@@ -207,6 +189,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	return n, n, nil
 }
 
+//TODO: all the things, still a hold over from the origin in memory fuse example
 func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Node) error {
 	nd := newDir.(*Dir)
 	if d.attr.Inode == nd.attr.Inode {
@@ -241,6 +224,7 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Nod
 	return nil
 }
 
+//TODO: all the things, still a hold over from the origin in memory fuse example
 func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	d.Lock()
 	defer d.Unlock()

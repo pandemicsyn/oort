@@ -25,6 +25,7 @@ var (
 	ortHost  = flag.String("orthost", "127.0.0.1:6379", "host:port to use when connecting to ort")
 )
 
+// FatalIf is just a lazy log/panic on error func
 func FatalIf(err error, msg string) {
 	if err != nil {
 		grpclog.Fatalf("%s: %v", msg, err)
@@ -50,7 +51,6 @@ func newFileServer(fs *InMemFS) *fileServer {
 	s := new(fileServer)
 	s.rpool = newRedisPool(*ortHost)
 	s.fs = fs
-	s.files = make(map[uint64]*pb.Attr)
 	return s
 }
 
@@ -68,20 +68,24 @@ func newRedisPool(server string) *redis.Pool {
 	}
 }
 
+// InMemFS holds our fs nodes by inode
 type InMemFS struct {
 	sync.RWMutex
 	nodes map[uint64]*Entry
 }
 
+// Entry describes each node in our fs.
+// it also contains a list of all other entries "in this node".
+// i.e. all files/directory in this directory.
 type Entry struct {
-	path  string
+	path  string // string path/name for this entry
 	isdir bool
 	sync.RWMutex
 	attr      *pb.Attr
-	parent    uint64
-	UUIDNode  int64
-	entries   map[string]uint64
-	ientries  map[uint64]string
+	parent    uint64            // inode of the parent
+	UUIDNode  int64             //the original/actual inode incase fuse stomps on the one in attr
+	entries   map[string]uint64 // subdir/files by name
+	ientries  map[uint64]string // subdir/files by inode
 	nodeCount uint64
 }
 
