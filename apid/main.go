@@ -54,6 +54,13 @@ func newFileServer(fs *InMemFS) *fileServer {
 	return s
 }
 
+func newApiServer(fs *InMemFS) *apiServer {
+	s := new(apiServer)
+	s.rpool = newRedisPool(*ortHost)
+	s.fs = fs
+	return s
+}
+
 func newRedisPool(server string) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,
@@ -124,8 +131,9 @@ func main() {
 	fs.nodes[n.attr.Inode] = n
 
 	s := grpc.NewServer(opts...)
-	pb.RegisterFileApiServer(s, newFileServer(fs))
-	pb.RegisterDirApiServer(s, newDirServer(fs))
+	//pb.RegisterFileApiServer(s, newFileServer(fs))
+	//pb.RegisterDirApiServer(s, newDirServer(fs))
+	pb.RegisterApiServer(s, newApiServer(fs))
 	grpclog.Printf("Starting up on %d...\n", *port)
 	s.Serve(l)
 }

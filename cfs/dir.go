@@ -105,7 +105,16 @@ func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 //TODO: all the things, still a hold over from the origin in memory fuse example
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	grpclog.Println("in readdirall")
+	grpclog.Println(ctx)
+	/*
+		rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+		_, err := d.fs.dc.ReadDirAll(rctx, &pb.DirRequest{Name: "test", Inode: d.attr.Inode})
+		if err != nil {
+			grpclog.Fatalf("%v.ReadDirAll(%+v) = _, %+v: ", d.fs.dc, "test", err)
+		}*/
 	d.RLock()
+
 	dirs := make([]fuse.Dirent, len(d.nodes)+2)
 
 	// Add special references.
