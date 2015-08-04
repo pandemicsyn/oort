@@ -500,6 +500,7 @@ var _DirApi_serviceDesc = grpc.ServiceDesc{
 // Client API for Api service
 
 type ApiClient interface {
+	SetAttr(ctx context.Context, in *Attr, opts ...grpc.CallOption) (*Attr, error)
 	GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*Attr, error)
 	Read(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*File, error)
 	Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error)
@@ -516,6 +517,15 @@ type apiClient struct {
 
 func NewApiClient(cc *grpc.ClientConn) ApiClient {
 	return &apiClient{cc}
+}
+
+func (c *apiClient) SetAttr(ctx context.Context, in *Attr, opts ...grpc.CallOption) (*Attr, error) {
+	out := new(Attr)
+	err := grpc.Invoke(ctx, "/proto.Api/SetAttr", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *apiClient) GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*Attr, error) {
@@ -593,6 +603,7 @@ func (c *apiClient) ReadDirAll(ctx context.Context, in *DirRequest, opts ...grpc
 // Server API for Api service
 
 type ApiServer interface {
+	SetAttr(context.Context, *Attr) (*Attr, error)
 	GetAttr(context.Context, *FileRequest) (*Attr, error)
 	Read(context.Context, *FileRequest) (*File, error)
 	Write(context.Context, *File) (*WriteResponse, error)
@@ -605,6 +616,18 @@ type ApiServer interface {
 
 func RegisterApiServer(s *grpc.Server, srv ApiServer) {
 	s.RegisterService(&_Api_serviceDesc, srv)
+}
+
+func _Api_SetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(Attr)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(ApiServer).SetAttr(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func _Api_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
@@ -707,6 +730,10 @@ var _Api_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.Api",
 	HandlerType: (*ApiServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SetAttr",
+			Handler:    _Api_SetAttr_Handler,
+		},
 		{
 			MethodName: "GetAttr",
 			Handler:    _Api_GetAttr_Handler,

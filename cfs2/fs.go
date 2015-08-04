@@ -84,7 +84,25 @@ func (f *fs) handle(r fuse.Request) {
 
 	case *fuse.ReadRequest:
 		f.handleRead(r)
+
+	case *fuse.WriteRequest:
+		f.handleWrite(r)
+
+	case *fuse.CreateRequest:
+		f.handleCreate(r)
+
+	case *fuse.SetattrRequest:
+		f.handleSetattr(r)
+
+	case *fuse.ReleaseRequest:
+		f.handleRelease(r)
+
+	case *fuse.FlushRequest:
+		f.handleFlush(r)
 		/*
+			case *fuse.MknodRequest:
+				f.handleMknod(r)
+
 			case *fuse.InitRequest:
 				f.handleInit(r)
 
@@ -109,9 +127,6 @@ func (f *fs) handle(r fuse.Request) {
 			case *fuse.AccessRequest:
 				f.handleAccess(r)
 
-			case *fuse.CreateRequest:
-				f.handleCreate(r)
-
 			case *fuse.GetxattrRequest:
 				f.handleGetxattr(r)
 
@@ -127,23 +142,11 @@ func (f *fs) handle(r fuse.Request) {
 			case *fuse.ForgetRequest:
 				f.handleForget(r)
 
-			case *fuse.WriteRequest:
-				f.handleWrite(r)
-
-			case *fuse.FlushRequest:
-				f.handleFlush(r)
-
-			case *fuse.ReleaseRequest:
-				f.handleRelease(r)
-
 			case *fuse.DestroyRequest:
 				f.handleDestroy(r)
 
 			case *fuse.RenameRequest:
 				f.handleRename(r)
-
-			case *fuse.MknodRequest:
-				f.handleMknod(r)
 
 			case *fuse.FsyncRequest:
 				f.handleFsync(r)
@@ -291,13 +294,121 @@ func (f *fs) handleRead(r *fuse.ReadRequest) {
 		return
 	} else {
 		// handle file read
-		// TODO: implement Read on files
-		log.Println("Read for files not implemented yet")
-		r.RespondError(fuse.ENOSYS)
+		rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		data, err := f.rpc.api.Read(rctx, &pb.FileRequest{Inode: uint64(r.Node)})
+		if err != nil {
+			log.Fatal("Read on file failed: %v ", err)
+		}
+		fuseutil.HandleRead(r, resp, data.Payload)
+		r.Respond(resp)
 	}
 }
 
+func (f *fs) handleWrite(r *fuse.WriteRequest) {
+	log.Println("Inside handleWrite")
+	// TODO: Implement write
+	// Currently this is stupid simple and doesn't handle all the possibilities
+	if r.Offset > 0 {
+		// Writing offsets isn't supported yet
+		log.Printf("Writing offsets not supported yet (%v)", r.Offset)
+		r.RespondError(fuse.ENOSYS)
+		return
+	}
+
+	resp := &fuse.WriteResponse{}
+	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	w, err := f.rpc.api.Write(rctx, &pb.File{Inode: uint64(r.Node), Payload: r.Data})
+	if err != nil {
+		log.Fatalf("Write to file failed: %v", err)
+	}
+	if w.Status != 0 {
+		log.Println("Write status non zero(%d)", w.Status)
+	}
+	resp.Size = len(r.Data)
+	r.Respond(resp)
+}
+
+func (f *fs) handleCreate(r *fuse.CreateRequest) {
+	log.Println("Inside handleCreate")
+
+	resp := &fuse.CreateResponse{}
+	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	c, err := f.rpc.api.Create(rctx, &pb.FileEnt{Parent: uint64(r.Node), Name: r.Name})
+	if err != nil {
+		log.Fatalf("Failed to create file: %v", err)
+	}
+	resp.Node = fuse.NodeID(c.Attr.Inode)
+	resp.Attr.Inode = c.Attr.Inode
+	resp.Attr.Mode = os.FileMode(c.Attr.Mode)
+	resp.Attr.Atime = time.Unix(c.Attr.Atime, 0)
+	resp.Attr.Mtime = time.Unix(c.Attr.Mtime, 0)
+	resp.Attr.Ctime = time.Unix(c.Attr.Ctime, 0)
+	resp.Attr.Crtime = time.Unix(c.Attr.Crtime, 0)
+	resp.EntryValid = 5 * time.Second
+	resp.LookupResponse.Node = fuse.NodeID(c.Attr.Inode)
+	resp.LookupResponse.Attr.Inode = c.Attr.Inode
+	resp.LookupResponse.Attr.Mode = os.FileMode(c.Attr.Mode)
+	resp.LookupResponse.Attr.Atime = time.Unix(c.Attr.Atime, 0)
+	resp.LookupResponse.Attr.Mtime = time.Unix(c.Attr.Mtime, 0)
+	resp.LookupResponse.Attr.Ctime = time.Unix(c.Attr.Ctime, 0)
+	resp.LookupResponse.Attr.Crtime = time.Unix(c.Attr.Crtime, 0)
+	resp.LookupResponse.EntryValid = 5 * time.Second
+	r.Respond(resp)
+}
+
+func (f *fs) handleSetattr(r *fuse.SetattrRequest) {
+	log.Println("Inside handleSetattr")
+	log.Println(r)
+	resp := &fuse.SetattrResponse{}
+
+	// Todo: Need to read attrs in to update
+	if r.Valid.Size() {
+		resp.Attr.Size = r.Size
+	}
+	if r.Valid.Mode() {
+		resp.Attr.Mode = r.Mode
+	}
+	if r.Valid.Atime() {
+		resp.Attr.Atime = r.Atime
+	}
+	if r.Valid.AtimeNow() {
+		resp.Attr.Atime = time.Now()
+	}
+	if r.Valid.Mtime() {
+		resp.Attr.Mtime = r.Mtime
+	}
+
+	a := &pb.Attr{
+		Parent: "ishouldreallytracktheparent",
+		Mode:   uint32(r.Mode),
+		Size:   r.Size,
+		Mtime:  r.Mtime.Unix(),
+	}
+	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	_, err := f.rpc.api.SetAttr(rctx, a)
+	if err != nil {
+		log.Fatalf("Setattr failed: %v", err)
+	}
+	r.Respond(resp)
+}
+
+func (f *fs) handleFlush(r *fuse.FlushRequest) {
+	log.Println("Inside handleFlush")
+	r.Respond()
+}
+
+func (f *fs) handleRelease(r *fuse.ReleaseRequest) {
+	log.Println("Inside handleRelease")
+	r.Respond()
+}
+
 // TODO: Implement the following functions (and make sure to comment out the case)
+
+func (f *fs) handleMknod(r *fuse.MknodRequest) {
+	log.Println("Inside handleMknod")
+	// NOTE: We probably will not need this since we implement Create
+	r.RespondError(fuse.EIO)
+}
 
 func (f *fs) handleInit(r *fuse.InitRequest) {
 	log.Println("Inside handleInit")
@@ -306,11 +417,6 @@ func (f *fs) handleInit(r *fuse.InitRequest) {
 
 func (f *fs) handleStatfs(r *fuse.StatfsRequest) {
 	log.Println("Inside handleStatfs")
-	r.RespondError(fuse.ENOSYS)
-}
-
-func (f *fs) handleSetattr(r *fuse.SetattrRequest) {
-	log.Println("Inside handleSetattr")
 	r.RespondError(fuse.ENOSYS)
 }
 
@@ -339,11 +445,6 @@ func (f *fs) handleRemove(r *fuse.RemoveRequest) {
 	r.RespondError(fuse.ENOSYS)
 }
 
-func (f *fs) handleCreate(r *fuse.CreateRequest) {
-	log.Println("Inside handleCreate")
-	r.RespondError(fuse.ENOSYS)
-}
-
 func (f *fs) handleGetxattr(r *fuse.GetxattrRequest) {
 	log.Println("Inside handleGetxattr")
 	r.RespondError(fuse.ENOSYS)
@@ -369,21 +470,6 @@ func (f *fs) handleForget(r *fuse.ForgetRequest) {
 	r.RespondError(fuse.ENOSYS)
 }
 
-func (f *fs) handleWrite(r *fuse.WriteRequest) {
-	log.Println("Inside handleWrite")
-	r.RespondError(fuse.ENOSYS)
-}
-
-func (f *fs) handleFlush(r *fuse.FlushRequest) {
-	log.Println("Inside handleFlush")
-	r.RespondError(fuse.ENOSYS)
-}
-
-func (f *fs) handleRelease(r *fuse.ReleaseRequest) {
-	log.Println("Inside handleRelease")
-	r.RespondError(fuse.ENOSYS)
-}
-
 func (f *fs) handleDestroy(r *fuse.DestroyRequest) {
 	log.Println("Inside handleDestroy")
 	r.RespondError(fuse.ENOSYS)
@@ -391,11 +477,6 @@ func (f *fs) handleDestroy(r *fuse.DestroyRequest) {
 
 func (f *fs) handleRename(r *fuse.RenameRequest) {
 	log.Println("Inside handleRename")
-	r.RespondError(fuse.ENOSYS)
-}
-
-func (f *fs) handleMknod(r *fuse.MknodRequest) {
-	log.Println("Inside handleMknod")
 	r.RespondError(fuse.ENOSYS)
 }
 

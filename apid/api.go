@@ -27,6 +27,18 @@ func (s *apiServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.Attr, e
 	return &pb.Attr{}, nil
 }
 
+func (s *apiServer) SetAttr(ctx context.Context, r *pb.Attr) (*pb.Attr, error) {
+	s.fs.Lock()
+	defer s.fs.Unlock()
+	if entry, ok := s.fs.nodes[r.Inode]; ok {
+		entry.attr.Mode = r.Mode
+		entry.attr.Size = r.Size
+		entry.attr.Mtime = r.Mtime
+		return entry.attr, nil
+	}
+	return &pb.Attr{}, nil
+}
+
 func (s *apiServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, error) {
 	s.fs.Lock()
 	defer s.fs.Unlock()
@@ -37,8 +49,8 @@ func (s *apiServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, err
 		path:     r.Name,
 		UUIDNode: time.Now().UnixNano(),
 		isdir:    false,
-		entries:  make(map[string]uint64),
-		ientries: make(map[uint64]string),
+		//entries:  make(map[string]uint64),
+		//ientries: make(map[uint64]string),
 	}
 	ts := time.Now().Unix()
 	n.attr = &pb.Attr{

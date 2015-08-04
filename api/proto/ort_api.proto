@@ -90,6 +90,7 @@ message FileEnt {
 
 // Combinded ClientApi
 service Api {
+    rpc SetAttr(Attr) returns (Attr) {}
     rpc GetAttr(FileRequest) returns (Attr)     {}
     rpc Read(FileRequest) returns (File) {}
     rpc Write(File) returns (WriteResponse) {}
