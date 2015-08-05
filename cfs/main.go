@@ -1,21 +1,50 @@
-//cfs implements an test hybrid in-memory/gstore backed file system.
 package main
 
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"sync/atomic"
-	"time"
-
-	"bazil.org/fuse"
-	"bazil.org/fuse/fs"
-	"golang.org/x/net/context"
+	"sync"
 
 	pb "github.com/pandemicsyn/ort/api/proto"
+
+	"bazil.org/fuse"
 	"google.golang.org/grpc"
 )
+
+type server struct {
+	fs *fs
+	wg sync.WaitGroup
+}
+
+func newserver(fs *fs) *server {
+	s := &server{
+		fs: fs,
+	}
+	return s
+}
+
+func (s *server) serve() error {
+	defer s.wg.Wait()
+
+	for {
+		req, err := s.fs.conn.ReadRequest()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			s.fs.handle(req)
+		}()
+	}
+	return nil
+}
 
 var (
 	debug              = flag.Bool("debug", false, "enable debug log messages to stderr")
@@ -29,67 +58,24 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func debugLog(msg interface{}) {
+func debuglog(msg interface{}) {
 	fmt.Fprintf(os.Stderr, "%v\n", msg)
 }
 
-// CFS is our file fuse file system
-type CFS struct {
-	root      *Dir
-	nodeID    uint64
-	nodeCount uint64
-	size      int64
-	conn      *grpc.ClientConn
-	fc        pb.FileApiClient
-	dc        pb.DirApiClient
+type rpc struct {
+	conn *grpc.ClientConn
+	api  pb.ApiClient
 }
 
-// NewCFS just requires a setup grpc connection
-func NewCFS(conn *grpc.ClientConn) *CFS {
-	fs := &CFS{
-		nodeCount: 1,
-		conn:      conn,
-		fc:        pb.NewFileApiClient(conn),
-		dc:        pb.NewDirApiClient(conn),
+func newrpc(conn *grpc.ClientConn) *rpc {
+	r := &rpc{
+		conn: conn,
+		api:  pb.NewApiClient(conn),
 	}
-	fs.root = fs.newDir(os.ModeDir|0777, "/")
-	if fs.root.attr.Inode != 1 {
-		panic("Root node should have been assigned id 1")
-	}
-	return fs
+
+	return r
 }
 
-// newDir isn't really used for anything anymore other than creating /
-func (m *CFS) newDir(mode os.FileMode, name string) *Dir {
-	n := time.Now()
-	return &Dir{
-		path: name,
-		attr: fuse.Attr{
-			Inode:  1,
-			Atime:  n,
-			Mtime:  n,
-			Ctime:  n,
-			Crtime: n,
-			Mode:   os.ModeDir | mode,
-			Valid:  5 * time.Second,
-		},
-		fs:    m,
-		nodes: make(map[string]fs.Node),
-	}
-}
-
-//Root is just needed to find the root of the fs
-func (m *CFS) Root() (fs.Node, error) {
-	return m.root, nil
-}
-
-// Statfs for /
-func (m *CFS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) error {
-	resp.Blocks = uint64((atomic.LoadInt64(&m.size) + 511) / 512)
-	resp.Bsize = 512
-	resp.Files = atomic.LoadUint64(&m.nodeCount)
-	return nil
-}
 func main() {
 	flag.Usage = usage
 	flag.Parse()
@@ -99,7 +85,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	/* grpc setup before else incase we can't dial */
+	// Setup grpc
 	var opts []grpc.DialOption
 	conn, err := grpc.Dial(*serverAddr, opts...)
 	if err != nil {
@@ -120,14 +106,11 @@ func main() {
 	}
 	defer c.Close()
 
-	cfg := &fs.Config{}
-	if *debug {
-		cfg.Debug = debugLog
-	}
-	srv := fs.New(c, cfg)
-	filesys := NewCFS(conn)
+	rpc := newrpc(conn)
+	fs := newfs(c, rpc)
+	srv := newserver(fs)
 
-	if err := srv.Serve(filesys); err != nil {
+	if err := srv.serve(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -136,22 +119,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-/*
-// Compile-time interface checks.
-var _ fs.FS = (*CFS)(nil)
-var _ fs.FSStatfser = (*CFS)(nil)
-
-var _ fs.Node = (*Dir)(nil)
-var _ fs.NodeCreater = (*Dir)(nil)
-var _ fs.NodeMkdirer = (*Dir)(nil)
-var _ fs.NodeRemover = (*Dir)(nil)
-var _ fs.NodeRenamer = (*Dir)(nil)
-var _ fs.NodeStringLookuper = (*Dir)(nil)
-
-var _ fs.HandleReadAller = (*File)(nil)
-var _ fs.HandleWriter = (*File)(nil)
-var _ fs.Node = (*File)(nil)
-var _ fs.NodeOpener = (*File)(nil)
-var _ fs.NodeSetattrer = (*File)(nil)
-*/

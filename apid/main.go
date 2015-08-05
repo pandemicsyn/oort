@@ -40,15 +40,8 @@ func genUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-func newDirServer(fs *InMemFS) *dirServer {
-	s := new(dirServer)
-	s.rpool = newRedisPool(*ortHost)
-	s.fs = fs
-	return s
-}
-
-func newFileServer(fs *InMemFS) *fileServer {
-	s := new(fileServer)
+func newApiServer(fs *InMemFS) *apiServer {
+	s := new(apiServer)
 	s.rpool = newRedisPool(*ortHost)
 	s.fs = fs
 	return s
@@ -124,8 +117,9 @@ func main() {
 	fs.nodes[n.attr.Inode] = n
 
 	s := grpc.NewServer(opts...)
-	pb.RegisterFileApiServer(s, newFileServer(fs))
-	pb.RegisterDirApiServer(s, newDirServer(fs))
+	//pb.RegisterFileApiServer(s, newFileServer(fs))
+	//pb.RegisterDirApiServer(s, newDirServer(fs))
+	pb.RegisterApiServer(s, newApiServer(fs))
 	grpclog.Printf("Starting up on %d...\n", *port)
 	s.Serve(l)
 }
