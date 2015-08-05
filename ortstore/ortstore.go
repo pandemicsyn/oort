@@ -56,7 +56,7 @@ func New(rfile string, localid int) *OrtStore {
 		}
 	}()
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
-	s.vs = valuestore.New(valuestore.OptMsgRing(t), valuestore.OptLogDebug(l))
+	s.vs = valuestore.New(&valuestore.Config{MsgRing: t, LogDebug: l})
 	s.vs.EnableAll()
 	return s
 }
