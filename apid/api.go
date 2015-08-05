@@ -81,7 +81,7 @@ func (s *apiServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, erro
 		}
 		return &pb.File{}, err
 	}
-	f := &pb.File{Name: r.Fpath, Inode: r.Inode, Payload: data}
+	f := &pb.File{Inode: r.Inode, Payload: data}
 	return f, nil
 }
 
@@ -144,7 +144,7 @@ func (s *apiServer) Lookup(ctx context.Context, r *pb.LookupRequest) (*pb.DirEnt
 	return &pb.DirEnt{Name: entry.path, Attr: entry.attr}, nil
 }
 
-func (s *apiServer) ReadDirAll(ctx context.Context, f *pb.DirRequest) (*pb.DirEntries, error) {
+func (s *apiServer) ReadDirAll(ctx context.Context, f *pb.FileRequest) (*pb.DirEntries, error) {
 	s.fs.RLock()
 	defer s.fs.RUnlock()
 	e := &pb.DirEntries{}

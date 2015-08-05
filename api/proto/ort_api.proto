@@ -2,18 +2,28 @@ syntax = "proto3";
 
 package proto;
 
-// FileApi interface for file operations
-service FileApi {
-    rpc GetAttr(FileRequest) returns (Attr)     {}
+// Combinded ClientApi
+service Api {
     rpc SetAttr(Attr) returns (Attr) {}
+    rpc GetAttr(FileRequest) returns (Attr)     {}
     rpc Read(FileRequest) returns (File) {}
     rpc Write(File) returns (WriteResponse) {}
+    rpc MkDir(DirEnt) returns (DirEnt) {}
+    rpc Create(FileEnt) returns (FileEnt) {}
+    rpc Remove(DirEnt) returns (WriteResponse) {}
+    rpc Lookup(LookupRequest) returns (DirEnt) {}
+    rpc ReadDirAll(FileRequest) returns (DirEntries) {}
 }
 
-// FileRequest is the file path we want to operate on
+// FileRequest is the file inode
 message FileRequest {
-    string fpath = 1;
-    uint64 inode = 2;
+    uint64 inode = 1;
+}
+
+// LookupRequest 
+message LookupRequest {
+    string name = 1;
+    uint64 parent = 2; //where to lookup (inode)
 }
 
 // Attr. fields are optional by default in proto3, so
@@ -46,29 +56,6 @@ message WriteResponse {
     int32 status = 1;
 }
 
-// DirApi interface for directory operations
-service DirApi {
-    rpc GetAttr(DirRequest) returns (Attr)  {}
-    rpc MkDir(DirEnt) returns (DirEnt) {}
-    rpc Create(FileEnt) returns (FileEnt) {}
-    rpc Remove(DirEnt) returns (WriteResponse) {}
-    rpc Lookup(LookupRequest) returns (DirEnt) {}
-    rpc ReadDirAll(DirRequest) returns (DirEntries) {}
-}
-
-// DirRequest is the dir we want to operate on
-message LookupRequest {
-    string name = 1;
-    uint64 inode = 2;
-    uint64 parent = 3; //where to lookup
-}
-
-// DirRequest is the dir we want to operate on
-message DirRequest {
-    string name = 1;
-    uint64 inode = 2;
-}
-
 // DirEntries just contains a list of directory entries
 message DirEntries {
     repeated DirEnt DirEntries = 1;
@@ -88,15 +75,3 @@ message FileEnt {
     Attr attr = 3;
 }
 
-// Combinded ClientApi
-service Api {
-    rpc SetAttr(Attr) returns (Attr) {}
-    rpc GetAttr(FileRequest) returns (Attr)     {}
-    rpc Read(FileRequest) returns (File) {}
-    rpc Write(File) returns (WriteResponse) {}
-    rpc MkDir(DirEnt) returns (DirEnt) {}
-    rpc Create(FileEnt) returns (FileEnt) {}
-    rpc Remove(DirEnt) returns (WriteResponse) {}
-    rpc Lookup(LookupRequest) returns (DirEnt) {}
-    rpc ReadDirAll(DirRequest) returns (DirEntries) {}
-}

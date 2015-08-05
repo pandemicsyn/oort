@@ -1,54 +1,17 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"io"
 	"log"
 	"os"
-	"sync"
 	"time"
 
 	"golang.org/x/net/context"
 
 	pb "github.com/pandemicsyn/ort/api/proto"
-	"google.golang.org/grpc"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fuseutil"
 )
-
-type server struct {
-	fs *fs
-	wg sync.WaitGroup
-}
-
-func newserver(fs *fs) *server {
-	s := &server{
-		fs: fs,
-	}
-	return s
-}
-
-func (s *server) serve() error {
-	defer s.wg.Wait()
-
-	for {
-		req, err := s.fs.conn.ReadRequest()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
-			s.fs.handle(req)
-		}()
-	}
-	return nil
-}
 
 type fs struct {
 	conn *fuse.Conn
@@ -258,7 +221,7 @@ func (f *fs) handleRead(r *fuse.ReadRequest) {
 		// handle directory listing
 		rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-		d, err := f.rpc.api.ReadDirAll(rctx, &pb.DirRequest{Inode: uint64(r.Node)})
+		d, err := f.rpc.api.ReadDirAll(rctx, &pb.FileRequest{Inode: uint64(r.Node)})
 		if err != nil {
 			log.Fatalf("Read on dir failed: %v", err)
 		}
@@ -488,78 +451,4 @@ func (f *fs) handleFsync(r *fuse.FsyncRequest) {
 func (f *fs) handleInterrupt(r *fuse.InterruptRequest) {
 	log.Println("Inside handleInterrupt")
 	r.RespondError(fuse.ENOSYS)
-}
-
-var (
-	debug              = flag.Bool("debug", false, "enable debug log messages to stderr")
-	serverAddr         = flag.String("host", "127.0.0.1:8443", "The ort api server to connect too")
-	serverHostOverride = flag.String("host_override", "localhost", "")
-)
-
-func usage() {
-	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "  %s MOUNTPOINT\n", os.Args[0])
-	flag.PrintDefaults()
-}
-
-func debuglog(msg interface{}) {
-	fmt.Fprintf(os.Stderr, "%v\n", msg)
-}
-
-type rpc struct {
-	conn *grpc.ClientConn
-	api  pb.ApiClient
-}
-
-func newrpc(conn *grpc.ClientConn) *rpc {
-	r := &rpc{
-		conn: conn,
-		api:  pb.NewApiClient(conn),
-	}
-
-	return r
-}
-
-func main() {
-	flag.Usage = usage
-	flag.Parse()
-
-	if flag.NArg() != 1 {
-		usage()
-		os.Exit(2)
-	}
-
-	// Setup grpc
-	var opts []grpc.DialOption
-	conn, err := grpc.Dial(*serverAddr, opts...)
-	if err != nil {
-		log.Fatalf("failed to dial: %v", err)
-	}
-	defer conn.Close()
-
-	mountpoint := flag.Arg(0)
-	c, err := fuse.Mount(
-		mountpoint,
-		fuse.FSName("cfs"),
-		fuse.Subtype("cfs"),
-		fuse.LocalVolume(),
-		fuse.VolumeName("CFS"),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer c.Close()
-
-	rpc := newrpc(conn)
-	fs := newfs(c, rpc)
-	srv := newserver(fs)
-
-	if err := srv.serve(); err != nil {
-		log.Fatal(err)
-	}
-
-	<-c.Ready
-	if err := c.MountError; err != nil {
-		log.Fatal(err)
-	}
 }
