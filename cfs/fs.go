@@ -260,7 +260,7 @@ func (f *fs) handleRead(r *fuse.ReadRequest) {
 		rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		data, err := f.rpc.api.Read(rctx, &pb.FileRequest{Inode: uint64(r.Node)})
 		if err != nil {
-			log.Fatal("Read on file failed: %v ", err)
+			log.Fatal("Read on file failed: ", err)
 		}
 		fuseutil.HandleRead(r, resp, data.Payload)
 		r.Respond(resp)
@@ -285,7 +285,7 @@ func (f *fs) handleWrite(r *fuse.WriteRequest) {
 		log.Fatalf("Write to file failed: %v", err)
 	}
 	if w.Status != 0 {
-		log.Println("Write status non zero(%d)", w.Status)
+		log.Printf("Write status non zero(%d)\n", w.Status)
 	}
 	resp.Size = len(r.Data)
 	r.Respond(resp)
