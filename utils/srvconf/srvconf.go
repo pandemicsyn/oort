@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"time"
 
-	pb "github.com/pandemicsyn/midnight-llama/ort/api/proto"
+	pb "github.com/pandemicsyn/ort/ortring/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
