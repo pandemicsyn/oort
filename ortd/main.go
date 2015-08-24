@@ -3,13 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net"
 	"os"
 
 	"github.com/pandemicsyn/ort/mapstore"
 	"github.com/pandemicsyn/ort/ortstore"
 	"github.com/pandemicsyn/ort/rediscache"
-	"github.com/spf13/viper"
 )
 
 func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
@@ -22,42 +22,27 @@ func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 	}
 }
 
-var storeType string
-var listenAddr string
-
 func main() {
 
-	viper.SetDefault("listenAddr", "127.0.0.1:6379")
-	viper.SetDefault("ringFile", "/etc/ort/ort.ring")
-	viper.SetDefault("storeType", "map")
-	viper.SetDefault("localID", 0)
-
-	viper.SetEnvPrefix("ort")
-
-	viper.BindEnv("listenAddr")
-	viper.BindEnv("ringFile")
-	viper.BindEnv("storeType")
-	viper.BindEnv("localID")
-
-	viper.SetConfigName("ortd")        // name of config file (without extension)
-	viper.AddConfigPath("/etc/ort/")   // path to look for the config file in
-	viper.AddConfigPath("$HOME/.ortd") // call multiple times to add many search paths
-	viper.ReadInConfig()               // Find and read the config file
-
-	storeType := viper.GetString("storeType")
-	listenAddr := viper.GetString("listenAddr")
-	ringLocalID := viper.GetInt("localID")
+	conf, err := loadOrtConfig()
+	if err != nil {
+		fmt.Println("Error parsing config:", err)
+		fmt.Println("Try -help for usage info")
+		fmt.Println("The configuration is parsed in the following order: Ring Server via SRV, /etc/ort/ortd.toml, ENV")
+		os.Exit(2)
+	}
 
 	var cache rediscache.Cache
-	switch storeType {
+	switch conf.StoreType {
 	case "map":
 		fmt.Println("Using map cache")
 		cache = mapstore.NewMapCache()
 	case "ortstore":
+		log.Println(conf)
 		fmt.Println("Using ortstore (the gholt valuestore)")
-		cache = ortstore.New(viper.GetString("ringFile"), ringLocalID)
+		cache = ortstore.New(conf.Ring, conf.RingFile, conf.localIDInt)
 	default:
-		fmt.Println("Nope:", storeType, "isn't a valid backend")
+		fmt.Println("Nope:", conf.StoreType, "isn't a valid backend")
 		fmt.Println("Try: map|ortstore")
 		fmt.Println()
 		os.Exit(2)
@@ -75,7 +60,7 @@ func main() {
 	for i := 0; i < cap(handlerChan); i++ {
 		handlerChan <- rediscache.NewRESPhandler(cache)
 	}
-	addr, err := net.ResolveTCPAddr("tcp", listenAddr)
+	addr, err := net.ResolveTCPAddr("tcp", conf.ListenAddr)
 	if err != nil {
 		fmt.Println("Error getting IP: ", err)
 		return
@@ -85,7 +70,7 @@ func main() {
 		fmt.Println("Error starting: ", err)
 		return
 	}
-	fmt.Println("Listening on:", listenAddr)
+	fmt.Println("Listening on:", conf.ListenAddr)
 	for {
 		conn, _ := server.AcceptTCP()
 		reader := <-readerChan

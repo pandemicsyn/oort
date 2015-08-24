@@ -3,20 +3,22 @@ package ortstore
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"os"
+	"time"
+
 	"github.com/gholt/brimtime"
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/spaolacci/murmur3"
-	"log"
-	"os"
-	"time"
 )
 
 type OrtStore struct {
-	vs    valuestore.ValueStore
-	rfile string
-	r     ring.Ring
+	vs      valuestore.ValueStore
+	r       ring.Ring
+	rfile   string
+	localid uint64
 }
 
 func getMsgRing(filename string) (ring.MsgRing, error) {
@@ -29,26 +31,21 @@ func getMsgRing(filename string) (ring.MsgRing, error) {
 	return ring.NewTCPMsgRing(r), nil
 }
 
-func New(rfile string, localid int) *OrtStore {
-	//mr, err := getMsgRing(rfile)
-
+func New(ortring ring.Ring, ringfile string, localid uint64) *OrtStore {
 	s := &OrtStore{}
-	s.rfile = rfile
+	s.r = ortring
+	s.rfile = ringfile
+	s.localid = localid
 
-	f, err := os.Open(rfile)
-	if err != nil {
-		panic(err)
-	}
-	s.r, err = ring.LoadRing(f)
-	if err != nil {
-		panic(err)
-	}
 	fmt.Println("Ring entries:")
 	for k, _ := range s.r.Nodes() {
 		fmt.Println(s.r.Nodes()[k].ID(), s.r.Nodes()[k].Addresses())
 	}
-	fmt.Println("Pretending to be:", s.r.Nodes()[localid].ID(), s.r.Nodes()[localid].Addresses())
-	s.r.SetLocalNode(s.r.Nodes()[localid].ID())
+	fmt.Println("Localid appears to be:", s.localid)
+	s.r.SetLocalNode(s.localid)
+	node := s.r.LocalNode()
+	log.Printf("%#v\n", node)
+	log.Println("Wat:", node.Addresses())
 	t := ring.NewTCPMsgRing(s.r)
 	go func() {
 		for {

@@ -28,10 +28,6 @@ import (
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
-
-// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
 
 // FileRequest is the file inode
@@ -153,6 +149,10 @@ func (m *FileEnt) GetAttr() *Attr {
 	}
 	return nil
 }
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
 
 // Client API for Api service
 
