@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ type ringmgr struct {
 	rb           *[]byte // even a 1000 node ring is reasonably small (17k) so just keep the current ring in mem
 	bb           *[]byte
 	netlimits    []*net.IPNet
+	tierlimits   []string
 }
 
 type RingSlave struct {
@@ -180,9 +182,6 @@ func (s *ringmgr) AddNode(c context.Context, e *pb.Node) (*pb.RingStatus, error)
 }
 
 func (s *ringmgr) RemoveNode(c context.Context, n *pb.Node) (*pb.RingStatus, error) {
-	s.Lock()
-	defer s.Unlock()
-	s.b.RemoveNode(n.Id)
 	return &pb.RingStatus{}, nil
 }
 
@@ -204,6 +203,8 @@ func (s *ringmgr) GetVersion(c context.Context, n *pb.EmptyMsg) (*pb.RingStatus,
 	return &pb.RingStatus{true, s.version}, nil
 }
 
+// validNodeIP verifies that the provided ip is not a loopback or multicast address
+// and checks whether the ip is in the configured network limits range.
 func (s *ringmgr) validNodeIP(i net.IP) bool {
 	switch {
 	case i.IsLoopback():
@@ -220,13 +221,41 @@ func (s *ringmgr) validNodeIP(i net.IP) bool {
 	return inRange
 }
 
-func (s *ringmgr) nodeInRing(hostname string, addrs []string) (bool, error) {
-	a := strings.Join(addrs, "|")
-	r, err := s.r.Nodes().Filter([]string{fmt.Sprintf("meta~=%s.*", hostname), fmt.Sprintf("address~=%s", a)})
-	if len(r) != 0 {
-		return true, err
+// validTiers parses a list of provided ring tiers to see if they are valid.
+// Its assumed that there must be at least 2 tiers
+// tier0 must never already exist as a tier0 entry in the ring
+// tier1+ just need to match the configured go regex filter
+func (s *ringmgr) validTiers(t []string) bool {
+	if len(t) <= 1 {
+		return false
 	}
-	return false, err
+	r, err := s.r.Nodes().Filter([]string{fmt.Sprintf("tier0=%s", t[0])})
+	if len(r) != 0 || err != nil {
+		return false
+	}
+	for i := 1; i <= len(t); i++ {
+		for _, v := range s.tierlimits {
+			matched, err := regexp.MatchString(v, t[i])
+			if err != nil {
+				return false
+			}
+			if matched {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// nodeInRing just checks to see if the hostname or addresses appear
+// in any existing entries meta or address fields.
+func (s *ringmgr) nodeInRing(hostname string, addrs []string) bool {
+	a := strings.Join(addrs, "|")
+	r, _ := s.r.Nodes().Filter([]string{fmt.Sprintf("meta~=%s.*", hostname), fmt.Sprintf("address~=%s", a)})
+	if len(r) != 0 {
+		return true
+	}
+	return false
 }
 
 func (s *ringmgr) RegisterNode(c context.Context, r *pb.RegisterRequest) (*pb.NodeConfig, error) {
@@ -247,19 +276,17 @@ func (s *ringmgr) RegisterNode(c context.Context, r *pb.RegisterRequest) (*pb.No
 			addrs = append(addrs, fmt.Sprintf("%s:%d", i.String(), _SYN_DEFAULT_NODE_PORT))
 		}
 	}
-	if len(addrs) == 0 {
+	switch {
+	case len(addrs) == 0:
 		log.Println("Host provided no valid addresses during registration.")
-	}
-	log.Println(addrs)
-
-	inring, err := s.nodeInRing(r.Hostname, addrs)
-	if err != nil {
-		return &pb.NodeConfig{}, err
-	}
-	if inring {
+		return &pb.NodeConfig{}, fmt.Errorf("No valid addresses provided")
+	case s.nodeInRing(r.Hostname, addrs):
 		log.Println("Node already appears to be in ring")
 		return &pb.NodeConfig{}, fmt.Errorf("Node already in ring")
+	case !s.validTiers(r.Tiers):
+		return &pb.NodeConfig{}, fmt.Errorf("Invalid tiers provided")
 	}
+
 	n := s.b.AddNode(true, 1000, r.Tiers, addrs, fmt.Sprintf("%s|%s", r.Hostname, r.Hardwareid), []byte(""))
 	report := [][]string{
 		[]string{"ID:", fmt.Sprintf("%016x", n.ID())},
