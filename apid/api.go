@@ -159,8 +159,16 @@ func (s *apiServer) ReadDirAll(ctx context.Context, f *pb.FileRequest) (*pb.DirE
 	return e, nil
 }
 
-func (s *apiServer) Remove(ctx context.Context, f *pb.DirEnt) (*pb.WriteResponse, error) {
+func (s *apiServer) Remove(ctx context.Context, r *pb.FileEnt) (*pb.WriteResponse, error) {
 	s.fs.RLock()
 	defer s.fs.RUnlock()
-	return &pb.WriteResponse{}, nil
+	inode, exists := s.fs.nodes[r.Parent].entries[r.Name]
+	if !exists {
+		return &pb.WriteResponse{Status: 1}, nil
+	}
+	delete(s.fs.nodes, inode)
+	delete(s.fs.nodes[r.Parent].entries, r.Name)
+	delete(s.fs.nodes[r.Parent].ientries, inode)
+	atomic.AddUint64(&s.fs.nodes[r.Parent].nodeCount, ^uint64(0)) // -1
+	return &pb.WriteResponse{Status: 0}, nil
 }
