@@ -21,6 +21,8 @@ It has these top-level messages:
 package proto
 
 import proto1 "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
 
 import (
 	context "golang.org/x/net/context"
@@ -28,11 +30,9 @@ import (
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
-
-// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 // FileRequest is the file inode
 type FileRequest struct {
@@ -154,6 +154,10 @@ func (m *FileEnt) GetAttr() *Attr {
 	return nil
 }
 
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
 // Client API for Api service
 
 type ApiClient interface {
@@ -163,7 +167,7 @@ type ApiClient interface {
 	Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error)
 	MkDir(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*DirEnt, error)
 	Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*FileEnt, error)
-	Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
+	Remove(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*WriteResponse, error)
 	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*DirEnt, error)
 	ReadDirAll(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*DirEntries, error)
 }
@@ -230,7 +234,7 @@ func (c *apiClient) Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOp
 	return out, nil
 }
 
-func (c *apiClient) Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *apiClient) Remove(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
 	err := grpc.Invoke(ctx, "/proto.Api/Remove", in, out, c.cc, opts...)
 	if err != nil {
@@ -266,7 +270,7 @@ type ApiServer interface {
 	Write(context.Context, *File) (*WriteResponse, error)
 	MkDir(context.Context, *DirEnt) (*DirEnt, error)
 	Create(context.Context, *FileEnt) (*FileEnt, error)
-	Remove(context.Context, *DirEnt) (*WriteResponse, error)
+	Remove(context.Context, *FileEnt) (*WriteResponse, error)
 	Lookup(context.Context, *LookupRequest) (*DirEnt, error)
 	ReadDirAll(context.Context, *FileRequest) (*DirEntries, error)
 }
@@ -348,7 +352,7 @@ func _Api_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec,
 }
 
 func _Api_Remove_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(DirEnt)
+	in := new(FileEnt)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}

@@ -3,14 +3,15 @@ package ortstore
 import (
 	"bytes"
 	"fmt"
-	"github.com/gholt/brimtime"
+	"log"
+	"os"
+	"time"
+
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/spaolacci/murmur3"
-	"log"
-	"os"
-	"time"
+	"gopkg.in/gholt/brimtime.v1"
 )
 
 type OrtStore struct {
