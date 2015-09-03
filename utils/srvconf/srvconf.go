@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"time"
 
-	pb "github.com/pandemicsyn/ort/ortring/api/proto"
+	pb "github.com/pandemicsyn/ort-syndicate/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -60,6 +60,7 @@ func (s *SRVLoader) getConfig(service string) (*pb.NodeConfig, error) {
 	rr.Disks = 2
 	rr.Cores = int32(runtime.NumCPU())
 	rr.Hardwareid = "something"
+	rr.Tiers = []string{rr.Hostname, "z42"}
 
 	nconfig, err = client.RegisterNode(ctx, rr)
 	return nconfig, err

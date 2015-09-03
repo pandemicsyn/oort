@@ -47,14 +47,25 @@ func New(ortring ring.Ring, ringfile string, localid uint64) *OrtStore {
 	log.Printf("%#v\n", node)
 	log.Println("Wat:", node.Addresses())
 	t := ring.NewTCPMsgRing(s.r)
-	go func() {
-		for {
-			t.Listen()
-		}
-	}()
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
 	s.vs = valuestore.New(&valuestore.Config{MsgRing: t, LogDebug: l})
 	s.vs.EnableAll()
+	go func() {
+		chanerr := t.Start()
+		err := <-chanerr
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			log.Println("Start() sent nil, shutdown?")
+		}
+
+	}()
+	go func() {
+		time.Sleep(10 * time.Second)
+		log.Println("triggering stop")
+		t.Stop()
+		log.Println("stop returned!")
+	}()
 	return s
 }
 
