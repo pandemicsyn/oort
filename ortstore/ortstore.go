@@ -27,7 +27,9 @@ func getMsgRing(filename string) (ring.MsgRing, error) {
 		return nil, err
 	}
 	r, err := ring.LoadRing(f)
-	return ring.NewTCPMsgRing(r), nil
+	tr := ring.NewTCPMsgRing(nil)
+	tr.SetRing(r)
+	return tr, nil
 }
 
 func New(rfile string, localid int) *OrtStore {
@@ -50,20 +52,15 @@ func New(rfile string, localid int) *OrtStore {
 	}
 	fmt.Println("Pretending to be:", s.r.Nodes()[localid].ID(), s.r.Nodes()[localid].Addresses())
 	s.r.SetLocalNode(s.r.Nodes()[localid].ID())
-	t := ring.NewTCPMsgRing(s.r)
+	t := ring.NewTCPMsgRing(nil)
+	t.SetRing(s.r)
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
 	s.vs = valuestore.New(&valuestore.Config{MsgRing: t, LogDebug: l})
 	s.vs.EnableAll()
-        go func() {
-                chanerr := t.Start()
-                err := <-chanerr
-                if err != nil {
-                        log.Fatal(err)
-                } else {
-                        log.Println("Start() sent nil, shutdown?")
-                }
-
-        }()
+	go func() {
+		t.Listen()
+		log.Println("Listen() returned, shutdown?")
+	}()
 	return s
 }
 
