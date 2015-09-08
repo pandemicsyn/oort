@@ -55,7 +55,7 @@ func New(rfile string, localid int) *OrtStore {
 	t := ring.NewTCPMsgRing(nil)
 	t.SetRing(s.r)
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
-	s.vs = valuestore.New(&valuestore.Config{MsgRing: t, LogDebug: l})
+	s.vs = valuestore.New(&valuestore.Config{MsgRing: t, LogDebug: l.Printf})
 	s.vs.EnableAll()
 	go func() {
 		t.Listen()
