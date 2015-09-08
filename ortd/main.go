@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -26,25 +25,25 @@ func main() {
 
 	conf, err := loadOrtConfig()
 	if err != nil {
-		fmt.Println("Error parsing config:", err)
-		fmt.Println("Try -help for usage info")
-		fmt.Println("The configuration is parsed in the following order: Ring Server via SRV, /etc/ort/ortd.toml, ENV")
+		log.Println("Error parsing config:", err)
+		log.Println("Try -help for usage info")
+		log.Println("The configuration is parsed in the following order: Ring Server via SRV, /etc/ort/ortd.toml, ENV")
 		os.Exit(2)
 	}
 
 	var cache rediscache.Cache
 	switch conf.StoreType {
 	case "map":
-		fmt.Println("Using map cache")
+		log.Println("Using map cache")
 		cache = mapstore.NewMapCache()
 	case "ortstore":
 		log.Println(conf)
-		fmt.Println("Using ortstore (the gholt valuestore)")
+		log.Println("Using ortstore (the gholt valuestore)")
 		cache = ortstore.New(conf.Ring, conf.RingFile, conf.localIDInt)
 	default:
-		fmt.Println("Nope:", conf.StoreType, "isn't a valid backend")
-		fmt.Println("Try: map|ortstore")
-		fmt.Println()
+		log.Println("Nope:", conf.StoreType, "isn't a valid backend")
+		log.Println("Try: map|ortstore")
+		log.Println()
 		os.Exit(2)
 	}
 
@@ -62,15 +61,15 @@ func main() {
 	}
 	addr, err := net.ResolveTCPAddr("tcp", conf.ListenAddr)
 	if err != nil {
-		fmt.Println("Error getting IP: ", err)
+		log.Println("Error getting IP: ", err)
 		return
 	}
 	server, err := net.ListenTCP("tcp", addr)
 	if err != nil {
-		fmt.Println("Error starting: ", err)
+		log.Println("Error starting: ", err)
 		return
 	}
-	fmt.Println("Listening on:", conf.ListenAddr)
+	log.Println("Listening on:", conf.ListenAddr)
 	for {
 		conn, _ := server.AcceptTCP()
 		reader := <-readerChan
