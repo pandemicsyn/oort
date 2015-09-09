@@ -137,7 +137,7 @@ func (f *fs) handleGetattr(r *fuse.GetattrRequest) {
 	resp := &fuse.GetattrResponse{}
 
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	a, err := f.rpc.api.GetAttr(rctx, &pb.FileRequest{Inode: uint64(r.Node)})
+	a, err := f.rpc.api.GetAttr(rctx, &pb.Node{Inode: uint64(r.Node)})
 	if err != nil {
 		log.Fatalf("GetAttr fail: %v", err)
 	}
@@ -216,7 +216,7 @@ func (f *fs) handleRead(r *fuse.ReadRequest) {
 		// handle directory listing
 		rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-		d, err := f.rpc.api.ReadDirAll(rctx, &pb.FileRequest{Inode: uint64(r.Node)})
+		d, err := f.rpc.api.ReadDirAll(rctx, &pb.Node{Inode: uint64(r.Node)})
 		if err != nil {
 			log.Fatalf("Read on dir failed: %v", err)
 		}
@@ -253,7 +253,7 @@ func (f *fs) handleRead(r *fuse.ReadRequest) {
 	} else {
 		// handle file read
 		rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		data, err := f.rpc.api.Read(rctx, &pb.FileRequest{Inode: uint64(r.Node)})
+		data, err := f.rpc.api.Read(rctx, &pb.Node{Inode: uint64(r.Node)})
 		if err != nil {
 			log.Fatal("Read on file failed: ", err)
 		}
@@ -267,17 +267,9 @@ func (f *fs) handleWrite(r *fuse.WriteRequest) {
 	log.Printf("Writing %d bytes at offset %d", len(r.Data), r.Offset)
 	// TODO: Implement write
 	// Currently this is stupid simple and doesn't handle all the possibilities
-	if r.Offset > 0 {
-		// Writing offsets isn't supported yet
-		log.Printf("Warning: Writing offsets not supported yet (%v)", r.Offset)
-		// Pass for now
-		//r.RespondError(fuse.ENOSYS)
-		//return
-	}
-
 	resp := &fuse.WriteResponse{}
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	w, err := f.rpc.api.Write(rctx, &pb.File{Inode: uint64(r.Node), Payload: r.Data})
+	w, err := f.rpc.api.Write(rctx, &pb.FileChunk{Inode: uint64(r.Node), Offset: r.Offset, Payload: r.Data})
 	if err != nil {
 		log.Fatalf("Write to file failed: %v", err)
 	}
@@ -293,7 +285,7 @@ func (f *fs) handleCreate(r *fuse.CreateRequest) {
 
 	resp := &fuse.CreateResponse{}
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	c, err := f.rpc.api.Create(rctx, &pb.FileEnt{Parent: uint64(r.Node), Name: r.Name})
+	c, err := f.rpc.api.Create(rctx, &pb.DirEnt{Parent: uint64(r.Node), Name: r.Name})
 	if err != nil {
 		log.Fatalf("Failed to create file: %v", err)
 	}
@@ -328,10 +320,9 @@ func (f *fs) handleSetattr(r *fuse.SetattrRequest) {
 	}
 
 	a := &pb.Attr{
-		Parent: "ishouldreallytracktheparent",
-		Mode:   uint32(r.Mode),
-		Size:   r.Size,
-		Mtime:  r.Mtime.Unix(),
+		Mode:  uint32(r.Mode),
+		Size:  r.Size,
+		Mtime: r.Mtime.Unix(),
 	}
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	_, err := f.rpc.api.SetAttr(rctx, a)
@@ -368,7 +359,7 @@ func (f *fs) handleRemove(r *fuse.RemoveRequest) {
 	log.Println("Inside handleRemove")
 	log.Println(r)
 	rctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	_, err := f.rpc.api.Remove(rctx, &pb.FileEnt{Parent: uint64(r.Node), Name: r.Name})
+	_, err := f.rpc.api.Remove(rctx, &pb.DirEnt{Parent: uint64(r.Node), Name: r.Name})
 	if err != nil {
 		log.Fatalf("Failed to delete file: %v", err)
 	}

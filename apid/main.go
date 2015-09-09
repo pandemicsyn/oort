@@ -79,7 +79,7 @@ type Entry struct {
 	UUIDNode  int64             //the original/actual inode incase fuse stomps on the one in attr
 	entries   map[string]uint64 // subdir/files by name
 	ientries  map[uint64]string // subdir/files by inode
-	nodeCount uint64
+	nodeCount uint64            // uint64
 }
 
 func main() {
@@ -112,7 +112,6 @@ func main() {
 		Ctime:  ts,
 		Crtime: ts,
 		Mode:   uint32(os.ModeDir | 0777),
-		Name:   "/",
 	}
 	fs.nodes[n.attr.Inode] = n
 

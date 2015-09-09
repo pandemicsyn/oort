@@ -9,14 +9,13 @@ It is generated from these files:
 	ort_api.proto
 
 It has these top-level messages:
-	FileRequest
+	Node
 	LookupRequest
 	Attr
-	File
+	FileChunk
 	WriteResponse
-	DirEntries
 	DirEnt
-	FileEnt
+	DirEntries
 */
 package proto
 
@@ -34,16 +33,16 @@ var _ = proto1.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// FileRequest is the file inode
-type FileRequest struct {
+// Node is the file inode
+type Node struct {
 	Inode uint64 `protobuf:"varint,1,opt,name=inode" json:"inode,omitempty"`
 }
 
-func (m *FileRequest) Reset()         { *m = FileRequest{} }
-func (m *FileRequest) String() string { return proto1.CompactTextString(m) }
-func (*FileRequest) ProtoMessage()    {}
+func (m *Node) Reset()         { *m = Node{} }
+func (m *Node) String() string { return proto1.CompactTextString(m) }
+func (*Node) ProtoMessage()    {}
 
-// LookupRequest
+// Lookup
 type LookupRequest struct {
 	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Parent uint64 `protobuf:"varint,2,opt,name=parent" json:"parent,omitempty"`
@@ -58,32 +57,31 @@ func (*LookupRequest) ProtoMessage()    {}
 // attr update for example. These might not all be needed
 // but i got tired of constantly forgetting fields.
 type Attr struct {
-	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	//    string name   = 1;
 	Inode  uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
 	Atime  int64  `protobuf:"varint,3,opt,name=atime" json:"atime,omitempty"`
 	Mtime  int64  `protobuf:"varint,4,opt,name=mtime" json:"mtime,omitempty"`
 	Ctime  int64  `protobuf:"varint,5,opt,name=ctime" json:"ctime,omitempty"`
 	Crtime int64  `protobuf:"varint,6,opt,name=crtime" json:"crtime,omitempty"`
 	Mode   uint32 `protobuf:"varint,7,opt,name=mode" json:"mode,omitempty"`
-	Valid  int32  `protobuf:"varint,9,opt,name=valid" json:"valid,omitempty"`
-	Parent string `protobuf:"bytes,10,opt,name=parent" json:"parent,omitempty"`
-	Size   uint64 `protobuf:"varint,11,opt,name=size" json:"size,omitempty"`
+	Valid  int32  `protobuf:"varint,8,opt,name=valid" json:"valid,omitempty"`
+	Size   uint64 `protobuf:"varint,9,opt,name=size" json:"size,omitempty"`
 }
 
 func (m *Attr) Reset()         { *m = Attr{} }
 func (m *Attr) String() string { return proto1.CompactTextString(m) }
 func (*Attr) ProtoMessage()    {}
 
-// File contains the files name and its contents
-type File struct {
-	Name    string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Inode   uint64 `protobuf:"varint,2,opt,name=inode" json:"inode,omitempty"`
+// WriteRequest
+type FileChunk struct {
+	Inode   uint64 `protobuf:"varint,1,opt,name=inode" json:"inode,omitempty"`
+	Offset  int64  `protobuf:"varint,2,opt,name=offset" json:"offset,omitempty"`
 	Payload []byte `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 }
 
-func (m *File) Reset()         { *m = File{} }
-func (m *File) String() string { return proto1.CompactTextString(m) }
-func (*File) ProtoMessage()    {}
+func (m *FileChunk) Reset()         { *m = FileChunk{} }
+func (m *FileChunk) String() string { return proto1.CompactTextString(m) }
+func (*FileChunk) ProtoMessage()    {}
 
 // WriteRepsonse place holder. Maybe use an enum so
 // we can map to fuse errors ?
@@ -94,30 +92,6 @@ type WriteResponse struct {
 func (m *WriteResponse) Reset()         { *m = WriteResponse{} }
 func (m *WriteResponse) String() string { return proto1.CompactTextString(m) }
 func (*WriteResponse) ProtoMessage()    {}
-
-// DirEntries just contains a list of directory entries
-type DirEntries struct {
-	DirEntries  []*DirEnt  `protobuf:"bytes,1,rep" json:"DirEntries,omitempty"`
-	FileEntries []*FileEnt `protobuf:"bytes,2,rep" json:"FileEntries,omitempty"`
-}
-
-func (m *DirEntries) Reset()         { *m = DirEntries{} }
-func (m *DirEntries) String() string { return proto1.CompactTextString(m) }
-func (*DirEntries) ProtoMessage()    {}
-
-func (m *DirEntries) GetDirEntries() []*DirEnt {
-	if m != nil {
-		return m.DirEntries
-	}
-	return nil
-}
-
-func (m *DirEntries) GetFileEntries() []*FileEnt {
-	if m != nil {
-		return m.FileEntries
-	}
-	return nil
-}
 
 // DirEnt is a directory entry
 type DirEnt struct {
@@ -137,19 +111,26 @@ func (m *DirEnt) GetAttr() *Attr {
 	return nil
 }
 
-type FileEnt struct {
-	Name   string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Parent uint64 `protobuf:"varint,2,opt,name=parent" json:"parent,omitempty"`
-	Attr   *Attr  `protobuf:"bytes,3,opt,name=attr" json:"attr,omitempty"`
+// DirEntries just contains a list of directory entries
+type DirEntries struct {
+	DirEntries  []*DirEnt `protobuf:"bytes,1,rep" json:"DirEntries,omitempty"`
+	FileEntries []*DirEnt `protobuf:"bytes,2,rep" json:"FileEntries,omitempty"`
 }
 
-func (m *FileEnt) Reset()         { *m = FileEnt{} }
-func (m *FileEnt) String() string { return proto1.CompactTextString(m) }
-func (*FileEnt) ProtoMessage()    {}
+func (m *DirEntries) Reset()         { *m = DirEntries{} }
+func (m *DirEntries) String() string { return proto1.CompactTextString(m) }
+func (*DirEntries) ProtoMessage()    {}
 
-func (m *FileEnt) GetAttr() *Attr {
+func (m *DirEntries) GetDirEntries() []*DirEnt {
 	if m != nil {
-		return m.Attr
+		return m.DirEntries
+	}
+	return nil
+}
+
+func (m *DirEntries) GetFileEntries() []*DirEnt {
+	if m != nil {
+		return m.FileEntries
 	}
 	return nil
 }
@@ -162,14 +143,14 @@ var _ grpc.ClientConn
 
 type ApiClient interface {
 	SetAttr(ctx context.Context, in *Attr, opts ...grpc.CallOption) (*Attr, error)
-	GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*Attr, error)
-	Read(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*File, error)
-	Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error)
+	GetAttr(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Attr, error)
+	Read(ctx context.Context, in *Node, opts ...grpc.CallOption) (*FileChunk, error)
+	Write(ctx context.Context, in *FileChunk, opts ...grpc.CallOption) (*WriteResponse, error)
 	MkDir(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*DirEnt, error)
-	Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*FileEnt, error)
-	Remove(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*WriteResponse, error)
+	Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*DirEnt, error)
+	Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error)
 	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*DirEnt, error)
-	ReadDirAll(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*DirEntries, error)
+	ReadDirAll(ctx context.Context, in *Node, opts ...grpc.CallOption) (*DirEntries, error)
 }
 
 type apiClient struct {
@@ -189,7 +170,7 @@ func (c *apiClient) SetAttr(ctx context.Context, in *Attr, opts ...grpc.CallOpti
 	return out, nil
 }
 
-func (c *apiClient) GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*Attr, error) {
+func (c *apiClient) GetAttr(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Attr, error) {
 	out := new(Attr)
 	err := grpc.Invoke(ctx, "/proto.Api/GetAttr", in, out, c.cc, opts...)
 	if err != nil {
@@ -198,8 +179,8 @@ func (c *apiClient) GetAttr(ctx context.Context, in *FileRequest, opts ...grpc.C
 	return out, nil
 }
 
-func (c *apiClient) Read(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*File, error) {
-	out := new(File)
+func (c *apiClient) Read(ctx context.Context, in *Node, opts ...grpc.CallOption) (*FileChunk, error) {
+	out := new(FileChunk)
 	err := grpc.Invoke(ctx, "/proto.Api/Read", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -207,7 +188,7 @@ func (c *apiClient) Read(ctx context.Context, in *FileRequest, opts ...grpc.Call
 	return out, nil
 }
 
-func (c *apiClient) Write(ctx context.Context, in *File, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *apiClient) Write(ctx context.Context, in *FileChunk, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
 	err := grpc.Invoke(ctx, "/proto.Api/Write", in, out, c.cc, opts...)
 	if err != nil {
@@ -225,8 +206,8 @@ func (c *apiClient) MkDir(ctx context.Context, in *DirEnt, opts ...grpc.CallOpti
 	return out, nil
 }
 
-func (c *apiClient) Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*FileEnt, error) {
-	out := new(FileEnt)
+func (c *apiClient) Create(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*DirEnt, error) {
+	out := new(DirEnt)
 	err := grpc.Invoke(ctx, "/proto.Api/Create", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -234,7 +215,7 @@ func (c *apiClient) Create(ctx context.Context, in *FileEnt, opts ...grpc.CallOp
 	return out, nil
 }
 
-func (c *apiClient) Remove(ctx context.Context, in *FileEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *apiClient) Remove(ctx context.Context, in *DirEnt, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
 	err := grpc.Invoke(ctx, "/proto.Api/Remove", in, out, c.cc, opts...)
 	if err != nil {
@@ -252,7 +233,7 @@ func (c *apiClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.
 	return out, nil
 }
 
-func (c *apiClient) ReadDirAll(ctx context.Context, in *FileRequest, opts ...grpc.CallOption) (*DirEntries, error) {
+func (c *apiClient) ReadDirAll(ctx context.Context, in *Node, opts ...grpc.CallOption) (*DirEntries, error) {
 	out := new(DirEntries)
 	err := grpc.Invoke(ctx, "/proto.Api/ReadDirAll", in, out, c.cc, opts...)
 	if err != nil {
@@ -265,14 +246,14 @@ func (c *apiClient) ReadDirAll(ctx context.Context, in *FileRequest, opts ...grp
 
 type ApiServer interface {
 	SetAttr(context.Context, *Attr) (*Attr, error)
-	GetAttr(context.Context, *FileRequest) (*Attr, error)
-	Read(context.Context, *FileRequest) (*File, error)
-	Write(context.Context, *File) (*WriteResponse, error)
+	GetAttr(context.Context, *Node) (*Attr, error)
+	Read(context.Context, *Node) (*FileChunk, error)
+	Write(context.Context, *FileChunk) (*WriteResponse, error)
 	MkDir(context.Context, *DirEnt) (*DirEnt, error)
-	Create(context.Context, *FileEnt) (*FileEnt, error)
-	Remove(context.Context, *FileEnt) (*WriteResponse, error)
+	Create(context.Context, *DirEnt) (*DirEnt, error)
+	Remove(context.Context, *DirEnt) (*WriteResponse, error)
 	Lookup(context.Context, *LookupRequest) (*DirEnt, error)
-	ReadDirAll(context.Context, *FileRequest) (*DirEntries, error)
+	ReadDirAll(context.Context, *Node) (*DirEntries, error)
 }
 
 func RegisterApiServer(s *grpc.Server, srv ApiServer) {
@@ -292,7 +273,7 @@ func _Api_SetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec
 }
 
 func _Api_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(FileRequest)
+	in := new(Node)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -304,7 +285,7 @@ func _Api_GetAttr_Handler(srv interface{}, ctx context.Context, codec grpc.Codec
 }
 
 func _Api_Read_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(FileRequest)
+	in := new(Node)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -316,7 +297,7 @@ func _Api_Read_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, b
 }
 
 func _Api_Write_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(File)
+	in := new(FileChunk)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -340,7 +321,7 @@ func _Api_MkDir_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, 
 }
 
 func _Api_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(FileEnt)
+	in := new(DirEnt)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -352,7 +333,7 @@ func _Api_Create_Handler(srv interface{}, ctx context.Context, codec grpc.Codec,
 }
 
 func _Api_Remove_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(FileEnt)
+	in := new(DirEnt)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -376,7 +357,7 @@ func _Api_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec,
 }
 
 func _Api_ReadDirAll_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(FileRequest)
+	in := new(Node)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
