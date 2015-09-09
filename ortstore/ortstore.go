@@ -61,6 +61,14 @@ func New(rfile string, localid int) *OrtStore {
 		t.Listen()
 		log.Println("Listen() returned, shutdown?")
 	}()
+	go func() {
+		stats := t.Stats()
+		for !stats.Shutdown {
+			time.Sleep(time.Minute)
+			stats = t.Stats()
+			log.Printf("%#v\n", stats)
+		}
+	}()
 	return s
 }
 
