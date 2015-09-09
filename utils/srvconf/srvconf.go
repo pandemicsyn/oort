@@ -30,18 +30,14 @@ func lookup(service string) ([]*net.SRV, error) {
 }
 
 type SRVLoader struct {
-	Record string
+	Record       string
+	SyndicateURL string
 }
 
-func (s *SRVLoader) getConfig(service string) (*pb.NodeConfig, error) {
+func (s *SRVLoader) getConfig() (*pb.NodeConfig, error) {
 	nconfig := &pb.NodeConfig{}
-	serviceAddrs, err := lookup(service)
-	if err != nil {
-		return nconfig, err
-	}
-
 	var opts []grpc.DialOption
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", serviceAddrs[0].Target, serviceAddrs[0].Port), opts...)
+	conn, err := grpc.Dial(s.SyndicateURL, opts...)
 	if err != nil {
 		return nconfig, fmt.Errorf("Failed to dial ring server for config: %s", err)
 	}
@@ -67,11 +63,17 @@ func (s *SRVLoader) getConfig(service string) (*pb.NodeConfig, error) {
 }
 
 func (s *SRVLoader) Load() (nodeconfig *pb.NodeConfig, err error) {
-	nodeconfig, err = s.getConfig(s.Record)
+	if s.SyndicateURL == "" {
+		serviceAddrs, err := lookup(s.Record)
+		if err != nil {
+			return &pb.NodeConfig{}, err
+		}
+		s.SyndicateURL = fmt.Sprintf("%s:%d", serviceAddrs[0].Target, serviceAddrs[0].Port)
+	}
+	nodeconfig, err = s.getConfig()
 	if err != nil {
 		if err == ErrSRVLookupFailed {
-			log.Println("SRV Lookup failed, assuming srv opts not being used")
-			return nodeconfig, nil
+			return nodeconfig, err
 		}
 		return nodeconfig, err
 	}

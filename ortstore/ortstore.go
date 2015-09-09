@@ -10,68 +10,51 @@ import (
 	"github.com/gholt/brimtime"
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
+	"github.com/pandemicsyn/ort/ort"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/spaolacci/murmur3"
 )
 
 type OrtStore struct {
 	sync.RWMutex
-	vs      valuestore.ValueStore
-	r       ring.Ring
-	t       *ring.TCPMsgRing
-	rfile   string
-	localid uint64
+	vs valuestore.ValueStore
+	t  *ring.TCPMsgRing
+	o  *ort.Ort
+	c  *Config
 }
 
-func getMsgRing(filename string) (ring.MsgRing, error) {
-	var f *os.File
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	r, err := ring.LoadRing(f)
-	return ring.NewTCPMsgRing(r), nil
+type Config struct {
+	Debug   bool
+	Profile bool
 }
 
-func New(ortring ring.Ring, ringfile string, localid uint64) *OrtStore {
+func New(ort *ort.Ort, config *Config) *OrtStore {
 	s := &OrtStore{}
-	s.r = ortring
-	s.rfile = ringfile
-	s.localid = localid
-
-	log.Println("Ring entries:")
-	for k, _ := range s.r.Nodes() {
-		log.Println(s.r.Nodes()[k].ID(), s.r.Nodes()[k].Addresses())
+	s.o = ort
+	s.c = config
+	if s.c.Debug {
+		log.Println("Ring entries:")
+		ring := s.o.Ring()
+		for k, _ := range ring.Nodes() {
+			log.Println(ring.Nodes()[k].ID(), ring.Nodes()[k].Addresses())
+		}
 	}
-	log.Println("Localid appears to be:", s.localid)
-	s.r.SetLocalNode(s.localid)
-	s.t = ring.NewTCPMsgRing(s.r)
+	log.Println("LocalID appears to be:", s.o.GetLocalID())
+	s.t = ring.NewTCPMsgRing(nil)
+	s.t.SetRing(s.o.Ring())
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
-	s.vs = valuestore.New(&valuestore.Config{MsgRing: s.t, LogDebug: l})
+	s.vs = valuestore.New(&valuestore.Config{MsgRing: s.t, LogDebug: l.Printf})
 	s.vs.EnableAll()
 	go func() {
-		chanerr := s.t.Start()
-		err := <-chanerr
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			log.Println("Start() sent nil, shutdown?")
-		}
+		s.t.Listen()
+		log.Println("Listen() returned, shutdown?")
 	}()
 	return s
 }
 
-func (vsc *OrtStore) Ring() ring.Ring {
-	vsc.RLock()
-	r := vsc.r
-	vsc.RUnlock()
-	return r
-}
-
-func (vsc *OrtStore) SetRing(n ring.Ring) {
+func (vsc *OrtStore) UpdateRing() {
 	vsc.Lock()
-	vsc.r = n
-	vsc.t.SetRing(vsc.r)
+	vsc.t.SetRing(vsc.o.Ring())
 	vsc.Unlock()
 }
 

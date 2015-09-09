@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"log"
 	"net"
-	"os"
 
 	"github.com/pandemicsyn/ort/mapstore"
+	"github.com/pandemicsyn/ort/ort"
 	"github.com/pandemicsyn/ort/ortstore"
 	"github.com/pandemicsyn/ort/rediscache"
 )
@@ -22,29 +22,31 @@ func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 }
 
 func main() {
-
-	conf, err := loadOrtConfig()
+	ort := new(ort.Ort)
+	err := ort.LoadConfig()
 	if err != nil {
-		log.Println("Error parsing config:", err)
-		log.Println("Try -help for usage info")
-		log.Println("The configuration is parsed in the following order: Ring Server via SRV, /etc/ort/ortd.toml, ENV")
-		os.Exit(2)
+		log.Println("Error loading config:", err)
+		return
 	}
 
 	var cache rediscache.Cache
-	switch conf.StoreType {
+	switch ort.StoreType {
 	case "map":
 		log.Println("Using map cache")
 		cache = mapstore.NewMapCache()
 	case "ortstore":
-		log.Println(conf)
+		log.Println(ort)
 		log.Println("Using ortstore (the gholt valuestore)")
-		cache = ortstore.New(conf.Ring, conf.RingFile, conf.localIDInt)
+		oc := ortstore.Config{
+			Debug:   false,
+			Profile: false,
+		}
+		cache = ortstore.New(ort, &oc)
 	default:
-		log.Println("Nope:", conf.StoreType, "isn't a valid backend")
-		log.Println("Try: map|ortstore")
+		log.Printf("Got storetype: '%s' which isn't a valid backend\n", ort.StoreType)
+		log.Println("Expected: map||ortstore")
 		log.Println()
-		os.Exit(2)
+		return
 	}
 
 	readerChan := make(chan *bufio.Reader, 1024)
@@ -59,7 +61,7 @@ func main() {
 	for i := 0; i < cap(handlerChan); i++ {
 		handlerChan <- rediscache.NewRESPhandler(cache)
 	}
-	addr, err := net.ResolveTCPAddr("tcp", conf.ListenAddr)
+	addr, err := net.ResolveTCPAddr("tcp", ort.ListenAddr)
 	if err != nil {
 		log.Println("Error getting IP: ", err)
 		return
@@ -69,7 +71,7 @@ func main() {
 		log.Println("Error starting: ", err)
 		return
 	}
-	log.Println("Listening on:", conf.ListenAddr)
+	log.Println("Listening on:", ort.ListenAddr)
 	for {
 		conn, _ := server.AcceptTCP()
 		reader := <-readerChan
