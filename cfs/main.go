@@ -76,6 +76,10 @@ func newrpc(conn *grpc.ClientConn) *rpc {
 	return r
 }
 
+type NullWriter int
+
+func (NullWriter) Write([]byte) (int, error) { return 0, nil }
+
 func main() {
 	flag.Usage = usage
 	flag.Parse()
@@ -92,6 +96,9 @@ func main() {
 		log.Fatalf("failed to dial: %v", err)
 	}
 	defer conn.Close()
+
+	// Uncomment the following to diable logs
+	//log.SetOutput(new(NullWriter))
 
 	mountpoint := flag.Arg(0)
 	c, err := fuse.Mount(

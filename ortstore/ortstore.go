@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gholt/brimtime"
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
 	"github.com/pandemicsyn/ort/ort"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/spaolacci/murmur3"
+	"gopkg.in/gholt/brimtime.v1"
 )
 
 type OrtStore struct {
@@ -48,6 +48,14 @@ func New(ort *ort.Ort, config *Config) *OrtStore {
 	go func() {
 		s.t.Listen()
 		log.Println("Listen() returned, shutdown?")
+	}()
+	go func() {
+		stats := s.t.Stats()
+		for !stats.Shutdown {
+			time.Sleep(time.Minute)
+			stats = s.t.Stats()
+			log.Printf("%#v\n", stats)
+		}
 	}()
 	return s
 }
