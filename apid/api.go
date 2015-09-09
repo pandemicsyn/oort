@@ -18,7 +18,7 @@ type apiServer struct {
 	fs    *InMemFS
 }
 
-func (s *apiServer) GetAttr(ctx context.Context, r *pb.FileRequest) (*pb.Attr, error) {
+func (s *apiServer) GetAttr(ctx context.Context, r *pb.Node) (*pb.Attr, error) {
 	s.fs.RLock()
 	defer s.fs.RUnlock()
 	if entry, ok := s.fs.nodes[r.Inode]; ok {
@@ -39,11 +39,11 @@ func (s *apiServer) SetAttr(ctx context.Context, r *pb.Attr) (*pb.Attr, error) {
 	return &pb.Attr{}, nil
 }
 
-func (s *apiServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, error) {
+func (s *apiServer) Create(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error) {
 	s.fs.Lock()
 	defer s.fs.Unlock()
 	if _, exists := s.fs.nodes[r.Parent].entries[r.Name]; exists {
-		return &pb.FileEnt{}, nil
+		return &pb.DirEnt{}, nil
 	}
 	n := &Entry{
 		path:     r.Name,
@@ -60,16 +60,15 @@ func (s *apiServer) Create(ctx context.Context, r *pb.FileEnt) (*pb.FileEnt, err
 		Ctime:  ts,
 		Crtime: ts,
 		Mode:   uint32(0777),
-		Name:   r.Name,
 	}
 	s.fs.nodes[n.attr.Inode] = n
 	s.fs.nodes[r.Parent].entries[r.Name] = n.attr.Inode
 	s.fs.nodes[r.Parent].ientries[n.attr.Inode] = r.Name
 	atomic.AddUint64(&s.fs.nodes[r.Parent].nodeCount, 1)
-	return &pb.FileEnt{Name: n.path, Attr: n.attr}, nil
+	return &pb.DirEnt{Name: n.path, Attr: n.attr}, nil
 }
 
-func (s *apiServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, error) {
+func (s *apiServer) Read(ctx context.Context, r *pb.Node) (*pb.FileChunk, error) {
 	var err error
 	rc := s.rpool.Get()
 	defer rc.Close()
@@ -77,20 +76,23 @@ func (s *apiServer) Read(ctx context.Context, r *pb.FileRequest) (*pb.File, erro
 	if err != nil {
 		if err == redis.ErrNil {
 			//file is empty or doesn't exist yet.
-			return &pb.File{}, nil
+			return &pb.FileChunk{}, nil
 		}
-		return &pb.File{}, err
+		return &pb.FileChunk{}, err
 	}
-	f := &pb.File{Inode: r.Inode, Payload: data}
+	f := &pb.FileChunk{Inode: r.Inode, Payload: data}
 	return f, nil
 }
 
 //Write still needs to handle chunks, and validate inodes
 //which means our Entry for files aslo needs to be sure to track
 //blocks used in the attrs.
-func (s *apiServer) Write(ctx context.Context, r *pb.File) (*pb.WriteResponse, error) {
+func (s *apiServer) Write(ctx context.Context, r *pb.FileChunk) (*pb.WriteResponse, error) {
 	s.fs.Lock()
 	defer s.fs.Unlock()
+	//sendSize := 1024 * 64
+	//chunkLength := len(r.Payload)
+	//start := r.Offset / sendSize
 	rc := s.rpool.Get()
 	defer rc.Close()
 	_, err := rc.Do("SET", strconv.FormatUint(r.Inode, 10), r.Payload)
@@ -124,7 +126,6 @@ func (s *apiServer) MkDir(ctx context.Context, r *pb.DirEnt) (*pb.DirEnt, error)
 		Ctime:  ts,
 		Crtime: ts,
 		Mode:   uint32(os.ModeDir | 0777),
-		Name:   r.Name,
 	}
 	s.fs.nodes[n.attr.Inode] = n
 	s.fs.nodes[r.Parent].entries[r.Name] = n.attr.Inode
@@ -144,7 +145,7 @@ func (s *apiServer) Lookup(ctx context.Context, r *pb.LookupRequest) (*pb.DirEnt
 	return &pb.DirEnt{Name: entry.path, Attr: entry.attr}, nil
 }
 
-func (s *apiServer) ReadDirAll(ctx context.Context, f *pb.FileRequest) (*pb.DirEntries, error) {
+func (s *apiServer) ReadDirAll(ctx context.Context, f *pb.Node) (*pb.DirEntries, error) {
 	s.fs.RLock()
 	defer s.fs.RUnlock()
 	e := &pb.DirEntries{}
@@ -153,15 +154,15 @@ func (s *apiServer) ReadDirAll(ctx context.Context, f *pb.FileRequest) (*pb.DirE
 		if entry.isdir {
 			e.DirEntries = append(e.DirEntries, &pb.DirEnt{Name: entry.path, Attr: entry.attr})
 		} else {
-			e.FileEntries = append(e.FileEntries, &pb.FileEnt{Name: entry.path, Attr: entry.attr})
+			e.FileEntries = append(e.FileEntries, &pb.DirEnt{Name: entry.path, Attr: entry.attr})
 		}
 	}
 	return e, nil
 }
 
-func (s *apiServer) Remove(ctx context.Context, r *pb.FileEnt) (*pb.WriteResponse, error) {
-	s.fs.RLock()
-	defer s.fs.RUnlock()
+func (s *apiServer) Remove(ctx context.Context, r *pb.DirEnt) (*pb.WriteResponse, error) {
+	s.fs.Lock()
+	defer s.fs.Unlock()
 	inode, exists := s.fs.nodes[r.Parent].entries[r.Name]
 	if !exists {
 		return &pb.WriteResponse{Status: 1}, nil
