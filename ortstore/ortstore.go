@@ -86,7 +86,7 @@ func (vsc *OrtStore) Set(key []byte, value []byte) {
 	if bytes.Equal(key, rediscache.BYTES_SHUTDOWN) && bytes.Equal(value, rediscache.BYTES_NOW) {
 		vsc.vs.DisableAll()
 		vsc.vs.Flush()
-		fmt.Println(vsc.vs.GatherStats(true))
+		fmt.Println(vsc.vs.Stats(true))
 		//pprof.StopCPUProfile()
 		//pproffp.Close()
 		os.Exit(0)
