@@ -28,7 +28,8 @@ func main() {
 		log.Println("Error loading config:", err)
 		return
 	}
-
+	log.Printf("%#v", ort.ValueStoreConfig.ValueCap)
+	log.Printf("%#v", ort.ValueStoreConfig.CompactionInterval)
 	var cache rediscache.Cache
 	switch ort.StoreType {
 	case "map":

@@ -14,6 +14,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/gholt/ring"
+	"github.com/gholt/valuestore"
 	"github.com/pandemicsyn/ort/utils/srvconf"
 )
 
@@ -33,12 +34,12 @@ func FExists(name string) bool {
 
 type Ort struct {
 	sync.RWMutex
-	StoreType     string
-	ListenAddr    string
-	RingFile      string    // The active ring file
-	ring          ring.Ring // The active ring
-	LocalID       uint64    // This nodes local ring id
-	rawVstoreConf interface{}
+	StoreType        string
+	ListenAddr       string
+	RingFile         string    // The active ring file
+	ring             ring.Ring // The active ring
+	LocalID          uint64    // This nodes local ring id
+	ValueStoreConfig valuestore.Config
 }
 
 func (o *Ort) SetRing(r ring.Ring, ringFile string) {
@@ -61,6 +62,35 @@ func (o *Ort) GetLocalID() uint64 {
 	return o.LocalID
 }
 
+func (o *Ort) loadRingConfig() (err error) {
+	o.Lock()
+	defer o.Unlock()
+	log.Println("Using ring version:", o.ring.Version())
+	b := bytes.NewReader(o.ring.Conf())
+	if b.Len() > 0 {
+		_, err = toml.DecodeReader(b, o)
+		if err != nil {
+			return err
+		}
+	}
+	// Now overlay per node config on top
+	n := o.ring.LocalNode()
+	if n == nil {
+		panic("n is nil")
+	}
+	b = bytes.NewReader(o.ring.LocalNode().Conf())
+	if b.Len() > 0 {
+		_, err = toml.DecodeReader(b, o)
+		if err != nil {
+			return err
+		}
+	}
+	log.Printf("%s", o.ring.LocalNode().Conf())
+	log.Println("fh", o.ValueStoreConfig.CompactionInterval)
+
+	return nil
+}
+
 func (o *Ort) LoadConfig() (err error) {
 	envSkipSRV := os.Getenv("ORTD_SKIP_SRV")
 	//First try and populate from cache.
@@ -79,7 +109,9 @@ func (o *Ort) LoadConfig() (err error) {
 	if cacheLoaded {
 		// TODO: IF the cache is "stale" should we really ignore it?
 		if !time.Now().After(cached.CacheTime.Add(STALE_CACHE_TIME)) {
+			log.Println("Using cached config")
 			o.LocalID = cached.LocalID
+			o.ValueStoreConfig = cached.ValueStoreConfig
 			// a stale ring should be ok, since we're about to phone
 			// home to verify the current version anyway.
 			if cached.RingFile != "" {
@@ -89,12 +121,16 @@ func (o *Ort) LoadConfig() (err error) {
 				} else {
 					o.RingFile = cached.RingFile
 					o.ring = r
+					o.ring.SetLocalNode(cached.LocalID)
+					err = o.loadRingConfig()
+					if err != nil {
+						return err
+					}
 				}
 			}
 		} else {
 			log.Println("Cache is considered stale, not using it.")
 		}
-
 	}
 
 	// Check whether we're supposed to skip loading via srv method
@@ -114,14 +150,19 @@ func (o *Ort) LoadConfig() (err error) {
 		if err != nil {
 			return fmt.Errorf("Error while loading ring for config get via srv lookup: %s", err)
 		}
-		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("/etc/ort/ort.ring-%d", o.ring.Version()))
+		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("/etc/ort/ortd/%d-ort.ring", o.ring.Version()))
 		if err != nil {
 			return err
 		}
-		o.RingFile = fmt.Sprintf("/etc/ort/ort.ring-%d", o.ring.Version())
-		o.StoreType = "ortstore"
 		o.LocalID = nc.Localid
+		o.ring.SetLocalNode(o.LocalID)
+		o.StoreType = "ortstore"
+		o.RingFile = fmt.Sprintf("/etc/ort/ortd/%d-ort.ring", o.ring.Version())
 		o.ListenAddr = "0.0.0.0:6379"
+		err = o.loadRingConfig()
+		if err != nil {
+			return err
+		}
 	} else {
 		// if you skip the srv load you have to provide all of the info in env vars!
 		log.Println("Skipped SRV Config attempting to load from env")
@@ -136,6 +177,11 @@ func (o *Ort) LoadConfig() (err error) {
 		if err != nil {
 			return fmt.Errorf("Unable to road env specified ring: %s", err)
 		}
+		o.ring.SetLocalNode(o.LocalID)
+		err = o.loadRingConfig()
+		if err != nil {
+			return err
+		}
 	}
 	// Allow overriding a few things via the env, that may be handy for debugging
 	if os.Getenv("ORT_LISTEN_ADDRESS") != "" {
@@ -145,10 +191,11 @@ func (o *Ort) LoadConfig() (err error) {
 }
 
 type cacheConfig struct {
-	LocalID    uint64    `toml:"LocalID"`
-	ListenAddr string    `toml:"ListenAddr"`
-	RingFile   string    `toml:"RingFile"`
-	CacheTime  time.Time `toml:"CacheTime"`
+	LocalID          uint64            `toml:"LocalID"`
+	ListenAddr       string            `toml:"ListenAddr"`
+	RingFile         string            `toml:"RingFile"`
+	CacheTime        time.Time         `toml:"CacheTime"`
+	ValueStoreConfig valuestore.Config `toml:"ValueStoreConfig"`
 }
 
 // CacheConfig caches a minimal config in
@@ -157,10 +204,11 @@ func (o *Ort) CacheConfig() error {
 	o.Lock()
 	defer o.Unlock()
 	c := cacheConfig{
-		LocalID:    o.LocalID,
-		ListenAddr: o.ListenAddr,
-		RingFile:   o.RingFile,
-		CacheTime:  time.Now(),
+		LocalID:          o.LocalID,
+		ListenAddr:       o.ListenAddr,
+		RingFile:         o.RingFile,
+		CacheTime:        time.Now(),
+		ValueStoreConfig: o.ValueStoreConfig,
 	}
 	buf := new(bytes.Buffer)
 	if err := toml.NewEncoder(buf).Encode(c); err != nil {
