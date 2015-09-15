@@ -62,11 +62,12 @@ func New(rfile string, localid int) *OrtStore {
 		log.Println("Listen() returned, shutdown?")
 	}()
 	go func() {
-		stats := t.Stats()
-		for !stats.Shutdown {
+		tcpMsgRingStats := t.Stats(false)
+		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
-			stats = t.Stats()
-			log.Printf("%#v\n", stats)
+			tcpMsgRingStats = t.Stats(false)
+			log.Printf("%s\n", tcpMsgRingStats)
+			log.Printf("%s\n", s.vs.Stats(false))
 		}
 	}()
 	return s
@@ -86,7 +87,7 @@ func (vsc *OrtStore) Set(key []byte, value []byte) {
 	if bytes.Equal(key, rediscache.BYTES_SHUTDOWN) && bytes.Equal(value, rediscache.BYTES_NOW) {
 		vsc.vs.DisableAll()
 		vsc.vs.Flush()
-		fmt.Println(vsc.vs.GatherStats(true))
+		fmt.Println(vsc.vs.Stats(true))
 		//pprof.StopCPUProfile()
 		//pproffp.Close()
 		os.Exit(0)
