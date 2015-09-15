@@ -52,11 +52,12 @@ func New(ort *ort.Ort, config *Config) *OrtStore {
 		log.Println("Listen() returned, shutdown?")
 	}()
 	go func() {
-		stats := s.t.Stats()
-		for !stats.Shutdown {
+		tcpMsgRingStats := s.t.Stats(false)
+		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
-			stats = s.t.Stats()
-			log.Printf("%#v\n", stats)
+			tcpMsgRingStats = s.t.Stats(false)
+			log.Printf("%v\n", tcpMsgRingStats)
+			log.Printf("%s\n", s.vs.Stats(false))
 		}
 	}()
 	return s
@@ -82,7 +83,7 @@ func (vsc *OrtStore) Set(key []byte, value []byte) {
 	if bytes.Equal(key, rediscache.BYTES_SHUTDOWN) && bytes.Equal(value, rediscache.BYTES_NOW) {
 		vsc.vs.DisableAll()
 		vsc.vs.Flush()
-		log.Println(vsc.vs.GatherStats(true))
+		log.Println(vsc.vs.Stats(true))
 		os.Exit(0)
 		return
 	}
