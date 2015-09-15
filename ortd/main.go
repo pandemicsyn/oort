@@ -2,14 +2,13 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"net"
-	"os"
 
 	"github.com/pandemicsyn/ort/mapstore"
+	"github.com/pandemicsyn/ort/ort"
 	"github.com/pandemicsyn/ort/ortstore"
 	"github.com/pandemicsyn/ort/rediscache"
-	"github.com/spf13/viper"
 )
 
 func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
@@ -22,45 +21,30 @@ func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 	}
 }
 
-var storeType string
-var listenAddr string
-
 func main() {
-
-	viper.SetDefault("listenAddr", "127.0.0.1:6379")
-	viper.SetDefault("ringFile", "/etc/ort/ort.ring")
-	viper.SetDefault("storeType", "map")
-	viper.SetDefault("localID", 0)
-
-	viper.SetEnvPrefix("ort")
-
-	viper.BindEnv("listenAddr")
-	viper.BindEnv("ringFile")
-	viper.BindEnv("storeType")
-	viper.BindEnv("localID")
-
-	viper.SetConfigName("ortd")        // name of config file (without extension)
-	viper.AddConfigPath("/etc/ort/")   // path to look for the config file in
-	viper.AddConfigPath("$HOME/.ortd") // call multiple times to add many search paths
-	viper.ReadInConfig()               // Find and read the config file
-
-	storeType := viper.GetString("storeType")
-	listenAddr := viper.GetString("listenAddr")
-	ringLocalID := viper.GetInt("localID")
-
+	ort := new(ort.Ort)
+	err := ort.LoadConfig()
+	if err != nil {
+		log.Println("Error loading config:", err)
+		return
+	}
 	var cache rediscache.Cache
-	switch storeType {
+	switch ort.StoreType {
 	case "map":
-		fmt.Println("Using map cache")
+		log.Println("Using map cache")
 		cache = mapstore.NewMapCache()
 	case "ortstore":
-		fmt.Println("Using ortstore (the gholt valuestore)")
-		cache = ortstore.New(viper.GetString("ringFile"), ringLocalID)
+		log.Println("Using ortstore (the gholt valuestore)")
+		oc := ortstore.Config{
+			Debug:   false,
+			Profile: false,
+		}
+		cache = ortstore.New(ort, &oc)
 	default:
-		fmt.Println("Nope:", storeType, "isn't a valid backend")
-		fmt.Println("Try: map|ortstore")
-		fmt.Println()
-		os.Exit(2)
+		log.Printf("Got storetype: '%s' which isn't a valid backend\n", ort.StoreType)
+		log.Println("Expected: map||ortstore")
+		log.Println()
+		return
 	}
 
 	readerChan := make(chan *bufio.Reader, 1024)
@@ -75,17 +59,17 @@ func main() {
 	for i := 0; i < cap(handlerChan); i++ {
 		handlerChan <- rediscache.NewRESPhandler(cache)
 	}
-	addr, err := net.ResolveTCPAddr("tcp", listenAddr)
+	addr, err := net.ResolveTCPAddr("tcp", ort.ListenAddr)
 	if err != nil {
-		fmt.Println("Error getting IP: ", err)
+		log.Println("Error getting IP: ", err)
 		return
 	}
 	server, err := net.ListenTCP("tcp", addr)
 	if err != nil {
-		fmt.Println("Error starting: ", err)
+		log.Println("Error starting: ", err)
 		return
 	}
-	fmt.Println("Listening on:", listenAddr)
+	log.Println("Listening on:", ort.ListenAddr)
 	for {
 		conn, _ := server.AcceptTCP()
 		reader := <-readerChan

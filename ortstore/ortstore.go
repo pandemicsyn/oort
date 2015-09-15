@@ -2,75 +2,71 @@ package ortstore
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
+	"github.com/pandemicsyn/ort/ort"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/spaolacci/murmur3"
 	"gopkg.in/gholt/brimtime.v1"
 )
 
 type OrtStore struct {
-	vs    valuestore.ValueStore
-	rfile string
-	r     ring.Ring
+	sync.RWMutex
+	vs valuestore.ValueStore
+	t  *ring.TCPMsgRing
+	o  *ort.Ort
+	c  *Config
 }
 
-func getMsgRing(filename string) (ring.MsgRing, error) {
-	var f *os.File
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	r, err := ring.LoadRing(f)
-	tr := ring.NewTCPMsgRing(nil)
-	tr.SetRing(r)
-	return tr, nil
+type Config struct {
+	Debug   bool
+	Profile bool
 }
 
-func New(rfile string, localid int) *OrtStore {
-	//mr, err := getMsgRing(rfile)
-
+func New(ort *ort.Ort, config *Config) *OrtStore {
 	s := &OrtStore{}
-	s.rfile = rfile
-
-	f, err := os.Open(rfile)
-	if err != nil {
-		panic(err)
+	s.o = ort
+	s.c = config
+	if s.c.Debug {
+		log.Println("Ring entries:")
+		ring := s.o.Ring()
+		for k, _ := range ring.Nodes() {
+			log.Println(ring.Nodes()[k].ID(), ring.Nodes()[k].Addresses())
+		}
 	}
-	s.r, err = ring.LoadRing(f)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Ring entries:")
-	for k, _ := range s.r.Nodes() {
-		fmt.Println(s.r.Nodes()[k].ID(), s.r.Nodes()[k].Addresses())
-	}
-	fmt.Println("Pretending to be:", s.r.Nodes()[localid].ID(), s.r.Nodes()[localid].Addresses())
-	s.r.SetLocalNode(s.r.Nodes()[localid].ID())
-	t := ring.NewTCPMsgRing(nil)
-	t.SetRing(s.r)
+	log.Println("LocalID appears to be:", s.o.GetLocalID())
+	s.t = ring.NewTCPMsgRing(nil)
+	s.t.SetRing(s.o.Ring())
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
-	s.vs = valuestore.New(&valuestore.Config{MsgRing: t, LogDebug: l.Printf})
+	s.o.ValueStoreConfig.MsgRing = s.t
+	s.o.ValueStoreConfig.LogDebug = l.Printf
+	s.vs = valuestore.New(&s.o.ValueStoreConfig)
 	s.vs.EnableAll()
 	go func() {
-		t.Listen()
+		s.t.Listen()
 		log.Println("Listen() returned, shutdown?")
 	}()
 	go func() {
-		tcpMsgRingStats := t.Stats(false)
+		tcpMsgRingStats := s.t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
-			tcpMsgRingStats = t.Stats(false)
-			log.Printf("%s\n", tcpMsgRingStats)
+			tcpMsgRingStats = s.t.Stats(false)
+			log.Printf("%v\n", tcpMsgRingStats)
 			log.Printf("%s\n", s.vs.Stats(false))
 		}
 	}()
 	return s
+}
+
+func (vsc *OrtStore) UpdateRing() {
+	vsc.Lock()
+	vsc.t.SetRing(vsc.o.Ring())
+	vsc.Unlock()
 }
 
 func (vsc *OrtStore) Get(key []byte, value []byte) []byte {
@@ -78,7 +74,7 @@ func (vsc *OrtStore) Get(key []byte, value []byte) []byte {
 	var err error
 	_, value, err = vsc.vs.Read(keyA, keyB, value)
 	if err != nil {
-		fmt.Printf("Get: %#v %s\n", string(key), err)
+		log.Printf("Get: %#v %s\n", string(key), err)
 	}
 	return value
 }
@@ -87,9 +83,7 @@ func (vsc *OrtStore) Set(key []byte, value []byte) {
 	if bytes.Equal(key, rediscache.BYTES_SHUTDOWN) && bytes.Equal(value, rediscache.BYTES_NOW) {
 		vsc.vs.DisableAll()
 		vsc.vs.Flush()
-		fmt.Println(vsc.vs.Stats(true))
-		//pprof.StopCPUProfile()
-		//pproffp.Close()
+		log.Println(vsc.vs.Stats(true))
 		os.Exit(0)
 		return
 	}
