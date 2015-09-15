@@ -62,11 +62,12 @@ func New(rfile string, localid int) *OrtStore {
 		log.Println("Listen() returned, shutdown?")
 	}()
 	go func() {
-		stats := t.Stats()
-		for !stats.Shutdown {
+		tcpMsgRingStats := t.Stats(false)
+		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
-			stats = t.Stats()
-			log.Printf("%#v\n", stats)
+			tcpMsgRingStats = t.Stats(false)
+			log.Printf("%s\n", tcpMsgRingStats)
+			log.Printf("%s\n", s.vs.Stats(false))
 		}
 	}()
 	return s
