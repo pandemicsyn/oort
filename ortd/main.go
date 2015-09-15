@@ -28,15 +28,12 @@ func main() {
 		log.Println("Error loading config:", err)
 		return
 	}
-	log.Printf("%#v", ort.ValueStoreConfig.ValueCap)
-	log.Printf("%#v", ort.ValueStoreConfig.CompactionInterval)
 	var cache rediscache.Cache
 	switch ort.StoreType {
 	case "map":
 		log.Println("Using map cache")
 		cache = mapstore.NewMapCache()
 	case "ortstore":
-		log.Println(ort)
 		log.Println("Using ortstore (the gholt valuestore)")
 		oc := ortstore.Config{
 			Debug:   false,

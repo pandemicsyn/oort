@@ -43,7 +43,9 @@ func New(ort *ort.Ort, config *Config) *OrtStore {
 	s.t = ring.NewTCPMsgRing(nil)
 	s.t.SetRing(s.o.Ring())
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
-	s.vs = valuestore.New(&valuestore.Config{MsgRing: s.t, LogDebug: l.Printf})
+	s.o.ValueStoreConfig.MsgRing = s.t
+	s.o.ValueStoreConfig.LogDebug = l.Printf
+	s.vs = valuestore.New(&s.o.ValueStoreConfig)
 	s.vs.EnableAll()
 	go func() {
 		s.t.Listen()

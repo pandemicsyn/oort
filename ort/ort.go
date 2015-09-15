@@ -85,9 +85,8 @@ func (o *Ort) loadRingConfig() (err error) {
 			return err
 		}
 	}
-	log.Printf("%s", o.ring.LocalNode().Conf())
-	log.Println("fh", o.ValueStoreConfig.CompactionInterval)
-
+	log.Printf("Local Node config is: \n%s", o.ring.LocalNode().Conf())
+	log.Printf("Ring config is: \n%s", o.ring.Conf())
 	return nil
 }
 
