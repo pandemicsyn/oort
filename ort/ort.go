@@ -233,9 +233,5 @@ func (o *Ort) CacheConfig() error {
 func genServiceID(name, proto string) string {
 	h, _ := os.Hostname()
 	d := strings.SplitN(h, ".", 2)
-	if !strings.HasPrefix(d[1], "iad3") {
-		log.Println("Using pre production dev hack to add DC!!! Remove me")
-		return fmt.Sprintf("_%s._%s.iad3.%s", name, proto, d[1])
-	}
 	return fmt.Sprintf("_%s._%s.%s", name, proto, d[1])
 }

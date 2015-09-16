@@ -1,6 +1,7 @@
 package srvconf
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	pb "github.com/pandemicsyn/ort-syndicate/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -37,6 +39,11 @@ type SRVLoader struct {
 func (s *SRVLoader) getConfig() (*pb.NodeConfig, error) {
 	nconfig := &pb.NodeConfig{}
 	var opts []grpc.DialOption
+	var creds credentials.TransportAuthenticator
+	creds = credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: true,
+	})
+	opts = append(opts, grpc.WithTransportCredentials(creds))
 	conn, err := grpc.Dial(s.SyndicateURL, opts...)
 	if err != nil {
 		return nconfig, fmt.Errorf("Failed to dial ring server for config: %s", err)
@@ -56,7 +63,7 @@ func (s *SRVLoader) getConfig() (*pb.NodeConfig, error) {
 	rr.Disks = 2
 	rr.Cores = int32(runtime.NumCPU())
 	rr.Hardwareid = "something"
-	rr.Tiers = []string{rr.Hostname, "z42"}
+	rr.Tiers = []string{rr.Hostname}
 
 	nconfig, err = client.RegisterNode(ctx, rr)
 	return nconfig, err
