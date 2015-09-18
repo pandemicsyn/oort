@@ -47,6 +47,7 @@ var BYTES_ERR []byte = []byte("-ERR ")
 type Cache interface {
 	Get(key []byte, value []byte) []byte
 	Set(key []byte, value []byte)
+	Stop()
 }
 
 /* Commands */

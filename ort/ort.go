@@ -1,10 +1,12 @@
 package ort
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,6 +17,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
+	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/pandemicsyn/ort/utils/srvconf"
 )
 
@@ -32,7 +35,7 @@ func FExists(name string) bool {
 	return true
 }
 
-type Ort struct {
+type Server struct {
 	sync.RWMutex
 	StoreType        string
 	ListenAddr       string
@@ -40,9 +43,22 @@ type Ort struct {
 	ring             ring.Ring // The active ring
 	LocalID          uint64    // This nodes local ring id
 	ValueStoreConfig valuestore.Config
+	cache            rediscache.Cache
+	ch               chan bool
+	waitGroup        *sync.WaitGroup
 }
 
-func (o *Ort) SetRing(r ring.Ring, ringFile string) {
+func New() (*Server, error) {
+	o := &Server{
+		ch:        make(chan bool),
+		waitGroup: &sync.WaitGroup{},
+	}
+	o.waitGroup.Add(1)
+	err := o.LoadConfig()
+	return o, err
+}
+
+func (o *Server) SetRing(r ring.Ring, ringFile string) {
 	o.Lock()
 	defer o.Unlock()
 	o.ring = r
@@ -50,19 +66,19 @@ func (o *Ort) SetRing(r ring.Ring, ringFile string) {
 	o.ring.SetLocalNode(o.LocalID)
 }
 
-func (o *Ort) Ring() ring.Ring {
+func (o *Server) Ring() ring.Ring {
 	o.RLock()
 	defer o.RUnlock()
 	return o.ring
 }
 
-func (o *Ort) GetLocalID() uint64 {
+func (o *Server) GetLocalID() uint64 {
 	o.RLock()
 	defer o.RUnlock()
 	return o.LocalID
 }
 
-func (o *Ort) loadRingConfig() (err error) {
+func (o *Server) loadRingConfig() (err error) {
 	o.Lock()
 	defer o.Unlock()
 	log.Println("Using ring version:", o.ring.Version())
@@ -90,7 +106,7 @@ func (o *Ort) loadRingConfig() (err error) {
 	return nil
 }
 
-func (o *Ort) LoadConfig() (err error) {
+func (o *Server) LoadConfig() (err error) {
 	envSkipSRV := os.Getenv("ORTD_SKIP_SRV")
 	//First try and populate from cache.
 	//Its fine if it doesn't exist or fails to load or is old
@@ -199,7 +215,7 @@ type cacheConfig struct {
 
 // CacheConfig caches a minimal config in
 // /var/cache/ortd-config.cache
-func (o *Ort) CacheConfig() error {
+func (o *Server) CacheConfig() error {
 	o.Lock()
 	defer o.Unlock()
 	c := cacheConfig{
@@ -234,4 +250,83 @@ func genServiceID(name, proto string) string {
 	h, _ := os.Hostname()
 	d := strings.SplitN(h, ".", 2)
 	return fmt.Sprintf("_%s._%s.%s", name, proto, d[1])
+}
+
+func (o *Server) handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
+	defer conn.Close()
+	defer o.waitGroup.Done()
+	for {
+		err := handler.Parse()
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (o *Server) Stop() {
+	close(o.ch)
+	o.waitGroup.Wait()
+}
+
+func (o *Server) Serve(cache rediscache.Cache) {
+	defer o.waitGroup.Done()
+	readerChan := make(chan *bufio.Reader, 1024)
+	for i := 0; i < cap(readerChan); i++ {
+		readerChan <- nil
+	}
+	writerChan := make(chan *bufio.Writer, 1024)
+	for i := 0; i < cap(writerChan); i++ {
+		writerChan <- nil
+	}
+	handlerChan := make(chan *rediscache.RESPhandler, 1024)
+	for i := 0; i < cap(handlerChan); i++ {
+		handlerChan <- rediscache.NewRESPhandler(cache)
+	}
+	addr, err := net.ResolveTCPAddr("tcp", o.ListenAddr)
+	if err != nil {
+		log.Println("Error getting IP: ", err)
+		return
+	}
+	server, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		log.Println("Error starting: ", err)
+		return
+	}
+	log.Println("Listening on:", o.ListenAddr)
+	for {
+		select {
+		case <-o.ch:
+			log.Println("Shutting down")
+			server.Close()
+			return
+		default:
+		}
+		server.SetDeadline(time.Now().Add(1e9))
+		conn, err := server.AcceptTCP()
+		if err != nil {
+			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+				continue
+			}
+			log.Println(err)
+		}
+		reader := <-readerChan
+		if reader == nil {
+			reader = bufio.NewReaderSize(conn, 65536)
+		} else {
+			reader.Reset(conn)
+		}
+		writer := <-writerChan
+		if writer == nil {
+			writer = bufio.NewWriterSize(conn, 65536)
+		} else {
+			writer.Reset(conn)
+		}
+		handler := <-handlerChan
+		handler.Reset(reader, writer)
+		o.waitGroup.Add(1)
+		go o.handle_conn(conn, handler)
+		handlerChan <- handler
+		writerChan <- writer
+		readerChan <- reader
+	}
 }

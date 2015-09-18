@@ -31,3 +31,7 @@ func (cache *MapCache) Set(key []byte, value []byte) {
 	cache.data[string(key)] = val
 	cache.Unlock()
 }
+
+func (cache *MapCache) Stop() {
+	return
+}

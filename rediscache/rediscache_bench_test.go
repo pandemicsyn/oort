@@ -14,6 +14,8 @@ func (c NoCache) Get(key []byte, value []byte) []byte {
 }
 func (c NoCache) Set(key []byte, value []byte) {}
 
+func (c NoCache) Stop() {}
+
 func Benchmark_ByteToInt(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		ByteToInt('7')

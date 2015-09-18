@@ -19,7 +19,7 @@ type OrtStore struct {
 	sync.RWMutex
 	vs valuestore.ValueStore
 	t  *ring.TCPMsgRing
-	o  *ort.Ort
+	o  *ort.Server
 	c  *Config
 }
 
@@ -28,7 +28,7 @@ type Config struct {
 	Profile bool
 }
 
-func New(ort *ort.Ort, config *Config) *OrtStore {
+func New(ort *ort.Server, config *Config) *OrtStore {
 	s := &OrtStore{}
 	s.o = ort
 	s.c = config
@@ -92,4 +92,10 @@ func (vsc *OrtStore) Set(key []byte, value []byte) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (vsc *OrtStore) Stop() {
+	vsc.vs.DisableAll()
+	vsc.vs.Flush()
+	log.Println(vsc.vs.Stats(true))
 }

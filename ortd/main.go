@@ -1,9 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"log"
-	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/pandemicsyn/ort/mapstore"
 	"github.com/pandemicsyn/ort/ort"
@@ -11,19 +12,8 @@ import (
 	"github.com/pandemicsyn/ort/rediscache"
 )
 
-func handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
-	for {
-		err := handler.Parse()
-		if err != nil {
-			conn.Close()
-			return
-		}
-	}
-}
-
 func main() {
-	ort := new(ort.Ort)
-	err := ort.LoadConfig()
+	ort, err := ort.New()
 	if err != nil {
 		log.Println("Error loading config:", err)
 		return
@@ -47,48 +37,12 @@ func main() {
 		return
 	}
 
-	readerChan := make(chan *bufio.Reader, 1024)
-	for i := 0; i < cap(readerChan); i++ {
-		readerChan <- nil
-	}
-	writerChan := make(chan *bufio.Writer, 1024)
-	for i := 0; i < cap(writerChan); i++ {
-		writerChan <- nil
-	}
-	handlerChan := make(chan *rediscache.RESPhandler, 1024)
-	for i := 0; i < cap(handlerChan); i++ {
-		handlerChan <- rediscache.NewRESPhandler(cache)
-	}
-	addr, err := net.ResolveTCPAddr("tcp", ort.ListenAddr)
-	if err != nil {
-		log.Println("Error getting IP: ", err)
-		return
-	}
-	server, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		log.Println("Error starting: ", err)
-		return
-	}
-	log.Println("Listening on:", ort.ListenAddr)
-	for {
-		conn, _ := server.AcceptTCP()
-		reader := <-readerChan
-		if reader == nil {
-			reader = bufio.NewReaderSize(conn, 65536)
-		} else {
-			reader.Reset(conn)
-		}
-		writer := <-writerChan
-		if writer == nil {
-			writer = bufio.NewWriterSize(conn, 65536)
-		} else {
-			writer.Reset(conn)
-		}
-		handler := <-handlerChan
-		handler.Reset(reader, writer)
-		go handle_conn(conn, handler)
-		handlerChan <- handler
-		writerChan <- writer
-		readerChan <- reader
-	}
+	go ort.Serve(cache)
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	log.Println(<-ch)
+	// Stop the service gracefully.
+	ort.Stop()
+	cache.Stop()
+
 }
