@@ -29,6 +29,15 @@ You need godep.
 
 Requires fpm.
 
+# installing a non-dev instance (i.e. you actually want an init script)
+
+1. mkdir -p /etc/ort/ortd
+2. touch /etc/default/ortd
+3. go install -a github.com/pandemicsyn/ort/ortd
+4. cp -av $GOHOME/github.com/pandemicsyn/ort/packaging/root/usr/share/ort/systemd/ortd.service /lib/systemd/system
+5. systemctl start ortd
+6. journalctl -u ortd -f
+
 # Testing out a POC using cfs -> apid -> redis (or ort if you want)
 
 ### ort-syndicate
@@ -65,7 +74,7 @@ While not recommended, you can by pass SRV lookups and Syndicate usage completel
 
 ### Run a backend
 
-1. You can either fire up ortd
+1. Fire up ortd
 
 ### Run apid the api server
 1. cd apid/; go run main.go
