@@ -11,10 +11,11 @@ After=syslog.target network.target
 # http://0pointer.de/public/systemd-man/systemd.exec.html
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/ortd
+EnvironmentFile=/etc/default/ortd
+ExecStart=/root/go/bin/ortd
 
 # if we crash, restart
-RestartSec=1
+RestartSec=5
 Restart=on-failure
 
 # use syslog for logging
