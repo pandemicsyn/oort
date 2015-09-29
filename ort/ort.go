@@ -17,6 +17,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
+	"github.com/pandemicsyn/ort-syndicate/cmdctrl"
 	"github.com/pandemicsyn/ort/rediscache"
 	"github.com/pandemicsyn/ort/utils/srvconf"
 )
@@ -43,19 +44,29 @@ type Server struct {
 	ring             ring.Ring // The active ring
 	LocalID          uint64    // This nodes local ring id
 	ValueStoreConfig valuestore.Config
+	CmdCtrlConfig    cmdctrl.ConfigOpts
 	cache            rediscache.Cache
 	ch               chan bool
+	ShutdownComplete chan bool
 	waitGroup        *sync.WaitGroup
 }
 
 func New() (*Server, error) {
 	o := &Server{
-		ch:        make(chan bool),
-		waitGroup: &sync.WaitGroup{},
+		ch:               make(chan bool),
+		ShutdownComplete: make(chan bool),
+		waitGroup:        &sync.WaitGroup{},
 	}
 	o.waitGroup.Add(1)
 	err := o.LoadConfig()
 	return o, err
+}
+
+//SetBackend sets the current backend
+func (o *Server) SetBackend(cache rediscache.Cache) {
+	o.Lock()
+	o.cache = cache
+	o.Unlock()
 }
 
 func (o *Server) SetRing(r ring.Ring, ringFile string) {
@@ -66,12 +77,14 @@ func (o *Server) SetRing(r ring.Ring, ringFile string) {
 	o.ring.SetLocalNode(o.LocalID)
 }
 
+// Ring returns an instance of the current Ring
 func (o *Server) Ring() ring.Ring {
 	o.RLock()
 	defer o.RUnlock()
 	return o.ring
 }
 
+// GetLocalID returns the current local id
 func (o *Server) GetLocalID() uint64 {
 	o.RLock()
 	defer o.RUnlock()
@@ -206,11 +219,12 @@ func (o *Server) LoadConfig() (err error) {
 }
 
 type cacheConfig struct {
-	LocalID          uint64            `toml:"LocalID"`
-	ListenAddr       string            `toml:"ListenAddr"`
-	RingFile         string            `toml:"RingFile"`
-	CacheTime        time.Time         `toml:"CacheTime"`
-	ValueStoreConfig valuestore.Config `toml:"ValueStoreConfig"`
+	LocalID          uint64             `toml:"LocalID"`
+	ListenAddr       string             `toml:"ListenAddr"`
+	RingFile         string             `toml:"RingFile"`
+	CacheTime        time.Time          `toml:"CacheTime"`
+	ValueStoreConfig valuestore.Config  `toml:"ValueStoreConfig"`
+	CmdCtrlConfig    cmdctrl.ConfigOpts `toml:"CmdCtrlConfig"`
 }
 
 // CacheConfig caches a minimal config in
@@ -224,6 +238,7 @@ func (o *Server) CacheConfig() error {
 		RingFile:         o.RingFile,
 		CacheTime:        time.Now(),
 		ValueStoreConfig: o.ValueStoreConfig,
+		CmdCtrlConfig:    o.CmdCtrlConfig,
 	}
 	buf := new(bytes.Buffer)
 	if err := toml.NewEncoder(buf).Encode(c); err != nil {
@@ -263,13 +278,54 @@ func (o *Server) handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 	}
 }
 
-func (o *Server) Stop() {
-	close(o.ch)
-	o.waitGroup.Wait()
+func (o *Server) RingUpdate(newversion uint64, ringBytes []byte) (uint64, uint64) {
+	log.Println("Got ring update:", newversion, ringBytes)
+	return 0, 0
 }
 
-func (o *Server) Serve(cache rediscache.Cache) {
+func (o *Server) Stats() []byte {
+	return []byte("")
+}
+
+func (o *Server) Start() error {
+	return nil
+}
+
+func (o *Server) Reload() error {
+	return nil
+}
+
+func (o *Server) Restart() error {
+	return nil
+}
+
+// shutdownFinished closes the ShutdownComplete channel
+// 10 miliseconds after being invoked (to give a cmd ctrl client
+// a chance to return.
+func (o *Server) shutdownFinished() {
+	time.Sleep(10 * time.Millisecond)
+	close(o.ShutdownComplete)
+}
+
+// Stop the backend and shutdown all listeners.
+// Closes the ShutdownComplete chan when finsihed.
+func (o *Server) Stop() error {
+	close(o.ch)
+	o.waitGroup.Wait()
+	o.cache.Stop()
+	defer o.shutdownFinished()
+	return nil
+}
+
+// Serve starts the command and control instance, as well as the backend
+func (o *Server) Serve() {
 	defer o.waitGroup.Done()
+	if o.CmdCtrlConfig.Enabled {
+		cc := cmdctrl.NewCCServer(o, &o.CmdCtrlConfig)
+		go cc.Serve()
+	} else {
+		log.Println("Command and Control functionality disabled via config")
+	}
 	readerChan := make(chan *bufio.Reader, 1024)
 	for i := 0; i < cap(readerChan); i++ {
 		readerChan <- nil
@@ -280,7 +336,7 @@ func (o *Server) Serve(cache rediscache.Cache) {
 	}
 	handlerChan := make(chan *rediscache.RESPhandler, 1024)
 	for i := 0; i < cap(handlerChan); i++ {
-		handlerChan <- rediscache.NewRESPhandler(cache)
+		handlerChan <- rediscache.NewRESPhandler(o.cache)
 	}
 	addr, err := net.ResolveTCPAddr("tcp", o.ListenAddr)
 	if err != nil {

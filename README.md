@@ -38,7 +38,7 @@ Requires fpm.
 5. systemctl start ortd
 6. journalctl -u ortd -f
 
-# Testing out a POC using cfs -> apid -> redis (or ort if you want)
+# Testing out a POC using cfs -> apid -> ortd
 
 ### ort-syndicate
 
