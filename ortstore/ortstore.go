@@ -45,7 +45,11 @@ func New(ort *ort.Server, config *Config) *OrtStore {
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
 	s.o.ValueStoreConfig.MsgRing = s.t
 	s.o.ValueStoreConfig.LogDebug = l.Printf
-	s.vs = valuestore.New(&s.o.ValueStoreConfig)
+	var err error
+	s.vs, err = valuestore.New(&s.o.ValueStoreConfig)
+	if err != nil {
+		panic(err)
+	}
 	s.vs.EnableAll()
 	go func() {
 		s.t.Listen()
