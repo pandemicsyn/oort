@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"github.com/gholt/ring"
 )
 
 type NoCache struct{}
@@ -14,7 +16,9 @@ func (c NoCache) Get(key []byte, value []byte) []byte {
 }
 func (c NoCache) Set(key []byte, value []byte) {}
 
-func (c NoCache) Stop() {}
+func (c NoCache) Stop()                {}
+func (c NoCache) Stats() []byte        { return []byte("") }
+func (c NoCache) UpdateRing(ring.Ring) {}
 
 func Benchmark_ByteToInt(b *testing.B) {
 	for n := 0; n < b.N; n++ {

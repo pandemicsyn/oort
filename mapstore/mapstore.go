@@ -1,7 +1,10 @@
 package mapstore
 
 import (
+	"fmt"
 	"sync"
+
+	"github.com/gholt/ring"
 )
 
 type MapCache struct {
@@ -16,6 +19,8 @@ func NewMapCache() *MapCache {
 
 	return &mapcache
 }
+
+func (cache *MapCache) UpdateRing(ring ring.Ring) {}
 
 func (cache *MapCache) Get(key []byte, value []byte) []byte {
 	cache.RLock()
@@ -34,4 +39,8 @@ func (cache *MapCache) Set(key []byte, value []byte) {
 
 func (cache *MapCache) Stop() {
 	return
+}
+
+func (cache *MapCache) Stats() []byte {
+	return []byte(fmt.Sprintf("entries:%d", len(cache.data)))
 }

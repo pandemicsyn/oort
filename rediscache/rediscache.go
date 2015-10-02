@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+
+	"github.com/gholt/ring"
 )
 
 /* Errors */
@@ -48,6 +50,8 @@ type Cache interface {
 	Get(key []byte, value []byte) []byte
 	Set(key []byte, value []byte)
 	Stop()
+	Stats() []byte
+	UpdateRing(ring ring.Ring)
 }
 
 /* Commands */

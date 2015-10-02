@@ -45,7 +45,11 @@ func New(ort *ort.Server, config *Config) *OrtStore {
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
 	s.o.ValueStoreConfig.MsgRing = s.t
 	s.o.ValueStoreConfig.LogDebug = l.Printf
-	s.vs = valuestore.New(&s.o.ValueStoreConfig)
+	var err error
+	s.vs, err = valuestore.New(&s.o.ValueStoreConfig)
+	if err != nil {
+		panic(err)
+	}
 	s.vs.EnableAll()
 	go func() {
 		s.t.Listen()
@@ -63,9 +67,10 @@ func New(ort *ort.Server, config *Config) *OrtStore {
 	return s
 }
 
-func (vsc *OrtStore) UpdateRing() {
+func (vsc *OrtStore) UpdateRing(ring ring.Ring) {
 	vsc.Lock()
-	vsc.t.SetRing(vsc.o.Ring())
+	log.Println("FH - backend got lock for update")
+	vsc.t.SetRing(ring)
 	vsc.Unlock()
 }
 
@@ -98,4 +103,8 @@ func (vsc *OrtStore) Stop() {
 	vsc.vs.DisableAll()
 	vsc.vs.Flush()
 	log.Println(vsc.vs.Stats(true))
+}
+
+func (vsc *OrtStore) Stats() []byte {
+	return []byte(vsc.vs.Stats(true).String())
 }
