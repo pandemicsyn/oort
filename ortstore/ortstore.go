@@ -69,9 +69,9 @@ func New(ort *ort.Server, config *Config) *OrtStore {
 
 func (vsc *OrtStore) UpdateRing(ring ring.Ring) {
 	vsc.Lock()
-	log.Println("FH - backend got lock for update")
 	vsc.t.SetRing(ring)
 	vsc.Unlock()
+	log.Println("Ortstore updated tcp msg ring.")
 }
 
 func (vsc *OrtStore) Get(key []byte, value []byte) []byte {

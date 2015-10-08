@@ -38,7 +38,7 @@ func writeBytes(filename string, b *[]byte) error {
 }
 
 func (o *Server) RingUpdate(newversion int64, ringBytes []byte) int64 {
-	log.Println("Got ring update:", newversion, ringBytes)
+	log.Println("Got ring update notification. Trying to update to version:", newversion)
 	newring, err := ring.LoadRing(bytes.NewReader(ringBytes))
 	if err != nil {
 		log.Println("Error loading ring during update:", err)
@@ -50,7 +50,6 @@ func (o *Server) RingUpdate(newversion int64, ringBytes []byte) int64 {
 	}
 	fname := fmt.Sprintf("/etc/ort/ortd/%d-ort.ring", newring.Version())
 	writeBytes(fname, &ringBytes)
-	log.Println("FH - wrote ring bytes")
 	o.SetRing(newring, fname)
 	return o.Ring().Version()
 }

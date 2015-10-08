@@ -48,14 +48,12 @@ func (o *Server) SetBackend(backend rediscache.Cache) {
 
 func (o *Server) SetRing(r ring.Ring, ringFile string) {
 	o.Lock()
-	defer o.Unlock()
-	log.Println("FH - in SetRing")
 	o.ring = r
 	o.RingFile = ringFile
-	log.Println("FH - about to set local node")
 	o.ring.SetLocalNode(o.LocalID)
-	log.Println("FH - about to update backend")
 	o.backend.UpdateRing(o.ring)
+	log.Println("Ring version is now:", o.ring.Version())
+	o.Unlock()
 }
 
 // Ring returns an instance of the current Ring
