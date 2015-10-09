@@ -9,8 +9,9 @@
 You need godep.
 
 * go get -u github.com/pandemicsyn/ort
-* cd $GOPATH/src/github.com/pandemicsyn/ort
-* make build or make run or make packages
+* go install github.com/pandemicsyn/ort/ortd
+* mkdir -p /etc/ort/ortd
+* If you'll be using the CmdCtrl interface you'll need to deploy your SSL key/crt to /etc/ort or whatever path you've specified in the ring config.
 
 ### Ort Daemons/Binaries/Backends
 
@@ -31,12 +32,16 @@ Requires fpm.
 
 # installing a non-dev instance (i.e. you actually want an init script)
 
+Make sure you have a synd instance setup and running.
+
 1. mkdir -p /etc/ort/ortd
 2. touch /etc/default/ortd
-3. go install -a github.com/pandemicsyn/ort/ortd
+3. go get -u github.com/pandemicsyn/ort/ortd && go install -a github.com/pandemicsyn/ort/ortd
 4. cp -av $GOHOME/github.com/pandemicsyn/ort/packaging/root/usr/share/ort/systemd/ortd.service /lib/systemd/system
-5. systemctl start ortd
-6. journalctl -u ortd -f
+5. cp -av $GOHOME/github.com/pandemicsyn/ort/packaging/root/etc/ort/server.crt /etc/ort
+6. cp -av $GOHOME/github.com/pandemicsyn/ort/packaging/root/etc/ort/server.key /etc/ort
+7. systemctl start ortd
+8. journalctl -u ortd -f
 
 # Testing out a POC using cfs -> apid -> ortd
 

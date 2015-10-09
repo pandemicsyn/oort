@@ -85,8 +85,25 @@ func (o *Server) handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 func (o *Server) Serve() {
 	defer o.waitGroup.Done()
 	if o.CmdCtrlConfig.Enabled {
-		cc := cmdctrl.NewCCServer(o, &o.CmdCtrlConfig)
-		go cc.Serve()
+		go func(o *Server) {
+			firstAttempt := true
+			for {
+				cc := cmdctrl.NewCCServer(o, &o.CmdCtrlConfig)
+				err := cc.Serve()
+				if err != nil && firstAttempt {
+					//since this is our first attempt to bind/serve and we blew up
+					//we're probably missing something import and wont be able to
+					//recover.
+					log.Fatalln("Error on first attempt to launch CmdCtrl Serve")
+				} else if err != nil && !firstAttempt {
+					log.Println("CmdCtrl Serve encountered error:", err)
+				} else {
+					log.Println("CmdCtrl Serve exited without error, quiting")
+					break
+				}
+				firstAttempt = false
+			}
+		}(o)
 	} else {
 		log.Println("Command and Control functionality disabled via config")
 	}
