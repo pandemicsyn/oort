@@ -105,8 +105,15 @@ func (o *Server) LoadConfig() (err error) {
 	// Check whether we're supposed to skip loading via srv method
 	if strings.ToLower(envSkipSRV) != "true" {
 		s := &srvconf.SRVLoader{
-			Record:       genServiceID("syndicate", "tcp"),
 			SyndicateURL: os.Getenv("ORT_SYNDICATE_OVERRIDE"),
+		}
+		s.Record, err = genServiceID("syndicate", "tcp")
+		if err != nil {
+			if os.Getenv("ORT_SYNDICATE_OVERRIDE") == "" {
+				log.Println(err)
+			} else {
+				log.Fatalln("No ORT_SYNDICATE_OVERRIDE provided and", err)
+			}
 		}
 		if os.Getenv("ORT_SYNDICATE_OVERRIDE") != "" {
 			log.Println("Overriding ort syndicate url with url from env!", os.Getenv("ORT_SYNDICATE_OVERRIDE"))
@@ -202,8 +209,11 @@ func (o *Server) CacheConfig() error {
 }
 
 //TODO: need to remove the hack to add IAD3 identifier
-func genServiceID(name, proto string) string {
+func genServiceID(name, proto string) (string, error) {
 	h, _ := os.Hostname()
 	d := strings.SplitN(h, ".", 2)
-	return fmt.Sprintf("_%s._%s.%s", name, proto, d[1])
+	if len(d) != 2 {
+		return "", fmt.Errorf("Unable to determine FQDN, only got short name.")
+	}
+	return fmt.Sprintf("_%s._%s.%s", name, proto, d[1]), nil
 }

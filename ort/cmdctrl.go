@@ -70,6 +70,10 @@ func (o *Server) Restart() error {
 	return nil
 }
 
+func (o *Server) HealthCheck() (bool, string) {
+	return true, "pong"
+}
+
 // shutdownFinished closes the ShutdownComplete channel
 // 10 miliseconds after being invoked (to give a cmd ctrl client
 // a chance to return.
