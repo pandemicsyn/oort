@@ -107,6 +107,7 @@ func main() {
 		fuse.Subtype("cfs"),
 		fuse.LocalVolume(),
 		fuse.VolumeName("CFS"),
+		//fuse.AllowOther(),
 	)
 	if err != nil {
 		log.Fatal(err)
