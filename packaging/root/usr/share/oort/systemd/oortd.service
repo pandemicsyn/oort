@@ -2,7 +2,7 @@
 # systemd unit file
 #
 [Unit]
-Description=ortd
+Description=oortd
 # start us only once the network and logging subsystems are available
 After=syslog.target network.target
 
@@ -11,8 +11,8 @@ After=syslog.target network.target
 # http://0pointer.de/public/systemd-man/systemd.exec.html
 [Service]
 Type=simple
-EnvironmentFile=/etc/default/ortd
-ExecStart=/root/go/bin/ortd
+EnvironmentFile=/etc/default/oortd
+ExecStart=/root/go/bin/oortd
 
 # if we crash, restart
 RestartSec=5

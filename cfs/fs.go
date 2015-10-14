@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	pb "github.com/pandemicsyn/ort/api/proto"
+	pb "github.com/pandemicsyn/oort/api/proto"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fuseutil"

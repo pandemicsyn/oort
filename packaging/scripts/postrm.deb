@@ -11,16 +11,16 @@ version() {
 }
 
 upstart() {
-  rm -f /etc/init/ortd.conf
+  rm -f /etc/init/oortd.conf
 }
 
 systemd() {
-  rm -f /lib/systemd/system/ortd.service
+  rm -f /lib/systemd/system/oortd.service
 }
 
 sysv() {
-  update-rc.d -f ortd remove
-  rm -f /etc/init.d/ortd
+  update-rc.d -f oortd remove
+  rm -f /etc/init.d/oortd
 }
 
 validate_ver() {
@@ -51,5 +51,5 @@ esac
 
 if [ "$1" = "purge" ] ; then
   echo "Purging Stalkerd configuration"
-  rm -rf /etc/ort/ortd.toml-sample
+  rm -rf /etc/oort/oortd.toml-sample
 fi

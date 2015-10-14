@@ -1,4 +1,4 @@
-package ort
+package oort
 
 import (
 	"bytes"
@@ -14,13 +14,13 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
-	"github.com/pandemicsyn/ort-syndicate/cmdctrl"
-	"github.com/pandemicsyn/ort/utils/srvconf"
+	"github.com/pandemicsyn/oort/utils/srvconf"
+	"github.com/pandemicsyn/syndicate/cmdctrl"
 )
 
 var (
 	CONFIG_CACHE_DIR  = "/var/cache"
-	CONFIG_CACHE_FILE = "ortd-config.cache"
+	CONFIG_CACHE_FILE = "oortd-config.cache"
 	STALE_CACHE_TIME  = 48 * time.Hour
 )
 
@@ -61,7 +61,7 @@ func (o *Server) loadRingConfig() (err error) {
 }
 
 func (o *Server) LoadConfig() (err error) {
-	envSkipSRV := os.Getenv("ORTD_SKIP_SRV")
+	envSkipSRV := os.Getenv("OORTD_SKIP_SRV")
 	//First try and populate from cache.
 	//Its fine if it doesn't exist or fails to load or is old
 	var cached cacheConfig
@@ -105,18 +105,18 @@ func (o *Server) LoadConfig() (err error) {
 	// Check whether we're supposed to skip loading via srv method
 	if strings.ToLower(envSkipSRV) != "true" {
 		s := &srvconf.SRVLoader{
-			SyndicateURL: os.Getenv("ORT_SYNDICATE_OVERRIDE"),
+			SyndicateURL: os.Getenv("OORT_SYNDICATE_OVERRIDE"),
 		}
 		s.Record, err = genServiceID("syndicate", "tcp")
 		if err != nil {
-			if os.Getenv("ORT_SYNDICATE_OVERRIDE") == "" {
+			if os.Getenv("OORT_SYNDICATE_OVERRIDE") == "" {
 				log.Println(err)
 			} else {
-				log.Fatalln("No ORT_SYNDICATE_OVERRIDE provided and", err)
+				log.Fatalln("No OORT_SYNDICATE_OVERRIDE provided and", err)
 			}
 		}
-		if os.Getenv("ORT_SYNDICATE_OVERRIDE") != "" {
-			log.Println("Overriding ort syndicate url with url from env!", os.Getenv("ORT_SYNDICATE_OVERRIDE"))
+		if os.Getenv("OORT_SYNDICATE_OVERRIDE") != "" {
+			log.Println("Overriding oort syndicate url with url from env!", os.Getenv("OORT_SYNDICATE_OVERRIDE"))
 		}
 		nc, err := s.Load()
 		if err != nil {
@@ -126,14 +126,14 @@ func (o *Server) LoadConfig() (err error) {
 		if err != nil {
 			return fmt.Errorf("Error while loading ring for config get via srv lookup: %s", err)
 		}
-		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("/etc/ort/ortd/%d-ort.ring", o.ring.Version()))
+		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("/etc/oort/oortd/%d-oort.ring", o.ring.Version()))
 		if err != nil {
 			return err
 		}
 		o.LocalID = nc.Localid
 		o.ring.SetLocalNode(o.LocalID)
-		o.StoreType = "ortstore"
-		o.RingFile = fmt.Sprintf("/etc/ort/ortd/%d-ort.ring", o.ring.Version())
+		o.StoreType = "oortstore"
+		o.RingFile = fmt.Sprintf("/etc/oort/oortd/%d-oort.ring", o.ring.Version())
 		o.ListenAddr = "0.0.0.0:6379"
 		err = o.loadRingConfig()
 		if err != nil {
@@ -142,13 +142,13 @@ func (o *Server) LoadConfig() (err error) {
 	} else {
 		// if you skip the srv load you have to provide all of the info in env vars!
 		log.Println("Skipped SRV Config attempting to load from env")
-		o.ListenAddr = os.Getenv("ORT_LISTEN_ADDRESS")
-		s, err := strconv.ParseUint(os.Getenv("ORT_LOCALID"), 10, 64)
+		o.ListenAddr = os.Getenv("OORT_LISTEN_ADDRESS")
+		s, err := strconv.ParseUint(os.Getenv("OORT_LOCALID"), 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to load env specified local id")
 		}
 		o.LocalID = s
-		o.RingFile = os.Getenv("ORT_RING_FILE")
+		o.RingFile = os.Getenv("OORT_RING_FILE")
 		o.ring, _, err = ring.RingOrBuilder(o.RingFile)
 		if err != nil {
 			return fmt.Errorf("Unable to road env specified ring: %s", err)
@@ -160,8 +160,8 @@ func (o *Server) LoadConfig() (err error) {
 		}
 	}
 	// Allow overriding a few things via the env, that may be handy for debugging
-	if os.Getenv("ORT_LISTEN_ADDRESS") != "" {
-		o.ListenAddr = os.Getenv("ORT_LISTEN_ADDRESS")
+	if os.Getenv("OORT_LISTEN_ADDRESS") != "" {
+		o.ListenAddr = os.Getenv("OORT_LISTEN_ADDRESS")
 	}
 	return nil
 }
@@ -176,7 +176,7 @@ type cacheConfig struct {
 }
 
 // CacheConfig caches a minimal config in
-// /var/cache/ortd-config.cache
+// /var/cache/oortd-config.cache
 func (o *Server) CacheConfig() error {
 	o.Lock()
 	defer o.Unlock()

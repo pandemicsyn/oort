@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
 
-	pb "github.com/pandemicsyn/ort/api/proto"
-	"github.com/pandemicsyn/ort/apid/flother"
+	pb "github.com/pandemicsyn/oort/api/proto"
+	"github.com/pandemicsyn/oort/apid/flother"
 
 	"net"
 	"time"
@@ -22,7 +22,7 @@ var (
 	certFile = flag.String("cert_file", "server.crt", "The TLS cert file")
 	keyFile  = flag.String("key_file", "server.key", "The TLS key file")
 	port     = flag.Int("port", 8443, "The server port")
-	ortHost  = flag.String("orthost", "127.0.0.1:6379", "host:port to use when connecting to ort")
+	oortHost = flag.String("orthost", "127.0.0.1:6379", "host:port to use when connecting to oort")
 )
 
 // FatalIf is just a lazy log/panic on error func
@@ -42,7 +42,7 @@ func genUUID() string {
 
 func newApiServer(fs *InMemFS) *apiServer {
 	s := new(apiServer)
-	s.rpool = newRedisPool(*ortHost)
+	s.rpool = newRedisPool(*oortHost)
 	s.fs = fs
 	// TODO: Get epoch and node from some config
 	s.fl = flother.NewFlother(time.Time{}, 1)

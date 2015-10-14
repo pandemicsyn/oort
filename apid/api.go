@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	pb "github.com/pandemicsyn/ort/api/proto"
-	"github.com/pandemicsyn/ort/apid/flother"
+	pb "github.com/pandemicsyn/oort/api/proto"
+	"github.com/pandemicsyn/oort/apid/flother"
 	"github.com/spaolacci/murmur3"
 	"golang.org/x/net/context"
 )

@@ -1,4 +1,4 @@
-package ort
+package oort
 
 import (
 	"bytes"
@@ -48,7 +48,7 @@ func (o *Server) RingUpdate(newversion int64, ringBytes []byte) int64 {
 		log.Println("Provided ring version != version in ring")
 		return o.Ring().Version()
 	}
-	fname := fmt.Sprintf("/etc/ort/ortd/%d-ort.ring", newring.Version())
+	fname := fmt.Sprintf("/etc/oort/oortd/%d-oort.ring", newring.Version())
 	writeBytes(fname, &ringBytes)
 	o.SetRing(newring, fname)
 	return o.Ring().Version()

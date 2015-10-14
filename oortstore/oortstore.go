@@ -1,4 +1,4 @@
-package ortstore
+package oortstore
 
 import (
 	"bytes"
@@ -9,17 +9,17 @@ import (
 
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
-	"github.com/pandemicsyn/ort/ort"
-	"github.com/pandemicsyn/ort/rediscache"
+	"github.com/pandemicsyn/oort/oort"
+	"github.com/pandemicsyn/oort/rediscache"
 	"github.com/spaolacci/murmur3"
 	"gopkg.in/gholt/brimtime.v1"
 )
 
-type OrtStore struct {
+type OortStore struct {
 	sync.RWMutex
 	vs valuestore.ValueStore
 	t  *ring.TCPMsgRing
-	o  *ort.Server
+	o  *oort.Server
 	c  *Config
 }
 
@@ -28,9 +28,9 @@ type Config struct {
 	Profile bool
 }
 
-func New(ort *ort.Server, config *Config) *OrtStore {
-	s := &OrtStore{}
-	s.o = ort
+func New(oort *oort.Server, config *Config) *OortStore {
+	s := &OortStore{}
+	s.o = oort
 	s.c = config
 	if s.c.Debug {
 		log.Println("Ring entries:")
@@ -67,14 +67,14 @@ func New(ort *ort.Server, config *Config) *OrtStore {
 	return s
 }
 
-func (vsc *OrtStore) UpdateRing(ring ring.Ring) {
+func (vsc *OortStore) UpdateRing(ring ring.Ring) {
 	vsc.Lock()
 	vsc.t.SetRing(ring)
 	vsc.Unlock()
-	log.Println("Ortstore updated tcp msg ring.")
+	log.Println("Oortstore updated tcp msg ring.")
 }
 
-func (vsc *OrtStore) Get(key []byte, value []byte) []byte {
+func (vsc *OortStore) Get(key []byte, value []byte) []byte {
 	keyA, keyB := murmur3.Sum128(key)
 	var err error
 	_, value, err = vsc.vs.Read(keyA, keyB, value)
@@ -84,7 +84,7 @@ func (vsc *OrtStore) Get(key []byte, value []byte) []byte {
 	return value
 }
 
-func (vsc *OrtStore) Set(key []byte, value []byte) {
+func (vsc *OortStore) Set(key []byte, value []byte) {
 	if bytes.Equal(key, rediscache.BYTES_SHUTDOWN) && bytes.Equal(value, rediscache.BYTES_NOW) {
 		vsc.vs.DisableAll()
 		vsc.vs.Flush()
@@ -99,12 +99,12 @@ func (vsc *OrtStore) Set(key []byte, value []byte) {
 	}
 }
 
-func (vsc *OrtStore) Stop() {
+func (vsc *OortStore) Stop() {
 	vsc.vs.DisableAll()
 	vsc.vs.Flush()
 	log.Println(vsc.vs.Stats(true))
 }
 
-func (vsc *OrtStore) Stats() []byte {
+func (vsc *OortStore) Stats() []byte {
 	return []byte(vsc.vs.Stats(true).String())
 }

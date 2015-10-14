@@ -4,7 +4,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	pb "github.com/pandemicsyn/ort/api/proto"
+	pb "github.com/pandemicsyn/oort/api/proto"
 )
 
 type DirService interface {

@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync"
 
-	pb "github.com/pandemicsyn/ort/api/proto"
+	pb "github.com/pandemicsyn/oort/api/proto"
 
 	"bazil.org/fuse"
 	"google.golang.org/grpc"
@@ -48,7 +48,7 @@ func (s *server) serve() error {
 
 var (
 	debug              = flag.Bool("debug", false, "enable debug log messages to stderr")
-	serverAddr         = flag.String("host", "127.0.0.1:8443", "The ort api server to connect too")
+	serverAddr         = flag.String("host", "127.0.0.1:8443", "The oort api server to connect too")
 	serverHostOverride = flag.String("host_override", "localhost", "")
 )
 

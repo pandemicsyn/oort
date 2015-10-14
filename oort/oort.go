@@ -1,4 +1,4 @@
-package ort
+package oort
 
 import (
 	"bufio"
@@ -9,8 +9,8 @@ import (
 
 	"github.com/gholt/ring"
 	"github.com/gholt/valuestore"
-	"github.com/pandemicsyn/ort-syndicate/cmdctrl"
-	"github.com/pandemicsyn/ort/rediscache"
+	"github.com/pandemicsyn/oort/rediscache"
+	"github.com/pandemicsyn/syndicate/cmdctrl"
 )
 
 type Server struct {
