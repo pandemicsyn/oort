@@ -21,7 +21,7 @@ Restart=on-failure
 # use syslog for logging
 StandardOutput=syslog
 StandardError=syslog
-SyslogIdentifier=ortd
+SyslogIdentifier=oortd
 
 LimitCPU=infinity
 LimitFSIZE=infinity
