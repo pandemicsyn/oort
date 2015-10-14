@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/grpclog"
 
 	pb "github.com/pandemicsyn/ort/api/proto"
+	"github.com/pandemicsyn/ort/apid/flother"
 
 	"net"
-	"sync"
 	"time"
 )
 
@@ -44,6 +44,8 @@ func newApiServer(fs *InMemFS) *apiServer {
 	s := new(apiServer)
 	s.rpool = newRedisPool(*ortHost)
 	s.fs = fs
+	// TODO: Get epoch and node from some config
+	s.fl = flother.NewFlother(time.Time{}, 1)
 	return s
 }
 
@@ -59,27 +61,6 @@ func newRedisPool(server string) *redis.Pool {
 			return c, err
 		},
 	}
-}
-
-// InMemFS holds our fs nodes by inode
-type InMemFS struct {
-	sync.RWMutex
-	nodes map[uint64]*Entry
-}
-
-// Entry describes each node in our fs.
-// it also contains a list of all other entries "in this node".
-// i.e. all files/directory in this directory.
-type Entry struct {
-	path  string // string path/name for this entry
-	isdir bool
-	sync.RWMutex
-	attr      *pb.Attr
-	parent    uint64            // inode of the parent
-	UUIDNode  int64             //the original/actual inode incase fuse stomps on the one in attr
-	entries   map[string]uint64 // subdir/files by name
-	ientries  map[uint64]string // subdir/files by inode
-	nodeCount uint64            // uint64
 }
 
 func main() {
@@ -99,14 +80,14 @@ func main() {
 	// need to add root always
 	n := &Entry{
 		path:     "/",
-		UUIDNode: 1,
+		inode:    1,
 		isdir:    true,
 		entries:  make(map[string]uint64),
 		ientries: make(map[uint64]string),
 	}
 	ts := time.Now().Unix()
 	n.attr = &pb.Attr{
-		Inode:  uint64(n.UUIDNode),
+		Inode:  n.inode,
 		Atime:  ts,
 		Mtime:  ts,
 		Ctime:  ts,
