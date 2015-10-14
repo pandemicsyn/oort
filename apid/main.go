@@ -22,7 +22,7 @@ var (
 	certFile = flag.String("cert_file", "server.crt", "The TLS cert file")
 	keyFile  = flag.String("key_file", "server.key", "The TLS key file")
 	port     = flag.Int("port", 8443, "The server port")
-	oortHost = flag.String("orthost", "127.0.0.1:6379", "host:port to use when connecting to oort")
+	oortHost = flag.String("oorthost", "127.0.0.1:6379", "host:port to use when connecting to oort")
 )
 
 // FatalIf is just a lazy log/panic on error func
