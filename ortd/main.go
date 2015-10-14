@@ -34,7 +34,7 @@ func main() {
 		log.Println()
 		return
 	}
-	go ort.Serve()
+	ort.Serve()
 	log.Println(ort.CmdCtrlConfig)
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

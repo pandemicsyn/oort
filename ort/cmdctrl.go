@@ -59,6 +59,8 @@ func (o *Server) Stats() []byte {
 }
 
 func (o *Server) Start() error {
+	o.ch = make(chan bool)
+	go o.serve()
 	return nil
 }
 
@@ -67,6 +69,11 @@ func (o *Server) Reload() error {
 }
 
 func (o *Server) Restart() error {
+	close(o.ch)
+	o.waitGroup.Wait()
+	o.backend.Stop()
+	o.ch = make(chan bool)
+	go o.serve()
 	return nil
 }
 
@@ -84,7 +91,17 @@ func (o *Server) shutdownFinished() {
 
 // Stop the backend and shutdown all listeners.
 // Closes the ShutdownComplete chan when finsihed.
+// Does NOT exist the process.
 func (o *Server) Stop() error {
+	close(o.ch)
+	o.waitGroup.Wait()
+	o.backend.Stop()
+	return nil
+}
+
+// Exit the backend and shutdown all listeners.
+// Closes the ShutdownComplete chan when finsihed.
+func (o *Server) Exit() error {
 	close(o.ch)
 	o.waitGroup.Wait()
 	o.backend.Stop()

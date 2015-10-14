@@ -15,17 +15,18 @@ import (
 
 type Server struct {
 	sync.RWMutex
-	StoreType        string
-	ListenAddr       string
-	RingFile         string    // The active ring file
-	ring             ring.Ring // The active ring
-	LocalID          uint64    // This nodes local ring id
-	ValueStoreConfig valuestore.Config
-	CmdCtrlConfig    cmdctrl.ConfigOpts
-	backend          rediscache.Cache
-	ch               chan bool
-	ShutdownComplete chan bool
-	waitGroup        *sync.WaitGroup
+	StoreType         string
+	ListenAddr        string
+	RingFile          string    // The active ring file
+	ring              ring.Ring // The active ring
+	LocalID           uint64    // This nodes local ring id
+	ValueStoreConfig  valuestore.Config
+	CmdCtrlConfig     cmdctrl.ConfigOpts
+	cmdCtrlLoopActive bool
+	backend           rediscache.Cache
+	ch                chan bool
+	ShutdownComplete  chan bool
+	waitGroup         *sync.WaitGroup
 }
 
 func New() (*Server, error) {
@@ -34,7 +35,7 @@ func New() (*Server, error) {
 		ShutdownComplete: make(chan bool),
 		waitGroup:        &sync.WaitGroup{},
 	}
-	o.waitGroup.Add(1)
+
 	err := o.LoadConfig()
 	return o, err
 }
@@ -70,6 +71,12 @@ func (o *Server) GetLocalID() uint64 {
 	return o.LocalID
 }
 
+func (o *Server) CmdCtrlLoopActive() bool {
+	o.RLock()
+	defer o.RUnlock()
+	return o.cmdCtrlLoopActive
+}
+
 func (o *Server) handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 	defer conn.Close()
 	defer o.waitGroup.Done()
@@ -81,29 +88,34 @@ func (o *Server) handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
 	}
 }
 
-// Serve starts the command and control instance, as well as the backend
-func (o *Server) Serve() {
+// serve sets up all the channels/listeners. its also invoked by
+// cmdctrl start/restart to turn services back on.
+func (o *Server) serve() {
 	defer o.waitGroup.Done()
+	o.waitGroup.Add(1)
 	if o.CmdCtrlConfig.Enabled {
-		go func(o *Server) {
-			firstAttempt := true
-			for {
-				cc := cmdctrl.NewCCServer(o, &o.CmdCtrlConfig)
-				err := cc.Serve()
-				if err != nil && firstAttempt {
-					//since this is our first attempt to bind/serve and we blew up
-					//we're probably missing something import and wont be able to
-					//recover.
-					log.Fatalln("Error on first attempt to launch CmdCtrl Serve")
-				} else if err != nil && !firstAttempt {
-					log.Println("CmdCtrl Serve encountered error:", err)
-				} else {
-					log.Println("CmdCtrl Serve exited without error, quiting")
-					break
+		if !o.cmdCtrlLoopActive {
+			go func(o *Server) {
+				firstAttempt := true
+				for {
+					o.cmdCtrlLoopActive = true
+					cc := cmdctrl.NewCCServer(o, &o.CmdCtrlConfig)
+					err := cc.Serve()
+					if err != nil && firstAttempt {
+						//since this is our first attempt to bind/serve and we blew up
+						//we're probably missing something import and wont be able to
+						//recover.
+						log.Fatalln("Error on first attempt to launch CmdCtrl Serve")
+					} else if err != nil && !firstAttempt {
+						log.Println("CmdCtrl Serve encountered error:", err)
+					} else {
+						log.Println("CmdCtrl Serve exited without error, quiting")
+						break
+					}
+					firstAttempt = false
 				}
-				firstAttempt = false
-			}
-		}(o)
+			}(o)
+		}
 	} else {
 		log.Println("Command and Control functionality disabled via config")
 	}
@@ -166,4 +178,9 @@ func (o *Server) Serve() {
 		writerChan <- writer
 		readerChan <- reader
 	}
+}
+
+// Serve starts the command and control instance, as well as the backend
+func (o *Server) Serve() {
+	go o.serve()
 }
