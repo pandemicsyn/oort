@@ -49,6 +49,7 @@ var BYTES_ERR []byte = []byte("-ERR ")
 type Cache interface {
 	Get(key []byte, value []byte) []byte
 	Set(key []byte, value []byte)
+	Start()
 	Stop()
 	Stats() []byte
 	UpdateRing(ring ring.Ring)

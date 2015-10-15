@@ -37,6 +37,10 @@ func (cache *MapCache) Set(key []byte, value []byte) {
 	cache.Unlock()
 }
 
+func (cache *MapCache) Start() {
+	return
+}
+
 func (cache *MapCache) Stop() {
 	return
 }

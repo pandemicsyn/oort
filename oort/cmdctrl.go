@@ -60,6 +60,7 @@ func (o *Server) Stats() []byte {
 
 func (o *Server) Start() error {
 	o.ch = make(chan bool)
+	o.backend.Start()
 	go o.serve()
 	return nil
 }
@@ -73,6 +74,7 @@ func (o *Server) Restart() error {
 	o.waitGroup.Wait()
 	o.backend.Stop()
 	o.ch = make(chan bool)
+	o.backend.Start()
 	go o.serve()
 	return nil
 }
