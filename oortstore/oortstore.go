@@ -17,10 +17,11 @@ import (
 
 type OortStore struct {
 	sync.RWMutex
-	vs valuestore.ValueStore
-	t  *ring.TCPMsgRing
-	o  *oort.Server
-	c  *Config
+	vs      valuestore.ValueStore
+	t       *ring.TCPMsgRing
+	o       *oort.Server
+	c       *Config
+	stopped bool
 }
 
 type Config struct {
@@ -100,9 +101,17 @@ func (vsc *OortStore) Set(key []byte, value []byte) {
 }
 
 func (vsc *OortStore) Stop() {
+	vsc.Lock()
+	if vsc.stopped {
+		vsc.Unlock()
+		return
+	}
 	vsc.vs.DisableAll()
 	vsc.vs.Flush()
+	vsc.t.Shutdown()
+	vsc.Unlock()
 	log.Println(vsc.vs.Stats(true))
+	log.Println("Ortstore stop complete")
 }
 
 func (vsc *OortStore) Stats() []byte {
