@@ -14,6 +14,10 @@ Type=simple
 EnvironmentFile=/etc/default/oortd
 ExecStart=/root/go/bin/oortd
 
+# it could take a long time to flush data to disk
+# so we set 0 to never timeout on TERM
+TimeoutStopSec=0
+
 # if we crash, restart
 RestartSec=5
 Restart=on-failure
