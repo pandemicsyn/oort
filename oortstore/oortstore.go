@@ -46,26 +46,30 @@ func New(oort *oort.Server, config *Config) *OortStore {
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
 	s.o.ValueStoreConfig.MsgRing = s.t
 	s.o.ValueStoreConfig.LogDebug = l.Printf
+	s.start()
+	return s
+}
+
+func (vsc *OortStore) start() {
 	var err error
-	s.vs, err = valuestore.New(&s.o.ValueStoreConfig)
+	vsc.vs, err = valuestore.New(&vsc.o.ValueStoreConfig)
 	if err != nil {
 		panic(err)
 	}
-	s.vs.EnableAll()
+	vsc.vs.EnableAll()
 	go func() {
-		s.t.Listen()
+		vsc.t.Listen()
 		log.Println("Listen() returned, shutdown?")
 	}()
 	go func() {
-		tcpMsgRingStats := s.t.Stats(false)
+		tcpMsgRingStats := vsc.t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
-			tcpMsgRingStats = s.t.Stats(false)
+			tcpMsgRingStats = vsc.t.Stats(false)
 			log.Printf("%v\n", tcpMsgRingStats)
-			log.Printf("%s\n", s.vs.Stats(false))
+			log.Printf("%s\n", vsc.vs.Stats(false))
 		}
 	}()
-	return s
 }
 
 func (vsc *OortStore) UpdateRing(ring ring.Ring) {
@@ -100,6 +104,19 @@ func (vsc *OortStore) Set(key []byte, value []byte) {
 	}
 }
 
+func (vsc *OortStore) Start() {
+	vsc.Lock()
+	if !vsc.stopped {
+		vsc.Unlock()
+		return
+	}
+	vsc.start()
+	vsc.stopped = false
+	vsc.Unlock()
+	log.Println(vsc.vs.Stats(true))
+	log.Println("Ortstore stop complete")
+}
+
 func (vsc *OortStore) Stop() {
 	vsc.Lock()
 	if vsc.stopped {
@@ -109,6 +126,7 @@ func (vsc *OortStore) Stop() {
 	vsc.vs.DisableAll()
 	vsc.vs.Flush()
 	vsc.t.Shutdown()
+	vsc.stopped = true
 	vsc.Unlock()
 	log.Println(vsc.vs.Stats(true))
 	log.Println("Ortstore stop complete")
