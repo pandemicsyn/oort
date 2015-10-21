@@ -69,6 +69,7 @@ func (o *Server) Start() error {
 	o.ch = make(chan bool)
 	o.backend.Start()
 	go o.serve()
+	o.stopped = false
 	return nil
 }
 
@@ -85,9 +86,11 @@ func (o *Server) Restart() error {
 	close(o.ch)
 	o.waitGroup.Wait()
 	o.backend.Stop()
+	o.stopped = true
 	o.ch = make(chan bool)
 	o.backend.Start()
 	go o.serve()
+	o.stopped = false
 	return nil
 }
 
@@ -115,6 +118,7 @@ func (o *Server) Stop() error {
 	close(o.ch)
 	o.waitGroup.Wait()
 	o.backend.Stop()
+	o.stopped = true
 	return nil
 }
 
@@ -131,6 +135,7 @@ func (o *Server) Exit() error {
 	close(o.ch)
 	o.waitGroup.Wait()
 	o.backend.Stop()
+	o.stopped = true
 	defer o.shutdownFinished()
 	return nil
 }
