@@ -38,6 +38,8 @@ func writeBytes(filename string, b *[]byte) error {
 }
 
 func (o *Server) RingUpdate(newversion int64, ringBytes []byte) int64 {
+	o.cmdCtrlLock.Lock()
+	defer o.cmdCtrlLock.Unlock()
 	log.Println("Got ring update notification. Trying to update to version:", newversion)
 	newring, err := ring.LoadRing(bytes.NewReader(ringBytes))
 	if err != nil {
@@ -59,6 +61,11 @@ func (o *Server) Stats() []byte {
 }
 
 func (o *Server) Start() error {
+	o.cmdCtrlLock.Lock()
+	defer o.cmdCtrlLock.Unlock()
+	if !o.stopped {
+		return fmt.Errorf("Service already running")
+	}
 	o.ch = make(chan bool)
 	o.backend.Start()
 	go o.serve()
@@ -70,6 +77,11 @@ func (o *Server) Reload() error {
 }
 
 func (o *Server) Restart() error {
+	o.cmdCtrlLock.Lock()
+	defer o.cmdCtrlLock.Unlock()
+	if o.stopped {
+		return fmt.Errorf("Service not running")
+	}
 	close(o.ch)
 	o.waitGroup.Wait()
 	o.backend.Stop()
@@ -95,6 +107,11 @@ func (o *Server) shutdownFinished() {
 // Closes the ShutdownComplete chan when finsihed.
 // Does NOT exist the process.
 func (o *Server) Stop() error {
+	o.cmdCtrlLock.Lock()
+	defer o.cmdCtrlLock.Unlock()
+	if o.stopped {
+		return fmt.Errorf("Service already stopped")
+	}
 	close(o.ch)
 	o.waitGroup.Wait()
 	o.backend.Stop()
@@ -104,6 +121,13 @@ func (o *Server) Stop() error {
 // Exit the backend and shutdown all listeners.
 // Closes the ShutdownComplete chan when finsihed.
 func (o *Server) Exit() error {
+	o.cmdCtrlLock.Lock()
+	defer o.cmdCtrlLock.Unlock()
+	if o.stopped {
+		o.backend.Stop()
+		defer o.shutdownFinished()
+		return nil
+	}
 	close(o.ch)
 	o.waitGroup.Wait()
 	o.backend.Stop()

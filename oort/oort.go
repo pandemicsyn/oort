@@ -27,6 +27,8 @@ type Server struct {
 	ch                chan bool
 	ShutdownComplete  chan bool
 	waitGroup         *sync.WaitGroup
+	cmdCtrlLock       sync.RWMutex
+	stopped           bool
 }
 
 func New() (*Server, error) {
@@ -34,8 +36,8 @@ func New() (*Server, error) {
 		ch:               make(chan bool),
 		ShutdownComplete: make(chan bool),
 		waitGroup:        &sync.WaitGroup{},
+		stopped:          false,
 	}
-
 	err := o.LoadConfig()
 	return o, err
 }
