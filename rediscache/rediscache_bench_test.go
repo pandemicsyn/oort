@@ -15,7 +15,7 @@ func (c NoCache) Get(key []byte, value []byte) []byte {
 	return nil
 }
 func (c NoCache) Set(key []byte, value []byte) {}
-
+func (c NoCache) Del(key []byte) {}
 func (c NoCache) Start()               {}
 func (c NoCache) Stop()                {}
 func (c NoCache) Stats() []byte        { return []byte("") }

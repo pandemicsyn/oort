@@ -53,7 +53,7 @@ func (vsc *OortStore) start() {
 	vsc.t = ring.NewTCPMsgRing(nil)
 	vsc.o.ValueStoreConfig.MsgRing = vsc.t
 	vsc.t.SetRing(vsc.o.Ring())
-	vsc.vs, err = valuestore.New(&vsc.o.ValueStoreConfig)
+	vsc.vs, err = valuestore.NewValueStore(&vsc.o.ValueStoreConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -102,6 +102,15 @@ func (vsc *OortStore) Set(key []byte, value []byte) {
 	_, err := vsc.vs.Write(keyA, keyB, brimtime.TimeToUnixMicro(time.Now()), value)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func (vsc *OortStore) Del(key []byte) {
+	keyA, keyB := murmur3.Sum128(key)
+	var err error
+	_, err = vsc.vs.Delete(keyA, keyB, brimtime.TimeToUnixMicro(time.Now()))
+	if err != nil {
+		log.Printf("Del: %#v %s\n", string(key), err)
 	}
 }
 
