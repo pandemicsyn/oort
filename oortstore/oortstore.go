@@ -105,6 +105,15 @@ func (vsc *OortStore) Set(key []byte, value []byte) {
 	}
 }
 
+func (vsc *OortStore) Del(key []byte) {
+	keyA, keyB := murmur3.Sum128(key)
+	var err error
+	_, err = vsc.vs.Delete(keyA, keyB, brimtime.TimeToUnixMicro(time.Now()))
+	if err != nil {
+		log.Printf("Del: %#v %s\n", string(key), err)
+	}
+}
+
 func (vsc *OortStore) Start() {
 	vsc.Lock()
 	if !vsc.stopped {

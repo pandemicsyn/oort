@@ -37,6 +37,12 @@ func (cache *MapCache) Set(key []byte, value []byte) {
 	cache.Unlock()
 }
 
+func (cache *MapCache) Del(key []byte) {
+	cache.Lock()
+	delete(cache.data, string(key))
+	cache.Unlock()
+}
+
 func (cache *MapCache) Start() {
 	return
 }
