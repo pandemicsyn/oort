@@ -35,14 +35,12 @@ func main() {
 		return
 	}
 	o.Serve()
-	log.Println(o.CmdCtrlConfig)
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-
 	for {
 		select {
 		case <-ch:
-			o.Stop()
+			o.Exit()
 			<-o.ShutdownComplete
 			return
 		case <-o.ShutdownComplete:
