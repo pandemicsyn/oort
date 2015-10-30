@@ -42,7 +42,7 @@ func main() {
 	for {
 		select {
 		case <-ch:
-			o.Stop()
+			o.Exit()
 			<-o.ShutdownComplete
 			return
 		case <-o.ShutdownComplete:

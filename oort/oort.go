@@ -21,6 +21,7 @@ type Server struct {
 	ring              ring.Ring // The active ring
 	LocalID           uint64    // This nodes local ring id
 	ValueStoreConfig  valuestore.Config
+	TCPMsgRingConfig  ring.TCPMsgRingConfig
 	CmdCtrlConfig     cmdctrl.ConfigOpts
 	cmdCtrlLoopActive bool
 	backend           rediscache.Cache
