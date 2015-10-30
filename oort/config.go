@@ -167,13 +167,13 @@ func (o *Server) LoadConfig() (err error) {
 }
 
 type cacheConfig struct {
-	LocalID          uint64                `toml:"LocalID"`
-	ListenAddr       string                `toml:"ListenAddr"`
-	RingFile         string                `toml:"RingFile"`
-	CacheTime        time.Time             `toml:"CacheTime"`
-	ValueStoreConfig valuestore.Config     `toml:"ValueStoreConfig"`
-	CmdCtrlConfig    cmdctrl.ConfigOpts    `toml:"CmdCtrlConfig"`
-	TCPMsgRingConfig ring.TCPMsgRingConfig `toml:"TCPMsgRingConfig"`
+	LocalID          uint64                      `toml:"LocalID"`
+	ListenAddr       string                      `toml:"ListenAddr"`
+	RingFile         string                      `toml:"RingFile"`
+	CacheTime        time.Time                   `toml:"CacheTime"`
+	ValueStoreConfig valuestore.ValueStoreConfig `toml:"ValueStoreConfig"`
+	CmdCtrlConfig    cmdctrl.ConfigOpts          `toml:"CmdCtrlConfig"`
+	TCPMsgRingConfig ring.TCPMsgRingConfig       `toml:"TCPMsgRingConfig"`
 }
 
 // CacheConfig caches a minimal config in

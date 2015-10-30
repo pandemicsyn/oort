@@ -56,7 +56,7 @@ func (vsc *OortStore) start() {
 	vsc.t = ring.NewTCPMsgRing(&vsc.o.TCPMsgRingConfig)
 	vsc.o.ValueStoreConfig.MsgRing = vsc.t
 	vsc.t.SetRing(vsc.o.Ring())
-	vsc.vs, err = valuestore.New(&vsc.o.ValueStoreConfig)
+	vsc.vs, err = valuestore.NewValueStore(&vsc.o.ValueStoreConfig)
 	if err != nil {
 		panic(err)
 	}

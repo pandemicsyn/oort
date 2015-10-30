@@ -20,7 +20,7 @@ type Server struct {
 	RingFile          string    // The active ring file
 	ring              ring.Ring // The active ring
 	LocalID           uint64    // This nodes local ring id
-	ValueStoreConfig  valuestore.Config
+	ValueStoreConfig  valuestore.ValueStoreConfig
 	TCPMsgRingConfig  ring.TCPMsgRingConfig
 	CmdCtrlConfig     cmdctrl.ConfigOpts
 	cmdCtrlLoopActive bool
