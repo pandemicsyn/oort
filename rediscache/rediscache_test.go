@@ -176,3 +176,19 @@ func Test_Parse_GET_Large(t *testing.T) {
 		t.Error("Value was not returned correctly")
 	}
 }
+
+func Test_Parse_DEL(t *testing.T) {
+	cache := mapstore.NewMapCache()
+	cache.Set([]byte("test_key"), []byte("test_value"))
+	p := NewRESPhandler(cache)
+	in := "*2\r\n$3\r\ndel\r\n$8\r\ntest_key\r\n"
+	out := new(bytes.Buffer)
+	p.Reset(bufio.NewReader(strings.NewReader(in)), bufio.NewWriter(out))
+	p.Parse()
+	v := make([]byte, 0)
+	v = cache.Get([]byte("test_key"), v)
+	if len(v) != 0 {
+		t.Error("Value was not deleted")
+		fmt.Println("VAL:", len(v))
+	}
+}
