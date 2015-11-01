@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gholt/ring"
-	"github.com/gholt/valuestore"
+	"github.com/gholt/store"
 	"github.com/pandemicsyn/oort/rediscache"
 	"github.com/pandemicsyn/syndicate/cmdctrl"
 )
@@ -20,7 +20,7 @@ type Server struct {
 	RingFile          string    // The active ring file
 	ring              ring.Ring // The active ring
 	LocalID           uint64    // This nodes local ring id
-	ValueStoreConfig  valuestore.ValueStoreConfig
+	ValueStoreConfig  store.ValueStoreConfig
 	TCPMsgRingConfig  ring.TCPMsgRingConfig
 	CmdCtrlConfig     cmdctrl.ConfigOpts
 	cmdCtrlLoopActive bool
