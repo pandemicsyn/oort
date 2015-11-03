@@ -5,13 +5,32 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/pandemicsyn/midnight-llama/scrambled"
 )
+
+type Scrambled struct {
+	r rand.Source
+}
+
+func NewScrambled() *Scrambled {
+	return &Scrambled{r: rand.NewSource(time.Now().UnixNano())}
+}
+
+func (s *Scrambled) Read(bs []byte) {
+	for i := len(bs) - 1; i >= 0; {
+		v := s.r.Int63()
+		for j := 7; i >= 0 && j >= 0; j-- {
+			bs[i] = byte(v)
+			i--
+			v >>= 8
+		}
+	}
+}
 
 func OnlyLogIf(err error) {
 	if err != nil {
@@ -144,7 +163,7 @@ func main() {
 	flag.Parse()
 	runtime.GOMAXPROCS(*procs)
 
-	s := scrambled.NewScrambled()
+	s := NewScrambled()
 	value := make([]byte, *vsize)
 	s.Read(value)
 	perClient := *num / *clients
