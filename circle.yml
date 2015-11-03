@@ -11,13 +11,16 @@ machine:
 dependencies:
   pre:
     - go get github.com/gholt/ring
+    - go get github.com/gholt/store
+    - go get -f -u github.com/pandemicsyn/syndicate/synd
 test:
   pre:
     - go version
+    - go get -f -u github.com/pandemicsyn/oort/oortd
+    - go get -f -u github.com/pandemicsyn/oort/cfs
+    - go get -f -u github.com/pandemicsyn/oort/apid
   override:
-    - go test -i github.com/pandemicsyn/oort/oortd
     - go test ./...
-    - go test -bench github.com/pandemicsyn/oort/rediscache
     - go install -v github.com/pandemicsyn/oort/oortd
     - go install -v github.com/pandemicsyn/oort/cfs
     - go install -v github.com/pandemicsyn/oort/apid
