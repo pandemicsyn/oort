@@ -1,1 +1,11 @@
-go build . && fusermount -u /tmp/test && ./cfs -debug=true /tmp/test
+# To build:
+
+`go build . `
+
+# To mount:
+
+`./cfs -debug=true -host the.ort.api.host:port /mnt/something`
+
+# To unmount:
+
+`fusermount -u /mnt/something`
