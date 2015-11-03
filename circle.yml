@@ -21,7 +21,6 @@ test:
     - go get -f -u github.com/pandemicsyn/oort/apid
   override:
     - go test ./...
-    - go test -bench github.com/pandemicsyn/oort/rediscache
     - go install -v github.com/pandemicsyn/oort/oortd
     - go install -v github.com/pandemicsyn/oort/cfs
     - go install -v github.com/pandemicsyn/oort/apid
