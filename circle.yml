@@ -29,11 +29,11 @@ deployment:
     branch: ci
     owner: pandemicsyn
     commands:
-      — go get github.com/tcnksm/ghr
-      — ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease ci-`cat VERSION` $CIRCLE_ARTIFACTS
+      - go get github.com/tcnksm/ghr
+      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease ci-`cat VERSION` $CIRCLE_ARTIFACTS
   qa:
     branch: qa
     owner: pandemicsyn
     commands:
-      — go get github.com/tcnksm/ghr
-      — ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease `cat VERSION` $CIRCLE_ARTIFACTS
+      - go get github.com/tcnksm/ghr
+      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease `cat VERSION` $CIRCLE_ARTIFACTS
