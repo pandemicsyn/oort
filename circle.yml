@@ -25,3 +25,16 @@ test:
   post:
     - env GOOS=linux GOARCH=amd64 go build -i -v -o $CIRCLE_ARTIFACTS/oortd github.com/pandemicsyn/oort/oortd
 
+deployment:
+  ci:
+    branch: ci
+    owner: pandemicsyn
+    commands:
+      — go get github.com/tcnksm/ghr
+      — ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease ci-`cat VERSION` $CIRCLE_ARTIFACTS
+  qa:
+    branch: qa
+    owner: pandemicsyn
+    commands:
+      — go get github.com/tcnksm/ghr
+      — ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease `cat VERSION` $CIRCLE_ARTIFACTS
