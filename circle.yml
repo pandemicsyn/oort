@@ -24,7 +24,6 @@ test:
     - go install -v github.com/pandemicsyn/oort/oortd
   post:
     - env GOOS=linux GOARCH=amd64 go build -i -v -o $CIRCLE_ARTIFACTS/oortd github.com/pandemicsyn/oort/oortd
-
 deployment:
   ci:
     branch: ci
