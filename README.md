@@ -20,14 +20,6 @@ You need godep.
 * mapstore - The map based kv storage
 * valuestore - gholt's sstable/bitcask like persistent value store
 
-
-### Other temporary (i.e. testing) stuff
-
-* cfs - A test fuse file system you don't want to use for anything.
-* apid - The frontend api server that's the relay between fuse and oortd
-
-# Building packages
-
 Requires fpm.
 
 # installing a non-dev instance (i.e. you actually want an init script)
@@ -43,7 +35,7 @@ Make sure you have a synd instance setup and running.
 7. systemctl start oortd
 8. journalctl -u oortd -f
 
-# Testing out a POC using cfs -> apid -> oortd
+# Testing out a POC using cfs -> formic -> oortd
 
 ### syndicate
 
@@ -81,10 +73,4 @@ While not recommended, you can by pass SRV lookups and Syndicate usage completel
 
 1. Fire up oortd
 
-### Run apid the api server
-1. cd apid/; go run main.go
-
-### Build and mount an instance of cfs
-1. cd cfs; go build .
-2. mkdir /mnt/test
-3. ./cfs -debug=true /mnt/test
+### Checkout and run formic
