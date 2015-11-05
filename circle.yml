@@ -17,8 +17,6 @@ test:
   pre:
     - go version
     - go get -f -u github.com/pandemicsyn/oort/oortd
-    - go get -f -u github.com/pandemicsyn/oort/cfs
-    - go get -f -u github.com/pandemicsyn/oort/apid
   override:
     - go test ./...
     - go install -v github.com/pandemicsyn/oort/oortd
