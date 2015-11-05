@@ -50,7 +50,7 @@ var BYTES_ERR []byte = []byte("-ERR ")
 type Cache interface {
 	Get(key []byte, value []byte) []byte
 	Set(key []byte, value []byte)
-    Del(key []byte)
+	Del(key []byte)
 	Start()
 	Stop()
 	Stats() []byte
@@ -62,7 +62,7 @@ const (
 	NONE = iota
 	GET
 	SET
-    DEL
+	DEL
 	ERR
 )
 
@@ -88,10 +88,10 @@ const (
 	RESP_GET_KEY_LENGTH_START // 15
 	RESP_GET_KEY_LENGTH       // 16
 	RESP_GET_KEY              // 17
-    /* DEL */
-    RESP_DEL_KEY_LENGTH_START // 18
-    RESP_DEL_KEY_LENGTH // 19
-    RESP_DEL_KEY // 20
+	/* DEL */
+	RESP_DEL_KEY_LENGTH_START // 18
+	RESP_DEL_KEY_LENGTH       // 19
+	RESP_DEL_KEY              // 20
 )
 
 /* RESP Handler struct and functions */
@@ -223,9 +223,9 @@ func (p *RESPhandler) Parse() error {
 					p.cmd = GET
 					p.state = RESP_GET_KEY_LENGTH_START
 				} else if bytes.Equal(p.cmdbuf, BYTES_DEL) {
-                    p.cmd = DEL
-                    p.state = RESP_DEL_KEY_LENGTH_START
-                }
+					p.cmd = DEL
+					p.state = RESP_DEL_KEY_LENGTH_START
+				}
 			}
 		case RESP_TERM:
 			// Handles parsing the final "\r\n" of the current cmdbuf
@@ -255,9 +255,9 @@ func (p *RESPhandler) Parse() error {
 				} else {
 					p.writer.Write(BYTES_NULL)
 				}
-            case DEL:
-                p.cache.Del(p.key)
-                p.writer.Write(BYTES_OK)
+			case DEL:
+				p.cache.Del(p.key)
+				p.writer.Write(BYTES_OK)
 			case ERR:
 				p.writer.Write(BYTES_ERR)
 				p.writer.WriteString(p.err.Error())
@@ -391,29 +391,29 @@ func (p *RESPhandler) Parse() error {
 				p.state = RESP_TERM
 			}
 
-        /* DEL states */
-        case RESP_DEL_KEY_LENGTH_START:
-            switch p.data[pos] {
-            case '$':
-                p.state = RESP_DEL_KEY_LENGTH
-                length = 0
-            }
-        case RESP_DEL_KEY_LENGTH:
-            switch p.data[pos] {
-            case '\r', '\n':
-                p.state = RESP_DEL_KEY
-                if p.data[pos] == '\r' {
-                    pos++
-                }
-            default:
-                val, p.err = ByteToInt(p.data[pos])
-                if p.err != nil {
-                    p.state = RESP_ERR
-                } else {
-                    length = length*10 + val
-                }
-            }
-        case RESP_DEL_KEY:
+		/* DEL states */
+		case RESP_DEL_KEY_LENGTH_START:
+			switch p.data[pos] {
+			case '$':
+				p.state = RESP_DEL_KEY_LENGTH
+				length = 0
+			}
+		case RESP_DEL_KEY_LENGTH:
+			switch p.data[pos] {
+			case '\r', '\n':
+				p.state = RESP_DEL_KEY
+				if p.data[pos] == '\r' {
+					pos++
+				}
+			default:
+				val, p.err = ByteToInt(p.data[pos])
+				if p.err != nil {
+					p.state = RESP_ERR
+				} else {
+					length = length*10 + val
+				}
+			}
+		case RESP_DEL_KEY:
 			if pos+length > datalen {
 				p.key = append(p.key, p.data[pos:]...)
 				length -= datalen - pos

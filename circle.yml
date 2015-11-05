@@ -1,0 +1,31 @@
+machine:
+  pre:
+    - wget https://storage.googleapis.com/golang/go1.5.1.linux-amd64.tar.gz
+    - tar zxvf go1.5.1.linux-amd64.tar.gz
+  environment:
+    GOROOT: ${HOME}/go
+    PATH: ${GOROOT}/bin:${PATH}
+    GO15VENDOREXPERIMENT: 1
+  post:
+    - go version
+dependencies:
+  pre:
+    - go get github.com/gholt/ring
+    - go get github.com/gholt/store
+    - go get -f -u github.com/pandemicsyn/syndicate/synd
+test:
+  pre:
+    - go version
+    - go get -f -u github.com/pandemicsyn/oort/oortd
+    - go get -f -u github.com/pandemicsyn/oort/cfs
+    - go get -f -u github.com/pandemicsyn/oort/apid
+  override:
+    - go test ./...
+    - go install -v github.com/pandemicsyn/oort/oortd
+    - go install -v github.com/pandemicsyn/oort/cfs
+    - go install -v github.com/pandemicsyn/oort/apid
+  post:
+    - env GOOS=linux GOARCH=amd64 go build -i -v -o $CIRCLE_ARTIFACTS/oortd github.com/pandemicsyn/oort/oortd
+    - env GOOS=linux GOARCH=amd64 go build -i -v -o $CIRCLE_ARTIFACTS/cfs github.com/pandemicsyn/oort/cfs
+    - env GOOS=linux GOARCH=amd64 go build -i -v -o $CIRCLE_ARTIFACTS/apid github.com/pandemicsyn/oort/apid
+

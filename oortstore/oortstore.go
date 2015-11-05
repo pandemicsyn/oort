@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gholt/ring"
-	"github.com/gholt/valuestore"
+	"github.com/gholt/store"
 	"github.com/pandemicsyn/oort/oort"
 	"github.com/pandemicsyn/oort/rediscache"
 	"github.com/spaolacci/murmur3"
@@ -17,7 +17,7 @@ import (
 
 type OortStore struct {
 	sync.RWMutex
-	vs      valuestore.ValueStore
+	vs      store.ValueStore
 	t       *ring.TCPMsgRing
 	o       *oort.Server
 	c       *Config
@@ -42,6 +42,9 @@ func New(oort *oort.Server, config *Config) *OortStore {
 	}
 	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
 	s.o.ValueStoreConfig.LogDebug = l.Printf
+	if s.o.TCPMsgRingConfig.UseTLS {
+		log.Println("TCPMsgRing using TLS")
+	}
 	s.start()
 	s.stopped = false
 	return s
@@ -50,10 +53,10 @@ func New(oort *oort.Server, config *Config) *OortStore {
 func (vsc *OortStore) start() {
 	var err error
 	log.Println("LocalID appears to be:", vsc.o.GetLocalID())
-	vsc.t = ring.NewTCPMsgRing(nil)
+	vsc.t = ring.NewTCPMsgRing(&vsc.o.TCPMsgRingConfig)
 	vsc.o.ValueStoreConfig.MsgRing = vsc.t
 	vsc.t.SetRing(vsc.o.Ring())
-	vsc.vs, err = valuestore.NewValueStore(&vsc.o.ValueStoreConfig)
+	vsc.vs, err = store.NewValueStore(&vsc.o.ValueStoreConfig)
 	if err != nil {
 		panic(err)
 	}

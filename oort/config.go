@@ -13,7 +13,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/gholt/ring"
-	"github.com/gholt/valuestore"
+	"github.com/gholt/store"
 	"github.com/pandemicsyn/oort/utils/srvconf"
 	"github.com/pandemicsyn/syndicate/cmdctrl"
 )
@@ -167,12 +167,13 @@ func (o *Server) LoadConfig() (err error) {
 }
 
 type cacheConfig struct {
-	LocalID          uint64                      `toml:"LocalID"`
-	ListenAddr       string                      `toml:"ListenAddr"`
-	RingFile         string                      `toml:"RingFile"`
-	CacheTime        time.Time                   `toml:"CacheTime"`
-	ValueStoreConfig valuestore.ValueStoreConfig `toml:"ValueStoreConfig"`
-	CmdCtrlConfig    cmdctrl.ConfigOpts          `toml:"CmdCtrlConfig"`
+	LocalID          uint64                 `toml:"LocalID"`
+	ListenAddr       string                 `toml:"ListenAddr"`
+	RingFile         string                 `toml:"RingFile"`
+	CacheTime        time.Time              `toml:"CacheTime"`
+	ValueStoreConfig store.ValueStoreConfig `toml:"ValueStoreConfig"`
+	CmdCtrlConfig    cmdctrl.ConfigOpts     `toml:"CmdCtrlConfig"`
+	TCPMsgRingConfig ring.TCPMsgRingConfig  `toml:"TCPMsgRingConfig"`
 }
 
 // CacheConfig caches a minimal config in
@@ -187,6 +188,7 @@ func (o *Server) CacheConfig() error {
 		CacheTime:        time.Now(),
 		ValueStoreConfig: o.ValueStoreConfig,
 		CmdCtrlConfig:    o.CmdCtrlConfig,
+		TCPMsgRingConfig: o.TCPMsgRingConfig,
 	}
 	buf := new(bytes.Buffer)
 	if err := toml.NewEncoder(buf).Encode(c); err != nil {
