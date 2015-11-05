@@ -12,6 +12,8 @@ dependencies:
   pre:
     - go get github.com/gholt/ring
     - go get github.com/gholt/store
+    - go get github.com/garyburd/redigo/redis
+    - go get github.com/pandemicsyn/oort/oort-bench
     - go get -f -u github.com/pandemicsyn/syndicate/synd
 test:
   pre:
