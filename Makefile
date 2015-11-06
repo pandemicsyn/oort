@@ -2,10 +2,25 @@ SHA := $(shell git rev-parse --short HEAD)
 VERSION := $(shell cat VERSION)
 ITTERATION := $(shell date +%s)
 
+deps:
+	go get -u google.golang.org/grpc
+	go get -u github.com/golang/protobuf/proto
+	go get -u github.com/golang/protobuf/protoc-gen-go
+	go get github.com/gholt/ring
+	go get github.com/gholt/ring/ring
+	go get github.com/gholt/store
+	go get github.com/pandemicsyn/syndicate/cmdctrl
+
 build:
 	mkdir -p packaging/output
 	mkdir -p packaging/root/usr/local/bin
-	godep go build -o packaging/root/usr/local/bin/oortd github.com/pandemicsyn/oort/oortd
+	go build -i -v -o packaging/root/usr/local/bin/oortd --ldflags " \
+		-X main.ringVersion=$(shell git -C $$GOPATH/src/github.com/gholt/ring rev-parse HEAD) \
+		-X main.oortVersion=$(shell git rev-parse HEAD) \
+		-X main.valuestoreVersion=$(shell git -C $$GOPATH/src/github.com/gholt/store rev-parse HEAD) \
+		-X main.cmdctrlVersion=$(shell git -C $$GOPATH/src/github.com/pandemicsyn/syndicate rev-parse HEAD) \
+		-X main.goVersion=$(shell go version | sed -e 's/ /-/g') \
+		-X main.buildDate=$(shell date -u +%Y-%m-%d.%H:%M:%S)" github.com/pandemicsyn/oort/oortd
 
 clean:
 	rm -rf packaging/output
@@ -14,11 +29,8 @@ clean:
 install:
 	install -t /usr/local/bin packaging/root/usr/local/bin/oortd
 
-run:
-	@godep go run oortd/main.go
-
 test:
-	@godep go test ./...
+	go test ./...
 
 ring:
 	ring /tmp/oort.builder create replicas=3
@@ -27,7 +39,7 @@ ring:
 	ring /tmp/oort.builder add active=true capacity=1000 tier0=server3 tier1=z3 address0=127.0.0.1:8003 address1=127.0.0.2:8003 meta=onmetalv1
 	ring /tmp/oort.builder ring
 
-packages: clean build deb
+packages: clean deps build deb
 
 deb:
 	fpm -s dir -t deb -n oortd -v $(VERSION) -p packaging/output/oortd-$(VERSION)_amd64.deb \
