@@ -1,39 +1,47 @@
 machine:
   pre:
     - wget https://storage.googleapis.com/golang/go1.5.1.linux-amd64.tar.gz
-    - tar zxvf go1.5.1.linux-amd64.tar.gz
+    - mkdir ~/go1.5.1
+    - tar -C ~/go1.5.1 -xzf go1.5.1.linux-amd64.tar.gz
   environment:
-    GOROOT: ${HOME}/go
-    PATH: ${GOROOT}/bin:${PATH}
+    GOROOT: ${HOME}/go1.5.1/go
     GO15VENDOREXPERIMENT: 1
+    GOPATH: ${HOME}/go
+    PATH: $GOPATH/bin:${GOROOT}/bin:${PATH}
+    PPATH: ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+    BUILDPATH: $PPATH/packaging/root/usr/local/bin
   post:
     - go version
+    - echo $PPATH
 dependencies:
   pre:
-    - go get github.com/gholt/ring
-    - go get github.com/gholt/store
-    - go get github.com/garyburd/redigo/redis
-    - go get github.com/pandemicsyn/oort/oort-bench
-    - go get -f -u github.com/pandemicsyn/syndicate/synd
+    - mkdir -p ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
+    - mv ~/$CIRCLE_PROJECT_REPONAME ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
+    - ln -s $PPATH ~/$CIRCLE_PROJECT_REPONAME
+  override:
+    - go get -v github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/...
+general:
+  artifacts:
+    - "$PPATH/packaging/root/usr/local/bin"
 test:
   pre:
     - go version
-    - go get -f -u github.com/pandemicsyn/oort/oortd
   override:
-    - go test ./...
-    - go install -v github.com/pandemicsyn/oort/oortd
+    - go test github.com/pandemicsyn/oort/...
   post:
-    - env GOOS=linux GOARCH=amd64 go build -i -v -o $CIRCLE_ARTIFACTS/oortd github.com/pandemicsyn/oort/oortd
+    - GOOS=linux GOARCH=amd64 make build
 deployment:
   ci:
     branch: ci
     owner: pandemicsyn
     commands:
       - go get github.com/tcnksm/ghr
-      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease ci-`cat VERSION` $CIRCLE_ARTIFACTS
+      - go install github.com/tcnksm/ghr
+      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease ci-`cat VERSION` $BUILDPATH
   qa:
     branch: qa
     owner: pandemicsyn
     commands:
       - go get github.com/tcnksm/ghr
-      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease `cat VERSION` $CIRCLE_ARTIFACTS
+      - go install github.com/tcnksm/ghr
+      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease qa-`cat VERSION` $BUILDPATH

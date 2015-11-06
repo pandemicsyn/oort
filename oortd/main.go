@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -11,7 +13,27 @@ import (
 	"github.com/pandemicsyn/oort/oortstore"
 )
 
+var (
+	printVersionInfo = flag.Bool("version", false, "print version/build info")
+)
+var oortVersion string
+var ringVersion string
+var valuestoreVersion string
+var cmdctrlVersion string
+var goVersion string
+var buildDate string
+
 func main() {
+	flag.Parse()
+	if *printVersionInfo {
+		fmt.Println("oort version:", oortVersion)
+		fmt.Println("ring version:", ringVersion)
+		fmt.Println("cmdctrl version:", cmdctrlVersion)
+		fmt.Println("valuestore version:", valuestoreVersion)
+		fmt.Println("build date:", buildDate)
+		fmt.Println("go version:", goVersion)
+		return
+	}
 	o, err := oort.New()
 	if err != nil {
 		log.Println("Error loading config:", err)
