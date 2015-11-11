@@ -2,6 +2,7 @@ package oort
 
 import (
 	"bufio"
+	"crypto/tls"
 	"log"
 	"net"
 	"sync"
@@ -30,9 +31,10 @@ type Server struct {
 	waitGroup         *sync.WaitGroup
 	cmdCtrlLock       sync.RWMutex
 	stopped           bool
+	serverTLSConfig   *tls.Config
 }
 
-func New() (*Server, error) {
+func New(CertFile, KeyFile string) (*Server, error) {
 	o := &Server{
 		ch:               make(chan bool),
 		ShutdownComplete: make(chan bool),
@@ -40,6 +42,11 @@ func New() (*Server, error) {
 		stopped:          false,
 	}
 	err := o.LoadConfig()
+	if err != nil {
+		return o, nil
+	}
+	cert, err := tls.LoadX509KeyPair(CertFile, KeyFile)
+	o.serverTLSConfig, err = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}, nil
 	return o, err
 }
 
@@ -154,7 +161,8 @@ func (o *Server) serve() {
 		default:
 		}
 		server.SetDeadline(time.Now().Add(1e9))
-		conn, err := server.AcceptTCP()
+		l := tls.NewListener(server, o.serverTLSConfig)
+		conn, err := l.Accept()
 		if err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				continue
