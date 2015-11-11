@@ -2,10 +2,14 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"runtime"
 	"sync"
 	"time"
@@ -44,9 +48,18 @@ func omg(err error) {
 	}
 }
 
-func pipelineSet(id string, count int, pipecount int, value []byte, wg *sync.WaitGroup) {
+func pipelineSet(id string, count int, pipecount int, value []byte, tc *tls.Config, network string, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	conn, err := redis.Dial("tcp", "127.0.0.1:6379")
+	var err error
+	var conn redis.Conn
+	if tc != nil {
+		log.Println("using tls")
+		conn, err = redis.Dial(network, addr, redis.DialNetDial(func(network, addr string) (net.Conn, error) {
+			return tls.Dial(network, addr, tc)
+		}))
+	} else {
+		conn, err = redis.Dial(network, addr)
+	}
 	if err != nil {
 		log.Panic(err)
 	}
@@ -78,9 +91,18 @@ func pipelineSet(id string, count int, pipecount int, value []byte, wg *sync.Wai
 	}
 }
 
-func pipelineGet(id string, count int, pipecount int, value []byte, wg *sync.WaitGroup) {
+func pipelineGet(id string, count int, pipecount int, value []byte, tc *tls.Config, network string, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	conn, err := redis.Dial("tcp", "127.0.0.1:6379")
+	var err error
+	var conn redis.Conn
+	if tc != nil {
+		log.Println("using tls")
+		conn, err = redis.Dial(network, addr, redis.DialNetDial(func(network, addr string) (net.Conn, error) {
+			return tls.Dial(network, addr, tc)
+		}))
+	} else {
+		conn, err = redis.Dial(network, addr)
+	}
 	if err != nil {
 		log.Panic(err)
 	}
@@ -112,9 +134,18 @@ func pipelineGet(id string, count int, pipecount int, value []byte, wg *sync.Wai
 	}
 }
 
-func clientSetWorker(id string, count int, value []byte, wg *sync.WaitGroup) {
+func clientSetWorker(id string, count int, value []byte, tc *tls.Config, network string, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	conn, err := redis.Dial("tcp", "127.0.0.1:6379")
+	var err error
+	var conn redis.Conn
+	if tc != nil {
+		log.Println("using tls")
+		conn, err = redis.Dial(network, addr, redis.DialNetDial(func(network, addr string) (net.Conn, error) {
+			return tls.Dial(network, addr, tc)
+		}))
+	} else {
+		conn, err = redis.Dial(network, addr)
+	}
 	if err != nil {
 		log.Panic(err)
 	}
@@ -127,9 +158,18 @@ func clientSetWorker(id string, count int, value []byte, wg *sync.WaitGroup) {
 	}
 }
 
-func clientGetWorker(id string, count int, value []byte, wg *sync.WaitGroup) {
+func clientGetWorker(id string, count int, value []byte, tc *tls.Config, network string, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	conn, err := redis.Dial("tcp", "127.0.0.1:6379")
+	var err error
+	var conn redis.Conn
+	if tc != nil {
+		log.Println("using tls")
+		conn, err = redis.Dial(network, addr, redis.DialNetDial(func(network, addr string) (net.Conn, error) {
+			return tls.Dial(network, addr, tc)
+		}))
+	} else {
+		conn, err = redis.Dial(network, addr)
+	}
 	if err != nil {
 		log.Panic(err)
 	}
@@ -146,10 +186,21 @@ func clientGetWorker(id string, count int, value []byte, wg *sync.WaitGroup) {
 	}
 }
 
+func newClientTLSFromFile(certFile, serverName string, SkipVerify bool) (*tls.Config, error) {
+	b, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return &tls.Config{}, err
+	}
+	cp := x509.NewCertPool()
+	if !cp.AppendCertsFromPEM(b) {
+		return &tls.Config{}, fmt.Errorf("failed to append certificates for client ca store")
+	}
+	return &tls.Config{ServerName: serverName, RootCAs: cp, InsecureSkipVerify: SkipVerify}, nil
+}
+
 var (
-	pool          *redis.Pool
-	redisServer   = flag.String("redisServer", ":6379", "")
-	redisPassword = flag.String("redisPassword", "", "")
+	pool        *redis.Pool
+	redisServer = flag.String("redisServer", "localhost:6379", "")
 )
 
 func main() {
@@ -160,6 +211,10 @@ func main() {
 	pipeTest := flag.Int("pipeline", 0, "set to non zero to pipeline")
 	setTest := flag.Bool("settest", false, "do set test")
 	getTest := flag.Bool("gettest", false, "do get test")
+	certFile := flag.String("certfile", "/etc/oort/server.crt", "")
+	serverName := flag.String("servername", "localhost", "")
+	skipVerify := flag.Bool("skipverify", true, "")
+	useTLS := flag.Bool("usetls", false, "")
 	flag.Parse()
 	runtime.GOMAXPROCS(*procs)
 
@@ -167,6 +222,15 @@ func main() {
 	value := make([]byte, *vsize)
 	s.Read(value)
 	perClient := *num / *clients
+
+	var err error
+	var tlsClientConfig *tls.Config
+	if *useTLS {
+		tlsClientConfig, err = newClientTLSFromFile(*certFile, *serverName, *skipVerify)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	if *setTest {
 		if *pipeTest != 0 {
@@ -179,9 +243,9 @@ func main() {
 		for w := 1; w <= *clients; w++ {
 			wg.Add(1)
 			if *pipeTest != 0 {
-				go pipelineSet(fmt.Sprintf("somethingtestkey%d", w), perClient, *pipeTest, value, &wg)
+				go pipelineSet(fmt.Sprintf("somethingtestkey%d", w), perClient, *pipeTest, value, tlsClientConfig, "tcp", *redisServer, &wg)
 			} else {
-				go clientSetWorker(fmt.Sprintf("somethingtestkey%d", w), perClient, value, &wg)
+				go clientSetWorker(fmt.Sprintf("somethingtestkey%d", w), perClient, value, tlsClientConfig, "tcp", *redisServer, &wg)
 			}
 		}
 		wg.Wait()
@@ -204,9 +268,9 @@ func main() {
 		for w := 1; w <= *clients; w++ {
 			wg.Add(1)
 			if *pipeTest != 0 {
-				go pipelineGet(fmt.Sprintf("somethingtestkey%d", w), perClient, *pipeTest, value, &wg)
+				go pipelineGet(fmt.Sprintf("somethingtestkey%d", w), perClient, *pipeTest, value, tlsClientConfig, "tcp", *redisServer, &wg)
 			} else {
-				go clientGetWorker(fmt.Sprintf("somethingtestkey%d", w), perClient, value, &wg)
+				go clientGetWorker(fmt.Sprintf("somethingtestkey%d", w), perClient, value, tlsClientConfig, "tcp", *redisServer, &wg)
 			}
 		}
 		wg.Wait()

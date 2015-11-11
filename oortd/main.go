@@ -15,6 +15,8 @@ import (
 
 var (
 	printVersionInfo = flag.Bool("version", false, "print version/build info")
+	certFile         = flag.String("certfile", "/etc/oort/server.crt", "path to ssl crt")
+	keyFile          = flag.String("keyfile", "/etc/oort/server.key", "path to ssl key")
 )
 var oortVersion string
 var ringVersion string
@@ -34,7 +36,7 @@ func main() {
 		fmt.Println("go version:", goVersion)
 		return
 	}
-	o, err := oort.New()
+	o, err := oort.New(*certFile, *keyFile)
 	if err != nil {
 		log.Println("Error loading config:", err)
 		return
