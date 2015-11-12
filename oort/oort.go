@@ -34,7 +34,7 @@ type Server struct {
 	serverTLSConfig   *tls.Config
 }
 
-func New(CertFile, KeyFile string) (*Server, error) {
+func New(NoTLS bool, CertFile, KeyFile string) (*Server, error) {
 	o := &Server{
 		ch:               make(chan bool),
 		ShutdownComplete: make(chan bool),
@@ -44,6 +44,10 @@ func New(CertFile, KeyFile string) (*Server, error) {
 	err := o.LoadConfig()
 	if err != nil {
 		return o, nil
+	}
+	if NoTLS {
+		log.Println("RUNNING WITHOUT TLS ON FRONTEND!")
+		return o, err
 	}
 	cert, err := tls.LoadX509KeyPair(CertFile, KeyFile)
 	o.serverTLSConfig, err = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}, nil
@@ -161,8 +165,13 @@ func (o *Server) serve() {
 		default:
 		}
 		server.SetDeadline(time.Now().Add(1e9))
-		l := tls.NewListener(server, o.serverTLSConfig)
-		conn, err := l.Accept()
+		var conn net.Conn
+		if o.serverTLSConfig != nil {
+			l := tls.NewListener(server, o.serverTLSConfig)
+			conn, err = l.Accept()
+		} else {
+			conn, err = server.AcceptTCP()
+		}
 		if err != nil {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 				continue

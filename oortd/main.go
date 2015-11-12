@@ -15,6 +15,7 @@ import (
 
 var (
 	printVersionInfo = flag.Bool("version", false, "print version/build info")
+	noTLS            = flag.Bool("notls", false, "whether to disable tls")
 	certFile         = flag.String("certfile", "/etc/oort/server.crt", "path to ssl crt")
 	keyFile          = flag.String("keyfile", "/etc/oort/server.key", "path to ssl key")
 )
@@ -36,7 +37,7 @@ func main() {
 		fmt.Println("go version:", goVersion)
 		return
 	}
-	o, err := oort.New(*certFile, *keyFile)
+	o, err := oort.New(*noTLS, *certFile, *keyFile)
 	if err != nil {
 		log.Println("Error loading config:", err)
 		return

@@ -6,10 +6,10 @@ deps:
 	go get -u google.golang.org/grpc
 	go get -u github.com/golang/protobuf/proto
 	go get -u github.com/golang/protobuf/protoc-gen-go
-	go get github.com/gholt/ring
-	go get github.com/gholt/ring/ring
-	go get github.com/gholt/store
-	go get github.com/pandemicsyn/syndicate/cmdctrl
+	go get -u github.com/gholt/ring
+	go get -u github.com/gholt/ring/ring
+	go get -u github.com/gholt/store
+	go get -u github.com/pandemicsyn/syndicate/cmdctrl
 
 build:
 	mkdir -p packaging/output
@@ -26,8 +26,11 @@ clean:
 	rm -rf packaging/output
 	rm -f packaging/root/usr/local/bin/oortd
 
-install:
-	install -t /usr/local/bin packaging/root/usr/local/bin/oortd
+install: build
+	cp -av packaging/root/usr/local/bin/* $(GOPATH)/bin
+
+run:
+	go run oortd/*.go
 
 test:
 	go test ./...
