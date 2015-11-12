@@ -16,6 +16,7 @@ import (
 
 type Server struct {
 	sync.RWMutex
+	MaxClients        int
 	StoreType         string
 	ListenAddr        string
 	RingFile          string    // The active ring file
@@ -34,8 +35,9 @@ type Server struct {
 	serverTLSConfig   *tls.Config
 }
 
-func New(NoTLS bool, CertFile, KeyFile string) (*Server, error) {
+func New(MaxClients int, NoTLS bool, CertFile, KeyFile string) (*Server, error) {
 	o := &Server{
+		MaxClients:       MaxClients,
 		ch:               make(chan bool),
 		ShutdownComplete: make(chan bool),
 		waitGroup:        &sync.WaitGroup{},
@@ -133,15 +135,15 @@ func (o *Server) serve() {
 	} else {
 		log.Println("Command and Control functionality disabled via config")
 	}
-	readerChan := make(chan *bufio.Reader, 1024)
+	readerChan := make(chan *bufio.Reader, o.MaxClients)
 	for i := 0; i < cap(readerChan); i++ {
 		readerChan <- nil
 	}
-	writerChan := make(chan *bufio.Writer, 1024)
+	writerChan := make(chan *bufio.Writer, o.MaxClients)
 	for i := 0; i < cap(writerChan); i++ {
 		writerChan <- nil
 	}
-	handlerChan := make(chan *rediscache.RESPhandler, 1024)
+	handlerChan := make(chan *rediscache.RESPhandler, o.MaxClients)
 	for i := 0; i < cap(handlerChan); i++ {
 		handlerChan <- rediscache.NewRESPhandler(o.backend)
 	}

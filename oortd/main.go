@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/pandemicsyn/oort/mapstore"
@@ -18,6 +19,7 @@ var (
 	noTLS            = flag.Bool("notls", false, "whether to disable tls")
 	certFile         = flag.String("certfile", "/etc/oort/server.crt", "path to ssl crt")
 	keyFile          = flag.String("keyfile", "/etc/oort/server.key", "path to ssl key")
+	maxClients       = flag.Int("max-clients", 8192, "")
 )
 var oortVersion string
 var ringVersion string
@@ -37,7 +39,20 @@ func main() {
 		fmt.Println("go version:", goVersion)
 		return
 	}
-	o, err := oort.New(*noTLS, *certFile, *keyFile)
+	envtls := os.Getenv("OORT_NO_TLS")
+	if envtls == "true" {
+		*noTLS = true
+	}
+	envmx := os.Getenv("OORT_MAX_CLIENTS")
+	if envmx != "" {
+		v, err := strconv.Atoi(envmx)
+		if err != nil {
+			log.Println("Did not sent max clients from env:", err)
+		} else {
+			*maxClients = v
+		}
+	}
+	o, err := oort.New(*maxClients, *noTLS, *certFile, *keyFile)
 	if err != nil {
 		log.Println("Error loading config:", err)
 		return
