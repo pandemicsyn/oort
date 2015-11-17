@@ -27,10 +27,7 @@ type OortService interface {
 
 type Server struct {
 	sync.RWMutex
-	//no max clients - mv'd to backend
-	//no store type
-	//no listen addr - mv'd to backend
-	//serverTlsConfig *tls.Config mv'd to backend
+	serviceName       string
 	RingFile          string
 	ring              ring.Ring   //GetRing()
 	LocalID           uint64      //GetLocalID()
@@ -45,8 +42,9 @@ type Server struct {
 	stopped           bool
 }
 
-func New() (*Server, error) {
+func New(serviceName string) (*Server, error) {
 	o := &Server{
+		serviceName:      serviceName,
 		ch:               make(chan bool),
 		ShutdownComplete: make(chan bool),
 		waitGroup:        &sync.WaitGroup{},
@@ -54,7 +52,7 @@ func New() (*Server, error) {
 	}
 	err := o.ObtainConfig()
 	if err != nil {
-		return o, nil
+		return o, err
 	}
 	return o, err
 }

@@ -33,7 +33,7 @@ func main() {
 		fmt.Println("go version:", goVersion)
 		return
 	}
-	o, err := oort.New()
+	o, err := oort.New("value")
 	if err != nil {
 		log.Fatalln("Unable to obtain config:", err)
 	}

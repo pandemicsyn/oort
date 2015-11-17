@@ -35,8 +35,8 @@ clean:
 	rm -f packaging/root/usr/local/bin/oort-groupd
 
 install: build
-	mkdir -p /etc/oort/oort-valued
-	mkdir -p /etc/oort/oort-groupd
+	mkdir -p /etc/oort/value
+	mkdir -p /etc/oort/group
 	cp -av packaging/root/usr/local/bin/* $(GOPATH)/bin
 
 run:

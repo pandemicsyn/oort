@@ -61,23 +61,37 @@ func (o *Server) LoadRingConfig(config interface{}) (err error) {
 	return nil
 }
 
+type EnvGetter struct {
+	pre string
+	sep string
+}
+
+func NewEnvGetter(prefix, seperator string) *EnvGetter {
+	return &EnvGetter{pre: prefix, sep: seperator}
+}
+
+func (e *EnvGetter) Get(varname string) string {
+	return os.Getenv(fmt.Sprintf("%s%s%s", e.pre, e.sep, varname))
+}
+
 func (o *Server) ObtainConfig() (err error) {
-	envSkipSRV := os.Getenv("OORTD_SKIP_SRV")
+	e := NewEnvGetter(fmt.Sprintf("OORT_%s", strings.ToUpper(o.serviceName)), "_")
+	envSkipSRV := e.Get("SKIP_SRV")
 	// Check whether we're supposed to skip loading via srv method
 	if strings.ToLower(envSkipSRV) != "true" {
 		s := &srvconf.SRVLoader{
-			SyndicateURL: os.Getenv("OORT_SYNDICATE_OVERRIDE"),
+			SyndicateURL: e.Get("SYNDICATE_OVERRIDE"),
 		}
-		s.Record, err = genServiceID("syndicate", "tcp")
+		s.Record, err = genServiceID(o.serviceName, "syndicate", "tcp")
 		if err != nil {
-			if os.Getenv("OORT_SYNDICATE_OVERRIDE") == "" {
+			if e.Get("SYNDICATE_OVERRIDE") == "" {
 				log.Println(err)
 			} else {
-				log.Fatalln("No OORT_SYNDICATE_OVERRIDE provided and", err)
+				log.Fatalln("No SYNDICATE_OVERRIDE provided and", err)
 			}
 		}
-		if os.Getenv("OORT_SYNDICATE_OVERRIDE") != "" {
-			log.Println("Overriding oort syndicate url with url from env!", os.Getenv("OORT_SYNDICATE_OVERRIDE"))
+		if e.Get("SYNDICATE_OVERRIDE") != "" {
+			log.Println("Over wrote syndicate url with url from env!", e.Get("SYNDICATE_OVERRIDE"))
 		}
 		nc, err := s.Load()
 		if err != nil {
@@ -87,27 +101,26 @@ func (o *Server) ObtainConfig() (err error) {
 		if err != nil {
 			return fmt.Errorf("Error while loading ring for config get via srv lookup: %s", err)
 		}
-		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("/etc/oort/oortd/%d-oort.ring", o.ring.Version()))
+		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("/etc/oort/%s/%d-oort.ring", o.serviceName, o.ring.Version()))
 		if err != nil {
 			return err
 		}
 		o.LocalID = nc.Localid
 		o.ring.SetLocalNode(o.LocalID)
-		o.RingFile = fmt.Sprintf("/etc/oort/oortd/%d-oort.ring", o.ring.Version())
+		o.RingFile = fmt.Sprintf("/etc/oort/%s/%d-oort.ring", o.serviceName, o.ring.Version())
 		err = o.loadCmdCtrlConfig()
 		if err != nil {
 			return err
 		}
-		log.Printf("CCC: %#v\n", o.CmdCtrlConfig)
 	} else {
 		// if you skip the srv load you have to provide all of the info in env vars!
 		log.Println("Skipped SRV Config attempting to load from env")
-		s, err := strconv.ParseUint(os.Getenv("OORT_LOCALID"), 10, 64)
+		s, err := strconv.ParseUint(e.Get("LOCALID"), 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to load env specified local id")
 		}
 		o.LocalID = s
-		o.RingFile = os.Getenv("OORT_RING_FILE")
+		o.RingFile = e.Get("RING_FILE")
 		o.ring, _, err = ring.RingOrBuilder(o.RingFile)
 		if err != nil {
 			return fmt.Errorf("Unable to road env specified ring: %s", err)
@@ -122,11 +135,11 @@ func (o *Server) ObtainConfig() (err error) {
 }
 
 //TODO: need to remove the hack to add IAD3 identifier
-func genServiceID(name, proto string) (string, error) {
+func genServiceID(service, name, proto string) (string, error) {
 	h, _ := os.Hostname()
 	d := strings.SplitN(h, ".", 2)
 	if len(d) != 2 {
 		return "", fmt.Errorf("Unable to determine FQDN, only got short name.")
 	}
-	return fmt.Sprintf("_%s._%s.%s", name, proto, d[1]), nil
+	return fmt.Sprintf("_%s-%s._%s.%s", service, name, proto, d[1]), nil
 }
