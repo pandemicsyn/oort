@@ -2,7 +2,7 @@
 # systemd unit file
 #
 [Unit]
-Description=oortd
+Description=oort-groupd
 # start us only once the network and logging subsystems are available
 After=syslog.target network.target
 
@@ -11,8 +11,8 @@ After=syslog.target network.target
 # http://0pointer.de/public/systemd-man/systemd.exec.html
 [Service]
 Type=simple
-EnvironmentFile=/etc/default/oortd
-ExecStart=/root/go/bin/oortd
+EnvironmentFile=/etc/default/oort-groupd
+ExecStart=/root/go/bin/oort-groupd
 
 # it could take a long time to flush data to disk
 # so we set 0 to never timeout on TERM
@@ -25,7 +25,7 @@ Restart=on-failure
 # use syslog for logging
 StandardOutput=syslog
 StandardError=syslog
-SyslogIdentifier=oortd
+SyslogIdentifier=oort-groupd
 
 LimitCPU=infinity
 LimitFSIZE=infinity

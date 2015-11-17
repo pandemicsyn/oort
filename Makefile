@@ -14,23 +14,33 @@ deps:
 build:
 	mkdir -p packaging/output
 	mkdir -p packaging/root/usr/local/bin
-	go build -i -v -o packaging/root/usr/local/bin/oortd --ldflags " \
+	go build -i -v -o packaging/root/usr/local/bin/oort-valued --ldflags " \
 		-X main.ringVersion=$(shell git -C $$GOPATH/src/github.com/gholt/ring rev-parse HEAD) \
 		-X main.oortVersion=$(shell git rev-parse HEAD) \
 		-X main.valuestoreVersion=$(shell git -C $$GOPATH/src/github.com/gholt/store rev-parse HEAD) \
 		-X main.cmdctrlVersion=$(shell git -C $$GOPATH/src/github.com/pandemicsyn/syndicate rev-parse HEAD) \
 		-X main.goVersion=$(shell go version | sed -e 's/ /-/g') \
-		-X main.buildDate=$(shell date -u +%Y-%m-%d.%H:%M:%S)" github.com/pandemicsyn/oort/oortd
+		-X main.buildDate=$(shell date -u +%Y-%m-%d.%H:%M:%S)" github.com/pandemicsyn/oort/oort-valued
+	go build -i -v -o packaging/root/usr/local/bin/oort-groupd --ldflags " \
+		-X main.ringVersion=$(shell git -C $$GOPATH/src/github.com/gholt/ring rev-parse HEAD) \
+		-X main.oortVersion=$(shell git rev-parse HEAD) \
+		-X main.valuestoreVersion=$(shell git -C $$GOPATH/src/github.com/gholt/store rev-parse HEAD) \
+		-X main.cmdctrlVersion=$(shell git -C $$GOPATH/src/github.com/pandemicsyn/syndicate rev-parse HEAD) \
+		-X main.goVersion=$(shell go version | sed -e 's/ /-/g') \
+		-X main.buildDate=$(shell date -u +%Y-%m-%d.%H:%M:%S)" github.com/pandemicsyn/oort/oort-groupd
 
 clean:
 	rm -rf packaging/output
-	rm -f packaging/root/usr/local/bin/oortd
+	rm -f packaging/root/usr/local/bin/oort-valued
+	rm -f packaging/root/usr/local/bin/oort-groupd
 
 install: build
+	mkdir -p /etc/oort/value
+	mkdir -p /etc/oort/group
 	cp -av packaging/root/usr/local/bin/* $(GOPATH)/bin
 
 run:
-	go run oortd/*.go
+	go run oort-valued/*.go
 
 test:
 	go test ./...
@@ -45,7 +55,7 @@ ring:
 packages: clean deps build deb
 
 deb:
-	fpm -s dir -t deb -n oortd -v $(VERSION) -p packaging/output/oortd-$(VERSION)_amd64.deb \
+	fpm -s dir -t deb -n oort-valued -v $(VERSION) -p packaging/output/oort-valued-$(VERSION)_amd64.deb \
 		--deb-priority optional --category admin \
 		--force \
 		--iteration $(ITTERATION) \
@@ -60,4 +70,4 @@ deb:
 		--vendor "oort" -a amd64 \
 		--config-files /etc/oort/oortd.toml-sample \
 		packaging/root/=/
-	cp packaging/output/oortd-$(VERSION)_amd64.deb packaging/output/oortd.deb.$(SHA)
+	cp packaging/output/oort-valued-$(VERSION)_amd64.deb packaging/output/oort-valued.deb.$(SHA)

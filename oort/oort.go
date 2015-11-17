@@ -1,63 +1,65 @@
 package oort
 
 import (
-	"bufio"
-	"crypto/tls"
 	"log"
-	"net"
 	"sync"
-	"time"
 
 	"github.com/gholt/ring"
-	"github.com/gholt/store"
-	"github.com/pandemicsyn/oort/rediscache"
 	"github.com/pandemicsyn/syndicate/cmdctrl"
 )
 
+type OortService interface {
+	Stats() []byte
+	//Start is called before ListenAndServe to startup any needed stuff
+	Start()
+	//Stop is called before StopListenAndServe
+	Stop()
+	//The method we'll invoke when we receive a new ring
+	UpdateRing(ring.Ring)
+	// ListenAndServe is assumed to bind to an address and just handle/pass off requests, Start is called BEFORE this to make sure
+	// any need backend services/chan's are up and running before we start accepting requests.
+	ListenAndServe()
+	// StopListenAndServe is assumed to only stop the OortService's network listener. It shouldn't return as soon as
+	// the service is no longer listening on the interface
+	StopListenAndServe()
+	// Wait() should block until all active requests are serviced (or return immediately if not implemented).
+	Wait()
+}
+
 type Server struct {
 	sync.RWMutex
-	MaxClients        int
-	StoreType         string
-	ListenAddr        string
-	RingFile          string    // The active ring file
-	ring              ring.Ring // The active ring
-	LocalID           uint64    // This nodes local ring id
-	ValueStoreConfig  store.ValueStoreConfig
-	TCPMsgRingConfig  ring.TCPMsgRingConfig
-	CmdCtrlConfig     cmdctrl.ConfigOpts
-	cmdCtrlLoopActive bool
-	backend           rediscache.Cache
-	ch                chan bool
+	serviceName string
+	ringFile    string
+	ring        ring.Ring
+	localID     uint64
+	backend     OortService //the backend service
+	// TODO: should probably share ch with backend so a stop on one stops both.
+	ch                chan bool //os signal chan,
 	ShutdownComplete  chan bool
 	waitGroup         *sync.WaitGroup
 	cmdCtrlLock       sync.RWMutex
+	CmdCtrlConfig     cmdctrl.ConfigOpts
+	cmdCtrlLoopActive bool
 	stopped           bool
-	serverTLSConfig   *tls.Config
 }
 
-func New(MaxClients int, NoTLS bool, CertFile, KeyFile string) (*Server, error) {
+func New(serviceName string) (*Server, error) {
 	o := &Server{
-		MaxClients:       MaxClients,
+		serviceName:      serviceName,
 		ch:               make(chan bool),
 		ShutdownComplete: make(chan bool),
 		waitGroup:        &sync.WaitGroup{},
 		stopped:          false,
 	}
-	err := o.LoadConfig()
+	err := o.ObtainConfig()
 	if err != nil {
-		return o, nil
-	}
-	if NoTLS {
-		log.Println("RUNNING WITHOUT TLS ON FRONTEND!")
 		return o, err
 	}
-	cert, err := tls.LoadX509KeyPair(CertFile, KeyFile)
-	o.serverTLSConfig, err = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}, nil
 	return o, err
 }
 
 //SetBackend sets the current backend
-func (o *Server) SetBackend(backend rediscache.Cache) {
+func (o *Server) SetBackend(backend OortService) {
 	o.Lock()
 	o.backend = backend
 	o.Unlock()
@@ -66,8 +68,8 @@ func (o *Server) SetBackend(backend rediscache.Cache) {
 func (o *Server) SetRing(r ring.Ring, ringFile string) {
 	o.Lock()
 	o.ring = r
-	o.RingFile = ringFile
-	o.ring.SetLocalNode(o.LocalID)
+	o.ringFile = ringFile
+	o.ring.SetLocalNode(o.localID)
 	o.backend.UpdateRing(o.ring)
 	log.Println("Ring version is now:", o.ring.Version())
 	o.Unlock()
@@ -84,7 +86,7 @@ func (o *Server) Ring() ring.Ring {
 func (o *Server) GetLocalID() uint64 {
 	o.RLock()
 	defer o.RUnlock()
-	return o.LocalID
+	return o.localID
 }
 
 func (o *Server) CmdCtrlLoopActive() bool {
@@ -93,116 +95,38 @@ func (o *Server) CmdCtrlLoopActive() bool {
 	return o.cmdCtrlLoopActive
 }
 
-func (o *Server) handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
-	defer conn.Close()
-	defer o.waitGroup.Done()
-	for {
-		err := handler.Parse()
-		if err != nil {
-			return
-		}
+func (o *Server) runCmdCtrlLoop() {
+	if !o.cmdCtrlLoopActive {
+		go func(o *Server) {
+			firstAttempt := true
+			for {
+				o.cmdCtrlLoopActive = true
+				cc := cmdctrl.NewCCServer(o, &o.CmdCtrlConfig)
+				err := cc.Serve()
+				if err != nil && firstAttempt {
+					//since this is our first attempt to bind/serve and we blew up
+					//we're probably missing something import and wont be able to
+					//recover.
+					log.Fatalln("Error on first attempt to launch CmdCtrl Serve")
+				} else if err != nil && !firstAttempt {
+					log.Println("CmdCtrl Serve encountered error:", err)
+				} else {
+					log.Println("CmdCtrl Serve exited without error, quiting")
+					break
+				}
+				firstAttempt = false
+			}
+		}(o)
 	}
 }
 
-// serve sets up all the channels/listeners. its also invoked by
-// cmdctrl start/restart to turn services back on.
-func (o *Server) serve() {
+func (o *Server) Serve() {
 	defer o.waitGroup.Done()
 	o.waitGroup.Add(1)
 	if o.CmdCtrlConfig.Enabled {
-		if !o.cmdCtrlLoopActive {
-			go func(o *Server) {
-				firstAttempt := true
-				for {
-					o.cmdCtrlLoopActive = true
-					cc := cmdctrl.NewCCServer(o, &o.CmdCtrlConfig)
-					err := cc.Serve()
-					if err != nil && firstAttempt {
-						//since this is our first attempt to bind/serve and we blew up
-						//we're probably missing something import and wont be able to
-						//recover.
-						log.Fatalln("Error on first attempt to launch CmdCtrl Serve")
-					} else if err != nil && !firstAttempt {
-						log.Println("CmdCtrl Serve encountered error:", err)
-					} else {
-						log.Println("CmdCtrl Serve exited without error, quiting")
-						break
-					}
-					firstAttempt = false
-				}
-			}(o)
-		}
+		o.runCmdCtrlLoop()
 	} else {
 		log.Println("Command and Control functionality disabled via config")
 	}
-	readerChan := make(chan *bufio.Reader, o.MaxClients)
-	for i := 0; i < cap(readerChan); i++ {
-		readerChan <- nil
-	}
-	writerChan := make(chan *bufio.Writer, o.MaxClients)
-	for i := 0; i < cap(writerChan); i++ {
-		writerChan <- nil
-	}
-	handlerChan := make(chan *rediscache.RESPhandler, o.MaxClients)
-	for i := 0; i < cap(handlerChan); i++ {
-		handlerChan <- rediscache.NewRESPhandler(o.backend)
-	}
-	addr, err := net.ResolveTCPAddr("tcp", o.ListenAddr)
-	if err != nil {
-		log.Println("Error getting IP: ", err)
-		return
-	}
-	server, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		log.Println("Error starting: ", err)
-		return
-	}
-	log.Println("Listening on:", o.ListenAddr)
-	for {
-		select {
-		case <-o.ch:
-			log.Println("Shutting down")
-			server.Close()
-			return
-		default:
-		}
-		server.SetDeadline(time.Now().Add(1e9))
-		var conn net.Conn
-		if o.serverTLSConfig != nil {
-			l := tls.NewListener(server, o.serverTLSConfig)
-			conn, err = l.Accept()
-		} else {
-			conn, err = server.AcceptTCP()
-		}
-		if err != nil {
-			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				continue
-			}
-			log.Println(err)
-		}
-		reader := <-readerChan
-		if reader == nil {
-			reader = bufio.NewReaderSize(conn, 65536)
-		} else {
-			reader.Reset(conn)
-		}
-		writer := <-writerChan
-		if writer == nil {
-			writer = bufio.NewWriterSize(conn, 65536)
-		} else {
-			writer.Reset(conn)
-		}
-		handler := <-handlerChan
-		handler.Reset(reader, writer)
-		o.waitGroup.Add(1)
-		go o.handle_conn(conn, handler)
-		handlerChan <- handler
-		writerChan <- writer
-		readerChan <- reader
-	}
-}
-
-// Serve starts the command and control instance, as well as the backend
-func (o *Server) Serve() {
-	go o.serve()
+	go o.backend.ListenAndServe()
 }

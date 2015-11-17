@@ -50,7 +50,7 @@ func (o *Server) RingUpdate(newversion int64, ringBytes []byte) int64 {
 		log.Println("Provided ring version != version in ring")
 		return o.Ring().Version()
 	}
-	fname := fmt.Sprintf("/etc/oort/oortd/%d-oort.ring", newring.Version())
+	fname := fmt.Sprintf("/etc/oort/%s/%d.ring", o.serviceName, newring.Version())
 	writeBytes(fname, &ringBytes)
 	o.SetRing(newring, fname)
 	return o.Ring().Version()
@@ -68,7 +68,7 @@ func (o *Server) Start() error {
 	}
 	o.ch = make(chan bool)
 	o.backend.Start()
-	go o.serve()
+	go o.backend.ListenAndServe()
 	o.stopped = false
 	return nil
 }
@@ -84,12 +84,13 @@ func (o *Server) Restart() error {
 		return fmt.Errorf("Service not running")
 	}
 	close(o.ch)
-	o.waitGroup.Wait()
+	o.backend.StopListenAndServe()
+	o.backend.Wait()
 	o.backend.Stop()
 	o.stopped = true
 	o.ch = make(chan bool)
 	o.backend.Start()
-	go o.serve()
+	go o.backend.ListenAndServe()
 	o.stopped = false
 	return nil
 }
@@ -98,7 +99,7 @@ func (o *Server) HealthCheck() (bool, string) {
 	return true, "pong"
 }
 
-// shutdownFinished closes the ShutdownComplete channel
+// shutdownFinished closes the shutdownComplete channel
 // 10 miliseconds after being invoked (to give a cmd ctrl client
 // a chance to return.
 func (o *Server) shutdownFinished() {
@@ -107,7 +108,6 @@ func (o *Server) shutdownFinished() {
 }
 
 // Stop the backend and shutdown all listeners.
-// Closes the ShutdownComplete chan when finsihed.
 // Does NOT exist the process.
 func (o *Server) Stop() error {
 	o.cmdCtrlLock.Lock()
@@ -116,7 +116,8 @@ func (o *Server) Stop() error {
 		return fmt.Errorf("Service already stopped")
 	}
 	close(o.ch)
-	o.waitGroup.Wait()
+	o.backend.StopListenAndServe()
+	o.backend.Wait()
 	o.backend.Stop()
 	o.stopped = true
 	return nil
@@ -133,7 +134,8 @@ func (o *Server) Exit() error {
 		return nil
 	}
 	close(o.ch)
-	o.waitGroup.Wait()
+	o.backend.StopListenAndServe()
+	o.backend.Wait()
 	o.backend.Stop()
 	o.stopped = true
 	defer o.shutdownFinished()

@@ -50,7 +50,7 @@ func (s *SRVLoader) getConfig() (*pb.NodeConfig, error) {
 	}
 	defer conn.Close()
 
-	client := pb.NewRingMgrClient(conn)
+	client := pb.NewSyndicateClient(conn)
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
