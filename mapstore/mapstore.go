@@ -51,6 +51,18 @@ func (cache *MapCache) Stop() {
 	return
 }
 
+func (cache *MapCache) ListenAndServe() {
+	return
+}
+
+func (cache *MapCache) StopListenAndServe() {
+	return
+}
+
+func (cache *MapCache) Wait() {
+	return
+}
+
 func (cache *MapCache) Stats() []byte {
 	return []byte(fmt.Sprintf("entries:%d", len(cache.data)))
 }

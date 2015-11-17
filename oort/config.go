@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gholt/ring"
 	"github.com/pandemicsyn/oort/utils/srvconf"
+	"github.com/pandemicsyn/syndicate/cmdctrl"
 )
 
 // FExists true if a file or dir exists
@@ -21,13 +22,24 @@ func FExists(name string) bool {
 	return true
 }
 
-func (o *Server) loadRingConfig() (err error) {
+type ccc struct {
+	CmdCtrlConfig cmdctrl.ConfigOpts
+}
+
+func (o *Server) loadCmdCtrlConfig() error {
+	config := ccc{}
+	err := o.LoadRingConfig(&config)
+	o.CmdCtrlConfig = config.CmdCtrlConfig
+	return err
+}
+
+func (o *Server) LoadRingConfig(config interface{}) (err error) {
 	o.Lock()
 	defer o.Unlock()
 	log.Println("Using ring version:", o.ring.Version())
 	b := bytes.NewReader(o.ring.Conf())
 	if b.Len() > 0 {
-		_, err = toml.DecodeReader(b, o)
+		_, err = toml.DecodeReader(b, config)
 		if err != nil {
 			return err
 		}
@@ -39,7 +51,7 @@ func (o *Server) loadRingConfig() (err error) {
 	}
 	b = bytes.NewReader(o.ring.LocalNode().Conf())
 	if b.Len() > 0 {
-		_, err = toml.DecodeReader(b, o)
+		_, err = toml.DecodeReader(b, config)
 		if err != nil {
 			return err
 		}
@@ -49,7 +61,7 @@ func (o *Server) loadRingConfig() (err error) {
 	return nil
 }
 
-func (o *Server) LoadConfig() (err error) {
+func (o *Server) ObtainConfig() (err error) {
 	envSkipSRV := os.Getenv("OORTD_SKIP_SRV")
 	// Check whether we're supposed to skip loading via srv method
 	if strings.ToLower(envSkipSRV) != "true" {
@@ -81,17 +93,15 @@ func (o *Server) LoadConfig() (err error) {
 		}
 		o.LocalID = nc.Localid
 		o.ring.SetLocalNode(o.LocalID)
-		o.StoreType = "oortstore"
 		o.RingFile = fmt.Sprintf("/etc/oort/oortd/%d-oort.ring", o.ring.Version())
-		o.ListenAddr = "0.0.0.0:6379"
-		err = o.loadRingConfig()
+		err = o.loadCmdCtrlConfig()
 		if err != nil {
 			return err
 		}
+		log.Printf("CCC: %#v\n", o.CmdCtrlConfig)
 	} else {
 		// if you skip the srv load you have to provide all of the info in env vars!
 		log.Println("Skipped SRV Config attempting to load from env")
-		o.ListenAddr = os.Getenv("OORT_LISTEN_ADDRESS")
 		s, err := strconv.ParseUint(os.Getenv("OORT_LOCALID"), 10, 64)
 		if err != nil {
 			return fmt.Errorf("Unable to load env specified local id")
@@ -103,14 +113,10 @@ func (o *Server) LoadConfig() (err error) {
 			return fmt.Errorf("Unable to road env specified ring: %s", err)
 		}
 		o.ring.SetLocalNode(o.LocalID)
-		err = o.loadRingConfig()
+		err = o.loadCmdCtrlConfig()
 		if err != nil {
 			return err
 		}
-	}
-	// Allow overriding a few things via the env, that may be handy for debugging
-	if os.Getenv("OORT_LISTEN_ADDRESS") != "" {
-		o.ListenAddr = os.Getenv("OORT_LISTEN_ADDRESS")
 	}
 	return nil
 }

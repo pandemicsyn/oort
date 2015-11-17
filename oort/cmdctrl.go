@@ -68,7 +68,7 @@ func (o *Server) Start() error {
 	}
 	o.ch = make(chan bool)
 	o.backend.Start()
-	go o.serve()
+	go o.backend.ListenAndServe()
 	o.stopped = false
 	return nil
 }
@@ -84,12 +84,13 @@ func (o *Server) Restart() error {
 		return fmt.Errorf("Service not running")
 	}
 	close(o.ch)
-	o.waitGroup.Wait()
+	o.backend.StopListenAndServe()
+	o.backend.Wait()
 	o.backend.Stop()
 	o.stopped = true
 	o.ch = make(chan bool)
 	o.backend.Start()
-	go o.serve()
+	go o.backend.ListenAndServe()
 	o.stopped = false
 	return nil
 }
@@ -116,7 +117,8 @@ func (o *Server) Stop() error {
 		return fmt.Errorf("Service already stopped")
 	}
 	close(o.ch)
-	o.waitGroup.Wait()
+	o.backend.StopListenAndServe()
+	o.backend.Wait()
 	o.backend.Stop()
 	o.stopped = true
 	return nil
@@ -133,7 +135,8 @@ func (o *Server) Exit() error {
 		return nil
 	}
 	close(o.ch)
-	o.waitGroup.Wait()
+	o.backend.StopListenAndServe()
+	o.backend.Wait()
 	o.backend.Stop()
 	o.stopped = true
 	defer o.shutdownFinished()
