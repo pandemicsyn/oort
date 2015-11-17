@@ -105,9 +105,9 @@ func (o *Server) ObtainConfig() (err error) {
 		if err != nil {
 			return err
 		}
-		o.LocalID = nc.Localid
-		o.ring.SetLocalNode(o.LocalID)
-		o.RingFile = fmt.Sprintf("/etc/oort/%s/%d-oort.ring", o.serviceName, o.ring.Version())
+		o.localID = nc.Localid
+		o.ring.SetLocalNode(o.localID)
+		o.ringFile = fmt.Sprintf("/etc/oort/%s/%d-oort.ring", o.serviceName, o.ring.Version())
 		err = o.loadCmdCtrlConfig()
 		if err != nil {
 			return err
@@ -119,13 +119,13 @@ func (o *Server) ObtainConfig() (err error) {
 		if err != nil {
 			return fmt.Errorf("Unable to load env specified local id")
 		}
-		o.LocalID = s
-		o.RingFile = e.Get("RING_FILE")
-		o.ring, _, err = ring.RingOrBuilder(o.RingFile)
+		o.localID = s
+		o.ringFile = e.Get("RING_FILE")
+		o.ring, _, err = ring.RingOrBuilder(o.ringFile)
 		if err != nil {
 			return fmt.Errorf("Unable to road env specified ring: %s", err)
 		}
-		o.ring.SetLocalNode(o.LocalID)
+		o.ring.SetLocalNode(o.localID)
 		err = o.loadCmdCtrlConfig()
 		if err != nil {
 			return err

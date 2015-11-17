@@ -99,7 +99,7 @@ func (o *Server) HealthCheck() (bool, string) {
 	return true, "pong"
 }
 
-// shutdownFinished closes the ShutdownComplete channel
+// shutdownFinished closes the shutdownComplete channel
 // 10 miliseconds after being invoked (to give a cmd ctrl client
 // a chance to return.
 func (o *Server) shutdownFinished() {
@@ -108,7 +108,6 @@ func (o *Server) shutdownFinished() {
 }
 
 // Stop the backend and shutdown all listeners.
-// Closes the ShutdownComplete chan when finsihed.
 // Does NOT exist the process.
 func (o *Server) Stop() error {
 	o.cmdCtrlLock.Lock()

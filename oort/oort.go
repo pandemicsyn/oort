@@ -14,6 +14,7 @@ type OortService interface {
 	Start()
 	//Stop is called before StopListenAndServe
 	Stop()
+	//The method we'll invoke when we receive a new ring
 	UpdateRing(ring.Ring)
 	// ListenAndServe is assumed to bind to an address and just handle/pass off requests, Start is called BEFORE this to make sure
 	// any need backend services/chan's are up and running before we start accepting requests.
@@ -27,13 +28,13 @@ type OortService interface {
 
 type Server struct {
 	sync.RWMutex
-	serviceName       string
-	RingFile          string
-	ring              ring.Ring   //GetRing()
-	LocalID           uint64      //GetLocalID()
-	Configs           interface{} //GetConfigs, SetConfigs ?
-	backend           OortService //the backend service
-	ch                chan bool   //os signal chan
+	serviceName string
+	ringFile    string
+	ring        ring.Ring
+	localID     uint64
+	backend     OortService //the backend service
+	// TODO: should probably share ch with backend so a stop on one stops both.
+	ch                chan bool //os signal chan,
 	ShutdownComplete  chan bool
 	waitGroup         *sync.WaitGroup
 	cmdCtrlLock       sync.RWMutex
@@ -67,8 +68,8 @@ func (o *Server) SetBackend(backend OortService) {
 func (o *Server) SetRing(r ring.Ring, ringFile string) {
 	o.Lock()
 	o.ring = r
-	o.RingFile = ringFile
-	o.ring.SetLocalNode(o.LocalID)
+	o.ringFile = ringFile
+	o.ring.SetLocalNode(o.localID)
 	o.backend.UpdateRing(o.ring)
 	log.Println("Ring version is now:", o.ring.Version())
 	o.Unlock()
@@ -85,7 +86,7 @@ func (o *Server) Ring() ring.Ring {
 func (o *Server) GetLocalID() uint64 {
 	o.RLock()
 	defer o.RUnlock()
-	return o.LocalID
+	return o.localID
 }
 
 func (o *Server) CmdCtrlLoopActive() bool {
