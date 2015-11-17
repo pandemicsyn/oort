@@ -81,15 +81,15 @@ func (s *OortValueStore) start() {
 		s.t.Listen()
 		log.Println("Listen() returned, shutdown?")
 	}()
-	go func() {
-		tcpMsgRingStats := s.t.Stats(false)
+	go func(t *ring.TCPMsgRing) {
+		tcpMsgRingStats := t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
-			tcpMsgRingStats = s.t.Stats(false)
+			tcpMsgRingStats = t.Stats(false)
 			log.Printf("%v\n", tcpMsgRingStats)
 			log.Printf("%s\n", s.vs.Stats(false))
 		}
-	}()
+	}(s.t)
 }
 
 func (s *OortValueStore) UpdateRing(ring ring.Ring) {

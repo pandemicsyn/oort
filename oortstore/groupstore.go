@@ -69,7 +69,7 @@ func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 func (s *OortGroupStore) start() {
 	var err error
 	log.Println("LocalID appears to be:", s.o.GetLocalID())
-	s.t = ring.NewTCPMsgRing(&s.TCPMsgRingConfig) // race write
+	s.t = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
 	s.GroupStoreConfig.MsgRing = s.t
 	s.t.SetRing(s.o.Ring())
 	s.vs, err = store.NewGroupStore(&s.GroupStoreConfig)
@@ -81,19 +81,15 @@ func (s *OortGroupStore) start() {
 		s.t.Listen()
 		log.Println("Listen() returned, shutdown?")
 	}()
-	go func() {
-		// TODO: -race found an issue where this is running when start()
-		// is called afer a previous stop()
-		tcpMsgRingStats := s.t.Stats(false) //race read
+	go func(t *ring.TCPMsgRing) {
+		tcpMsgRingStats := t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
-			s.Lock()
-			tcpMsgRingStats = s.t.Stats(false)
+			tcpMsgRingStats = t.Stats(false)
 			log.Printf("%v\n", tcpMsgRingStats)
 			log.Printf("%s\n", s.vs.Stats(false))
-			s.Unlock()
 		}
-	}()
+	}(s.t)
 }
 
 func (s *OortGroupStore) UpdateRing(ring ring.Ring) {
