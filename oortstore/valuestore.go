@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -68,6 +69,8 @@ func NewValueStore(oort *oort.Server) (*OortValueStore, error) {
 
 func (s *OortValueStore) start() {
 	var err error
+	s.vs = nil
+	runtime.GC()
 	log.Println("LocalID appears to be:", s.o.GetLocalID())
 	s.t = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
 	s.ValueStoreConfig.MsgRing = s.t
