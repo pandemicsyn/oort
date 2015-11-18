@@ -77,10 +77,10 @@ func (s *OortValueStore) start() {
 		panic(err)
 	}
 	s.vs.EnableAll()
-	go func() {
-		s.t.Listen()
+	go func(t *ring.TCPMsgRing) {
+		t.Listen()
 		log.Println("Listen() returned, shutdown?")
-	}()
+	}(s.t)
 	go func(t *ring.TCPMsgRing) {
 		tcpMsgRingStats := t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
