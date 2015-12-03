@@ -56,9 +56,9 @@ func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 		for k, _ := range ring.Nodes() {
 			log.Println(ring.Nodes()[k].ID(), ring.Nodes()[k].Addresses())
 		}
+		l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
+		s.GroupStoreConfig.LogDebug = l.Printf
 	}
-	l := log.New(os.Stdout, "DebugStore ", log.LstdFlags)
-	s.GroupStoreConfig.LogDebug = l.Printf
 	if s.TCPMsgRingConfig.UseTLS {
 		log.Println("TCPMsgRing using TLS")
 	}
