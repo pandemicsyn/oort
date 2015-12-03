@@ -42,9 +42,9 @@ Rinse and repeat for oort-groupd
 Oort-${service}d obtains configuration info and the rings by communicate with a running syndicate server (synd).
 To discover the syndicate server it either attempts to use SRV records. The SRV record should be structured as follows:
 
-```_oortservicename_syndicate._tcp.iad3.velocillama.com. 300 IN SRV 1 1 8443 syndicate1.iad3.velocillama.com.```
+```_oortservicename-syndicate._tcp.iad3.velocillama.com. 300 IN SRV 1 1 8443 syndicate1.iad3.velocillama.com.```
 
-The service needs to be "syndicate", "proto" should be tcp. The rest of the service address (the iad3.velocillama.com portion) is derived from the systems local hostname. So if the local hostname is "devmachine.iad3.domain.com" and you're running the "value" (oort-valued) service the service record for it would be `_value_syndicate._tcp.iad3.domain.com`. The address and port target should be the address and port of your running synd instance. If you're running a local dev instance and don't have or want to setup a DNS record you can also use "env OORT_$(service)D_SYNDICATE_OVERRIDE=127.0.0.1:8443" to fake a return SRV record.
+The service needs to be "syndicate", "proto" should be tcp. The rest of the service address (the iad3.velocillama.com portion) is derived from the systems local hostname. So if the local hostname is "devmachine.iad3.domain.com" and you're running the "value" (oort-valued) service the service record for it would be `_value-syndicate._tcp.iad3.domain.com`. The address and port target should be the address and port of your running synd instance. If you're running a local dev instance and don't have or want to setup a DNS record you can also use "env OORT_$(service)D_SYNDICATE_OVERRIDE=127.0.0.1:8443" to fake a return SRV record.
 
 Configuration is applied in this order:
 
