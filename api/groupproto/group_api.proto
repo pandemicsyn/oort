@@ -1,0 +1,69 @@
+syntax = "proto3";
+package groupproto;
+
+// Write and Delete intentionally use uniquely named ResponseMessages
+// incase they ever change down the road.
+service GroupStore {
+    rpc Write(KeyGroupValue) returns (WriteResponse) {}
+    rpc Lookup(KeyGroup) returns (LookupResponse) {}
+    rpc LookupGroup(Key) returns (LookupGroupResponse) {}
+    rpc Read(KeyGroup) returns (ReadResponse) {}
+    rpc Delete(KeyGroup) returns (DelResponse) {}
+}
+
+message EmptyMsg {}
+
+message KeyGroupValue {
+    uint64 keya = 1;
+    uint64 keyb = 2;
+    uint64 namekeya = 3;
+    uint64 namekeyb = 4;
+    bytes value = 5;
+    int64 ts = 6;
+}
+
+message KeyGroup {
+    uint64 keya = 1;
+    uint64 keyb = 2;
+    uint64 namekeya = 3;
+    uint64 namekeyb = 4;
+    int64 ts = 5;
+}
+
+message Key {
+    uint64 keya = 1;
+    uint64 keyb = 2;
+}
+
+message WriteResponse {
+    int64 ts = 1;
+    string err = 2;
+}
+
+message LookupResponse {
+    int64 ts = 1;
+    uint32 length = 2;
+    string err = 3;
+}
+
+message LookupGroupResponse {
+    repeated LookupGroupItem items = 1;
+}
+
+message LookupGroupItem {
+    uint64 namekeya = 1;
+    uint64 namekeyb = 2;
+    uint64 ts = 3;
+    uint32 length = 4;
+}
+
+message ReadResponse {
+    int64 ts = 1;
+    bytes value = 2;
+    string err = 3;
+}
+
+message DelResponse {
+    int64 ts = 1;
+    string err = 2;
+}
