@@ -44,12 +44,12 @@ func (m *EmptyMsg) String() string { return proto.CompactTextString(m) }
 func (*EmptyMsg) ProtoMessage()    {}
 
 type KeyGroupValue struct {
-	Keya     uint64 `protobuf:"varint,1,opt,name=keya" json:"keya,omitempty"`
-	Keyb     uint64 `protobuf:"varint,2,opt,name=keyb" json:"keyb,omitempty"`
-	Namekeya uint64 `protobuf:"varint,3,opt,name=namekeya" json:"namekeya,omitempty"`
-	Namekeyb uint64 `protobuf:"varint,4,opt,name=namekeyb" json:"namekeyb,omitempty"`
+	KeyA     uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
+	NameKeyB uint64 `protobuf:"varint,4,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
 	Value    []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
-	Ts       int64  `protobuf:"varint,6,opt,name=ts" json:"ts,omitempty"`
+	Tsm      int64  `protobuf:"varint,6,opt,name=tsm" json:"tsm,omitempty"`
 }
 
 func (m *KeyGroupValue) Reset()         { *m = KeyGroupValue{} }
@@ -57,11 +57,11 @@ func (m *KeyGroupValue) String() string { return proto.CompactTextString(m) }
 func (*KeyGroupValue) ProtoMessage()    {}
 
 type KeyGroup struct {
-	Keya     uint64 `protobuf:"varint,1,opt,name=keya" json:"keya,omitempty"`
-	Keyb     uint64 `protobuf:"varint,2,opt,name=keyb" json:"keyb,omitempty"`
-	Namekeya uint64 `protobuf:"varint,3,opt,name=namekeya" json:"namekeya,omitempty"`
-	Namekeyb uint64 `protobuf:"varint,4,opt,name=namekeyb" json:"namekeyb,omitempty"`
-	Ts       int64  `protobuf:"varint,5,opt,name=ts" json:"ts,omitempty"`
+	KeyA     uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
+	NameKeyB uint64 `protobuf:"varint,4,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
+	Tsm      int64  `protobuf:"varint,5,opt,name=tsm" json:"tsm,omitempty"`
 }
 
 func (m *KeyGroup) Reset()         { *m = KeyGroup{} }
@@ -69,8 +69,8 @@ func (m *KeyGroup) String() string { return proto.CompactTextString(m) }
 func (*KeyGroup) ProtoMessage()    {}
 
 type Key struct {
-	Keya uint64 `protobuf:"varint,1,opt,name=keya" json:"keya,omitempty"`
-	Keyb uint64 `protobuf:"varint,2,opt,name=keyb" json:"keyb,omitempty"`
+	A uint64 `protobuf:"varint,1,opt,name=a" json:"a,omitempty"`
+	B uint64 `protobuf:"varint,2,opt,name=b" json:"b,omitempty"`
 }
 
 func (m *Key) Reset()         { *m = Key{} }
@@ -78,7 +78,7 @@ func (m *Key) String() string { return proto.CompactTextString(m) }
 func (*Key) ProtoMessage()    {}
 
 type WriteResponse struct {
-	Ts  int64  `protobuf:"varint,1,opt,name=ts" json:"ts,omitempty"`
+	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
 	Err string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
@@ -87,7 +87,7 @@ func (m *WriteResponse) String() string { return proto.CompactTextString(m) }
 func (*WriteResponse) ProtoMessage()    {}
 
 type LookupResponse struct {
-	Ts     int64  `protobuf:"varint,1,opt,name=ts" json:"ts,omitempty"`
+	Tsm    int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
 	Length uint32 `protobuf:"varint,2,opt,name=length" json:"length,omitempty"`
 	Err    string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
 }
@@ -112,9 +112,9 @@ func (m *LookupGroupResponse) GetItems() []*LookupGroupItem {
 }
 
 type LookupGroupItem struct {
-	Namekeya uint64 `protobuf:"varint,1,opt,name=namekeya" json:"namekeya,omitempty"`
-	Namekeyb uint64 `protobuf:"varint,2,opt,name=namekeyb" json:"namekeyb,omitempty"`
-	Ts       uint64 `protobuf:"varint,3,opt,name=ts" json:"ts,omitempty"`
+	NameKeyA uint64 `protobuf:"varint,1,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
+	NameKeyB uint64 `protobuf:"varint,2,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
+	Tsm      uint64 `protobuf:"varint,3,opt,name=tsm" json:"tsm,omitempty"`
 	Length   uint32 `protobuf:"varint,4,opt,name=length" json:"length,omitempty"`
 }
 
@@ -123,7 +123,7 @@ func (m *LookupGroupItem) String() string { return proto.CompactTextString(m) }
 func (*LookupGroupItem) ProtoMessage()    {}
 
 type ReadResponse struct {
-	Ts    int64  `protobuf:"varint,1,opt,name=ts" json:"ts,omitempty"`
+	Tsm   int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Err   string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
 }
@@ -133,7 +133,7 @@ func (m *ReadResponse) String() string { return proto.CompactTextString(m) }
 func (*ReadResponse) ProtoMessage()    {}
 
 type DelResponse struct {
-	Ts  int64  `protobuf:"varint,1,opt,name=ts" json:"ts,omitempty"`
+	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
 	Err string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 

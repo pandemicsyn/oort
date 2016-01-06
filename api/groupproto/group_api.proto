@@ -14,34 +14,34 @@ service GroupStore {
 message EmptyMsg {}
 
 message KeyGroupValue {
-    uint64 keya = 1;
-    uint64 keyb = 2;
-    uint64 namekeya = 3;
-    uint64 namekeyb = 4;
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+    uint64 nameKeyA = 3;
+    uint64 nameKeyB = 4;
     bytes value = 5;
-    int64 ts = 6;
+    int64 tsm = 6;
 }
 
 message KeyGroup {
-    uint64 keya = 1;
-    uint64 keyb = 2;
-    uint64 namekeya = 3;
-    uint64 namekeyb = 4;
-    int64 ts = 5;
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+    uint64 nameKeyA = 3;
+    uint64 nameKeyB = 4;
+    int64 tsm = 5;
 }
 
 message Key {
-    uint64 keya = 1;
-    uint64 keyb = 2;
+    uint64 a = 1;
+    uint64 b = 2;
 }
 
 message WriteResponse {
-    int64 ts = 1;
+    int64 tsm = 1;
     string err = 2;
 }
 
 message LookupResponse {
-    int64 ts = 1;
+    int64 tsm = 1;
     uint32 length = 2;
     string err = 3;
 }
@@ -51,19 +51,19 @@ message LookupGroupResponse {
 }
 
 message LookupGroupItem {
-    uint64 namekeya = 1;
-    uint64 namekeyb = 2;
-    uint64 ts = 3;
+    uint64 nameKeyA = 1;
+    uint64 nameKeyB = 2;
+    uint64 tsm = 3;
     uint32 length = 4;
 }
 
 message ReadResponse {
-    int64 ts = 1;
+    int64 tsm = 1;
     bytes value = 2;
     string err = 3;
 }
 
 message DelResponse {
-    int64 ts = 1;
+    int64 tsm = 1;
     string err = 2;
 }
