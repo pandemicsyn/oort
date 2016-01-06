@@ -10,8 +10,10 @@ It is generated from these files:
 
 It has these top-level messages:
 	EmptyMsg
-	KeyValue
-	Key
+	WriteRequest
+	LookupRequest
+	ReadRequest
+	DeleteRequest
 	WriteResponse
 	LookupResponse
 	GetResponse
@@ -40,26 +42,46 @@ func (m *EmptyMsg) Reset()         { *m = EmptyMsg{} }
 func (m *EmptyMsg) String() string { return proto.CompactTextString(m) }
 func (*EmptyMsg) ProtoMessage()    {}
 
-type KeyValue struct {
-	A     uint64 `protobuf:"varint,1,opt,name=a" json:"a,omitempty"`
-	B     uint64 `protobuf:"varint,2,opt,name=b" json:"b,omitempty"`
-	Value []byte `protobuf:"bytes,3,opt,name=Value,proto3" json:"Value,omitempty"`
+type WriteRequest struct {
+	KeyA  uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB  uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	Value []byte `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
 	Tsm   int64  `protobuf:"varint,4,opt,name=tsm" json:"tsm,omitempty"`
 }
 
-func (m *KeyValue) Reset()         { *m = KeyValue{} }
-func (m *KeyValue) String() string { return proto.CompactTextString(m) }
-func (*KeyValue) ProtoMessage()    {}
+func (m *WriteRequest) Reset()         { *m = WriteRequest{} }
+func (m *WriteRequest) String() string { return proto.CompactTextString(m) }
+func (*WriteRequest) ProtoMessage()    {}
 
-type Key struct {
-	A   uint64 `protobuf:"varint,1,opt,name=a" json:"a,omitempty"`
-	B   uint64 `protobuf:"varint,2,opt,name=b" json:"b,omitempty"`
-	Tsm int64  `protobuf:"varint,3,opt,name=tsm" json:"tsm,omitempty"`
+type LookupRequest struct {
+	KeyA uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	Tsm  int64  `protobuf:"varint,3,opt,name=tsm" json:"tsm,omitempty"`
 }
 
-func (m *Key) Reset()         { *m = Key{} }
-func (m *Key) String() string { return proto.CompactTextString(m) }
-func (*Key) ProtoMessage()    {}
+func (m *LookupRequest) Reset()         { *m = LookupRequest{} }
+func (m *LookupRequest) String() string { return proto.CompactTextString(m) }
+func (*LookupRequest) ProtoMessage()    {}
+
+type ReadRequest struct {
+	KeyA uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	Tsm  int64  `protobuf:"varint,3,opt,name=tsm" json:"tsm,omitempty"`
+}
+
+func (m *ReadRequest) Reset()         { *m = ReadRequest{} }
+func (m *ReadRequest) String() string { return proto.CompactTextString(m) }
+func (*ReadRequest) ProtoMessage()    {}
+
+type DeleteRequest struct {
+	KeyA uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	Tsm  int64  `protobuf:"varint,3,opt,name=tsm" json:"tsm,omitempty"`
+}
+
+func (m *DeleteRequest) Reset()         { *m = DeleteRequest{} }
+func (m *DeleteRequest) String() string { return proto.CompactTextString(m) }
+func (*DeleteRequest) ProtoMessage()    {}
 
 type WriteResponse struct {
 	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
@@ -101,8 +123,10 @@ func (*DelResponse) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterType((*EmptyMsg)(nil), "valueproto.EmptyMsg")
-	proto.RegisterType((*KeyValue)(nil), "valueproto.KeyValue")
-	proto.RegisterType((*Key)(nil), "valueproto.Key")
+	proto.RegisterType((*WriteRequest)(nil), "valueproto.WriteRequest")
+	proto.RegisterType((*LookupRequest)(nil), "valueproto.LookupRequest")
+	proto.RegisterType((*ReadRequest)(nil), "valueproto.ReadRequest")
+	proto.RegisterType((*DeleteRequest)(nil), "valueproto.DeleteRequest")
 	proto.RegisterType((*WriteResponse)(nil), "valueproto.WriteResponse")
 	proto.RegisterType((*LookupResponse)(nil), "valueproto.LookupResponse")
 	proto.RegisterType((*GetResponse)(nil), "valueproto.GetResponse")
@@ -116,10 +140,10 @@ var _ grpc.ClientConn
 // Client API for ValueStore service
 
 type ValueStoreClient interface {
-	Write(ctx context.Context, in *KeyValue, opts ...grpc.CallOption) (*WriteResponse, error)
-	Lookup(ctx context.Context, in *Key, opts ...grpc.CallOption) (*LookupResponse, error)
-	Read(ctx context.Context, in *Key, opts ...grpc.CallOption) (*GetResponse, error)
-	Delete(ctx context.Context, in *Key, opts ...grpc.CallOption) (*DelResponse, error)
+	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error)
+	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DelResponse, error)
 }
 
 type valueStoreClient struct {
@@ -130,7 +154,7 @@ func NewValueStoreClient(cc *grpc.ClientConn) ValueStoreClient {
 	return &valueStoreClient{cc}
 }
 
-func (c *valueStoreClient) Write(ctx context.Context, in *KeyValue, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *valueStoreClient) Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
 	err := grpc.Invoke(ctx, "/valueproto.ValueStore/Write", in, out, c.cc, opts...)
 	if err != nil {
@@ -139,7 +163,7 @@ func (c *valueStoreClient) Write(ctx context.Context, in *KeyValue, opts ...grpc
 	return out, nil
 }
 
-func (c *valueStoreClient) Lookup(ctx context.Context, in *Key, opts ...grpc.CallOption) (*LookupResponse, error) {
+func (c *valueStoreClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error) {
 	out := new(LookupResponse)
 	err := grpc.Invoke(ctx, "/valueproto.ValueStore/Lookup", in, out, c.cc, opts...)
 	if err != nil {
@@ -148,7 +172,7 @@ func (c *valueStoreClient) Lookup(ctx context.Context, in *Key, opts ...grpc.Cal
 	return out, nil
 }
 
-func (c *valueStoreClient) Read(ctx context.Context, in *Key, opts ...grpc.CallOption) (*GetResponse, error) {
+func (c *valueStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*GetResponse, error) {
 	out := new(GetResponse)
 	err := grpc.Invoke(ctx, "/valueproto.ValueStore/Read", in, out, c.cc, opts...)
 	if err != nil {
@@ -157,7 +181,7 @@ func (c *valueStoreClient) Read(ctx context.Context, in *Key, opts ...grpc.CallO
 	return out, nil
 }
 
-func (c *valueStoreClient) Delete(ctx context.Context, in *Key, opts ...grpc.CallOption) (*DelResponse, error) {
+func (c *valueStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DelResponse, error) {
 	out := new(DelResponse)
 	err := grpc.Invoke(ctx, "/valueproto.ValueStore/Delete", in, out, c.cc, opts...)
 	if err != nil {
@@ -169,10 +193,10 @@ func (c *valueStoreClient) Delete(ctx context.Context, in *Key, opts ...grpc.Cal
 // Server API for ValueStore service
 
 type ValueStoreServer interface {
-	Write(context.Context, *KeyValue) (*WriteResponse, error)
-	Lookup(context.Context, *Key) (*LookupResponse, error)
-	Read(context.Context, *Key) (*GetResponse, error)
-	Delete(context.Context, *Key) (*DelResponse, error)
+	Write(context.Context, *WriteRequest) (*WriteResponse, error)
+	Lookup(context.Context, *LookupRequest) (*LookupResponse, error)
+	Read(context.Context, *ReadRequest) (*GetResponse, error)
+	Delete(context.Context, *DeleteRequest) (*DelResponse, error)
 }
 
 func RegisterValueStoreServer(s *grpc.Server, srv ValueStoreServer) {
@@ -180,7 +204,7 @@ func RegisterValueStoreServer(s *grpc.Server, srv ValueStoreServer) {
 }
 
 func _ValueStore_Write_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(KeyValue)
+	in := new(WriteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -192,7 +216,7 @@ func _ValueStore_Write_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 func _ValueStore_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(Key)
+	in := new(LookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -204,7 +228,7 @@ func _ValueStore_Lookup_Handler(srv interface{}, ctx context.Context, dec func(i
 }
 
 func _ValueStore_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(Key)
+	in := new(ReadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -216,7 +240,7 @@ func _ValueStore_Read_Handler(srv interface{}, ctx context.Context, dec func(int
 }
 
 func _ValueStore_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(Key)
+	in := new(DeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}

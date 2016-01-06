@@ -10,15 +10,17 @@ It is generated from these files:
 
 It has these top-level messages:
 	EmptyMsg
-	KeyGroupValue
-	KeyGroup
-	Key
+	WriteRequest
+	LookupRequest
+	ReadRequest
+	DeleteRequest
+	LookupGroupRequest
 	WriteResponse
 	LookupResponse
 	LookupGroupResponse
 	LookupGroupItem
 	ReadResponse
-	DelResponse
+	DeleteResponse
 */
 package groupproto
 
@@ -43,7 +45,7 @@ func (m *EmptyMsg) Reset()         { *m = EmptyMsg{} }
 func (m *EmptyMsg) String() string { return proto.CompactTextString(m) }
 func (*EmptyMsg) ProtoMessage()    {}
 
-type KeyGroupValue struct {
+type WriteRequest struct {
 	KeyA     uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
 	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
@@ -52,11 +54,11 @@ type KeyGroupValue struct {
 	Tsm      int64  `protobuf:"varint,6,opt,name=tsm" json:"tsm,omitempty"`
 }
 
-func (m *KeyGroupValue) Reset()         { *m = KeyGroupValue{} }
-func (m *KeyGroupValue) String() string { return proto.CompactTextString(m) }
-func (*KeyGroupValue) ProtoMessage()    {}
+func (m *WriteRequest) Reset()         { *m = WriteRequest{} }
+func (m *WriteRequest) String() string { return proto.CompactTextString(m) }
+func (*WriteRequest) ProtoMessage()    {}
 
-type KeyGroup struct {
+type LookupRequest struct {
 	KeyA     uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
 	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
@@ -64,18 +66,42 @@ type KeyGroup struct {
 	Tsm      int64  `protobuf:"varint,5,opt,name=tsm" json:"tsm,omitempty"`
 }
 
-func (m *KeyGroup) Reset()         { *m = KeyGroup{} }
-func (m *KeyGroup) String() string { return proto.CompactTextString(m) }
-func (*KeyGroup) ProtoMessage()    {}
+func (m *LookupRequest) Reset()         { *m = LookupRequest{} }
+func (m *LookupRequest) String() string { return proto.CompactTextString(m) }
+func (*LookupRequest) ProtoMessage()    {}
 
-type Key struct {
+type ReadRequest struct {
+	KeyA     uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
+	NameKeyB uint64 `protobuf:"varint,4,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
+	Tsm      int64  `protobuf:"varint,5,opt,name=tsm" json:"tsm,omitempty"`
+}
+
+func (m *ReadRequest) Reset()         { *m = ReadRequest{} }
+func (m *ReadRequest) String() string { return proto.CompactTextString(m) }
+func (*ReadRequest) ProtoMessage()    {}
+
+type DeleteRequest struct {
+	KeyA     uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
+	NameKeyB uint64 `protobuf:"varint,4,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
+	Tsm      int64  `protobuf:"varint,5,opt,name=tsm" json:"tsm,omitempty"`
+}
+
+func (m *DeleteRequest) Reset()         { *m = DeleteRequest{} }
+func (m *DeleteRequest) String() string { return proto.CompactTextString(m) }
+func (*DeleteRequest) ProtoMessage()    {}
+
+type LookupGroupRequest struct {
 	A uint64 `protobuf:"varint,1,opt,name=a" json:"a,omitempty"`
 	B uint64 `protobuf:"varint,2,opt,name=b" json:"b,omitempty"`
 }
 
-func (m *Key) Reset()         { *m = Key{} }
-func (m *Key) String() string { return proto.CompactTextString(m) }
-func (*Key) ProtoMessage()    {}
+func (m *LookupGroupRequest) Reset()         { *m = LookupGroupRequest{} }
+func (m *LookupGroupRequest) String() string { return proto.CompactTextString(m) }
+func (*LookupGroupRequest) ProtoMessage()    {}
 
 type WriteResponse struct {
 	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
@@ -132,26 +158,28 @@ func (m *ReadResponse) Reset()         { *m = ReadResponse{} }
 func (m *ReadResponse) String() string { return proto.CompactTextString(m) }
 func (*ReadResponse) ProtoMessage()    {}
 
-type DelResponse struct {
+type DeleteResponse struct {
 	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
 	Err string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *DelResponse) Reset()         { *m = DelResponse{} }
-func (m *DelResponse) String() string { return proto.CompactTextString(m) }
-func (*DelResponse) ProtoMessage()    {}
+func (m *DeleteResponse) Reset()         { *m = DeleteResponse{} }
+func (m *DeleteResponse) String() string { return proto.CompactTextString(m) }
+func (*DeleteResponse) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterType((*EmptyMsg)(nil), "groupproto.EmptyMsg")
-	proto.RegisterType((*KeyGroupValue)(nil), "groupproto.KeyGroupValue")
-	proto.RegisterType((*KeyGroup)(nil), "groupproto.KeyGroup")
-	proto.RegisterType((*Key)(nil), "groupproto.Key")
+	proto.RegisterType((*WriteRequest)(nil), "groupproto.WriteRequest")
+	proto.RegisterType((*LookupRequest)(nil), "groupproto.LookupRequest")
+	proto.RegisterType((*ReadRequest)(nil), "groupproto.ReadRequest")
+	proto.RegisterType((*DeleteRequest)(nil), "groupproto.DeleteRequest")
+	proto.RegisterType((*LookupGroupRequest)(nil), "groupproto.LookupGroupRequest")
 	proto.RegisterType((*WriteResponse)(nil), "groupproto.WriteResponse")
 	proto.RegisterType((*LookupResponse)(nil), "groupproto.LookupResponse")
 	proto.RegisterType((*LookupGroupResponse)(nil), "groupproto.LookupGroupResponse")
 	proto.RegisterType((*LookupGroupItem)(nil), "groupproto.LookupGroupItem")
 	proto.RegisterType((*ReadResponse)(nil), "groupproto.ReadResponse")
-	proto.RegisterType((*DelResponse)(nil), "groupproto.DelResponse")
+	proto.RegisterType((*DeleteResponse)(nil), "groupproto.DeleteResponse")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -161,11 +189,11 @@ var _ grpc.ClientConn
 // Client API for GroupStore service
 
 type GroupStoreClient interface {
-	Write(ctx context.Context, in *KeyGroupValue, opts ...grpc.CallOption) (*WriteResponse, error)
-	Lookup(ctx context.Context, in *KeyGroup, opts ...grpc.CallOption) (*LookupResponse, error)
-	LookupGroup(ctx context.Context, in *Key, opts ...grpc.CallOption) (*LookupGroupResponse, error)
-	Read(ctx context.Context, in *KeyGroup, opts ...grpc.CallOption) (*ReadResponse, error)
-	Delete(ctx context.Context, in *KeyGroup, opts ...grpc.CallOption) (*DelResponse, error)
+	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error)
+	LookupGroup(ctx context.Context, in *LookupGroupRequest, opts ...grpc.CallOption) (*LookupGroupResponse, error)
+	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 }
 
 type groupStoreClient struct {
@@ -176,7 +204,7 @@ func NewGroupStoreClient(cc *grpc.ClientConn) GroupStoreClient {
 	return &groupStoreClient{cc}
 }
 
-func (c *groupStoreClient) Write(ctx context.Context, in *KeyGroupValue, opts ...grpc.CallOption) (*WriteResponse, error) {
+func (c *groupStoreClient) Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error) {
 	out := new(WriteResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/Write", in, out, c.cc, opts...)
 	if err != nil {
@@ -185,7 +213,7 @@ func (c *groupStoreClient) Write(ctx context.Context, in *KeyGroupValue, opts ..
 	return out, nil
 }
 
-func (c *groupStoreClient) Lookup(ctx context.Context, in *KeyGroup, opts ...grpc.CallOption) (*LookupResponse, error) {
+func (c *groupStoreClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error) {
 	out := new(LookupResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/Lookup", in, out, c.cc, opts...)
 	if err != nil {
@@ -194,7 +222,7 @@ func (c *groupStoreClient) Lookup(ctx context.Context, in *KeyGroup, opts ...grp
 	return out, nil
 }
 
-func (c *groupStoreClient) LookupGroup(ctx context.Context, in *Key, opts ...grpc.CallOption) (*LookupGroupResponse, error) {
+func (c *groupStoreClient) LookupGroup(ctx context.Context, in *LookupGroupRequest, opts ...grpc.CallOption) (*LookupGroupResponse, error) {
 	out := new(LookupGroupResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/LookupGroup", in, out, c.cc, opts...)
 	if err != nil {
@@ -203,7 +231,7 @@ func (c *groupStoreClient) LookupGroup(ctx context.Context, in *Key, opts ...grp
 	return out, nil
 }
 
-func (c *groupStoreClient) Read(ctx context.Context, in *KeyGroup, opts ...grpc.CallOption) (*ReadResponse, error) {
+func (c *groupStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error) {
 	out := new(ReadResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/Read", in, out, c.cc, opts...)
 	if err != nil {
@@ -212,8 +240,8 @@ func (c *groupStoreClient) Read(ctx context.Context, in *KeyGroup, opts ...grpc.
 	return out, nil
 }
 
-func (c *groupStoreClient) Delete(ctx context.Context, in *KeyGroup, opts ...grpc.CallOption) (*DelResponse, error) {
-	out := new(DelResponse)
+func (c *groupStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error) {
+	out := new(DeleteResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/Delete", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -224,11 +252,11 @@ func (c *groupStoreClient) Delete(ctx context.Context, in *KeyGroup, opts ...grp
 // Server API for GroupStore service
 
 type GroupStoreServer interface {
-	Write(context.Context, *KeyGroupValue) (*WriteResponse, error)
-	Lookup(context.Context, *KeyGroup) (*LookupResponse, error)
-	LookupGroup(context.Context, *Key) (*LookupGroupResponse, error)
-	Read(context.Context, *KeyGroup) (*ReadResponse, error)
-	Delete(context.Context, *KeyGroup) (*DelResponse, error)
+	Write(context.Context, *WriteRequest) (*WriteResponse, error)
+	Lookup(context.Context, *LookupRequest) (*LookupResponse, error)
+	LookupGroup(context.Context, *LookupGroupRequest) (*LookupGroupResponse, error)
+	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 }
 
 func RegisterGroupStoreServer(s *grpc.Server, srv GroupStoreServer) {
@@ -236,7 +264,7 @@ func RegisterGroupStoreServer(s *grpc.Server, srv GroupStoreServer) {
 }
 
 func _GroupStore_Write_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(KeyGroupValue)
+	in := new(WriteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -248,7 +276,7 @@ func _GroupStore_Write_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 func _GroupStore_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(KeyGroup)
+	in := new(LookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -260,7 +288,7 @@ func _GroupStore_Lookup_Handler(srv interface{}, ctx context.Context, dec func(i
 }
 
 func _GroupStore_LookupGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(Key)
+	in := new(LookupGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -272,7 +300,7 @@ func _GroupStore_LookupGroup_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _GroupStore_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(KeyGroup)
+	in := new(ReadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -284,7 +312,7 @@ func _GroupStore_Read_Handler(srv interface{}, ctx context.Context, dec func(int
 }
 
 func _GroupStore_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(KeyGroup)
+	in := new(DeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}

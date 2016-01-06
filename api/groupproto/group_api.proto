@@ -4,44 +4,60 @@ package groupproto;
 // Write and Delete intentionally use uniquely named ResponseMessages
 // incase they ever change down the road.
 service GroupStore {
-    rpc Write(KeyGroupValue) returns (WriteResponse) {}
-    rpc Lookup(KeyGroup) returns (LookupResponse) {}
-    rpc LookupGroup(Key) returns (LookupGroupResponse) {}
-    rpc Read(KeyGroup) returns (ReadResponse) {}
-    rpc Delete(KeyGroup) returns (DelResponse) {}
+    rpc Write(WriteRequest) returns (WriteResponse) {}
+    rpc Lookup(LookupRequest) returns (LookupResponse) {}
+    rpc LookupGroup(LookupGroupRequest) returns (LookupGroupResponse) {}
+    rpc Read(ReadRequest) returns (ReadResponse) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
 }
 
 message EmptyMsg {}
 
-message KeyGroupValue {
+message WriteRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
     uint64 nameKeyA = 3;
     uint64 nameKeyB = 4;
-    bytes value = 5;
-    int64 tsm = 6;
+    bytes  value = 5;
+    int64  tsm = 6;
 }
 
-message KeyGroup {
+message LookupRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
     uint64 nameKeyA = 3;
     uint64 nameKeyB = 4;
-    int64 tsm = 5;
+    int64  tsm = 5;
 }
 
-message Key {
+message ReadRequest {
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+    uint64 nameKeyA = 3;
+    uint64 nameKeyB = 4;
+    int64  tsm = 5;
+}
+
+message DeleteRequest {
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+    uint64 nameKeyA = 3;
+    uint64 nameKeyB = 4;
+    int64  tsm = 5;
+}
+
+message LookupGroupRequest {
     uint64 a = 1;
     uint64 b = 2;
 }
 
 message WriteResponse {
-    int64 tsm = 1;
+    int64  tsm = 1;
     string err = 2;
 }
 
 message LookupResponse {
-    int64 tsm = 1;
+    int64  tsm = 1;
     uint32 length = 2;
     string err = 3;
 }
@@ -58,12 +74,12 @@ message LookupGroupItem {
 }
 
 message ReadResponse {
-    int64 tsm = 1;
-    bytes value = 2;
+    int64  tsm = 1;
+    bytes  value = 2;
     string err = 3;
 }
 
-message DelResponse {
-    int64 tsm = 1;
+message DeleteResponse {
+    int64  tsm = 1;
     string err = 2;
 }
