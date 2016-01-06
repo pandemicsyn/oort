@@ -16,8 +16,8 @@ It has these top-level messages:
 	DeleteRequest
 	WriteResponse
 	LookupResponse
-	GetResponse
-	DelResponse
+	ReadResponse
+	DeleteResponse
 */
 package valueproto
 
@@ -102,24 +102,24 @@ func (m *LookupResponse) Reset()         { *m = LookupResponse{} }
 func (m *LookupResponse) String() string { return proto.CompactTextString(m) }
 func (*LookupResponse) ProtoMessage()    {}
 
-type GetResponse struct {
+type ReadResponse struct {
 	Tsm   int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Err   string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *GetResponse) Reset()         { *m = GetResponse{} }
-func (m *GetResponse) String() string { return proto.CompactTextString(m) }
-func (*GetResponse) ProtoMessage()    {}
+func (m *ReadResponse) Reset()         { *m = ReadResponse{} }
+func (m *ReadResponse) String() string { return proto.CompactTextString(m) }
+func (*ReadResponse) ProtoMessage()    {}
 
-type DelResponse struct {
-	Tsm int64 `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
-	Err bool  `protobuf:"varint,2,opt,name=err" json:"err,omitempty"`
+type DeleteResponse struct {
+	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
+	Err string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *DelResponse) Reset()         { *m = DelResponse{} }
-func (m *DelResponse) String() string { return proto.CompactTextString(m) }
-func (*DelResponse) ProtoMessage()    {}
+func (m *DeleteResponse) Reset()         { *m = DeleteResponse{} }
+func (m *DeleteResponse) String() string { return proto.CompactTextString(m) }
+func (*DeleteResponse) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterType((*EmptyMsg)(nil), "valueproto.EmptyMsg")
@@ -129,8 +129,8 @@ func init() {
 	proto.RegisterType((*DeleteRequest)(nil), "valueproto.DeleteRequest")
 	proto.RegisterType((*WriteResponse)(nil), "valueproto.WriteResponse")
 	proto.RegisterType((*LookupResponse)(nil), "valueproto.LookupResponse")
-	proto.RegisterType((*GetResponse)(nil), "valueproto.GetResponse")
-	proto.RegisterType((*DelResponse)(nil), "valueproto.DelResponse")
+	proto.RegisterType((*ReadResponse)(nil), "valueproto.ReadResponse")
+	proto.RegisterType((*DeleteResponse)(nil), "valueproto.DeleteResponse")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -142,8 +142,8 @@ var _ grpc.ClientConn
 type ValueStoreClient interface {
 	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
 	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error)
-	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*GetResponse, error)
-	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DelResponse, error)
+	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 }
 
 type valueStoreClient struct {
@@ -172,8 +172,8 @@ func (c *valueStoreClient) Lookup(ctx context.Context, in *LookupRequest, opts .
 	return out, nil
 }
 
-func (c *valueStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*GetResponse, error) {
-	out := new(GetResponse)
+func (c *valueStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error) {
+	out := new(ReadResponse)
 	err := grpc.Invoke(ctx, "/valueproto.ValueStore/Read", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -181,8 +181,8 @@ func (c *valueStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...gr
 	return out, nil
 }
 
-func (c *valueStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DelResponse, error) {
-	out := new(DelResponse)
+func (c *valueStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error) {
+	out := new(DeleteResponse)
 	err := grpc.Invoke(ctx, "/valueproto.ValueStore/Delete", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -195,8 +195,8 @@ func (c *valueStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts .
 type ValueStoreServer interface {
 	Write(context.Context, *WriteRequest) (*WriteResponse, error)
 	Lookup(context.Context, *LookupRequest) (*LookupResponse, error)
-	Read(context.Context, *ReadRequest) (*GetResponse, error)
-	Delete(context.Context, *DeleteRequest) (*DelResponse, error)
+	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 }
 
 func RegisterValueStoreServer(s *grpc.Server, srv ValueStoreServer) {

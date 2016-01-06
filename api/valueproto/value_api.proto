@@ -4,8 +4,8 @@ package valueproto;
 service ValueStore {
     rpc Write(WriteRequest) returns (WriteResponse) {}
     rpc Lookup(LookupRequest) returns (LookupResponse) {}
-    rpc Read(ReadRequest) returns (GetResponse) {}
-    rpc Delete(DeleteRequest) returns (DelResponse) {}
+    rpc Read(ReadRequest) returns (ReadResponse) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
 }
 
 message EmptyMsg {}
@@ -46,13 +46,13 @@ message LookupResponse {
     string err = 3;
 }
 
-message GetResponse {
+message ReadResponse {
     int64  tsm = 1;
     bytes  value = 2;
     string err = 3;
 }
 
-message DelResponse {
-    int64 tsm = 1;
-    bool  err = 2;
+message DeleteResponse {
+    int64  tsm = 1;
+    string err = 2;
 }
