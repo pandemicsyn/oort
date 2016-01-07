@@ -138,10 +138,10 @@ func (m *LookupGroupResponse) GetItems() []*LookupGroupItem {
 }
 
 type LookupGroupItem struct {
-	NameKeyA uint64 `protobuf:"varint,1,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
-	NameKeyB uint64 `protobuf:"varint,2,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
-	Tsm      uint64 `protobuf:"varint,3,opt,name=tsm" json:"tsm,omitempty"`
-	Length   uint32 `protobuf:"varint,4,opt,name=length" json:"length,omitempty"`
+	NameKeyA       uint64 `protobuf:"varint,1,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
+	NameKeyB       uint64 `protobuf:"varint,2,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
+	TimestampMicro uint64 `protobuf:"varint,3,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
+	Length         uint32 `protobuf:"varint,4,opt,name=length" json:"length,omitempty"`
 }
 
 func (m *LookupGroupItem) Reset()         { *m = LookupGroupItem{} }

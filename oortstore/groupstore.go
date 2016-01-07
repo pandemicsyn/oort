@@ -1,8 +1,6 @@
 package oortstore
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/tls"
 	"log"
 	"net"
@@ -13,20 +11,22 @@ import (
 
 	"github.com/gholt/ring"
 	"github.com/gholt/store"
+	"github.com/pandemicsyn/oort/api/groupproto"
 	"github.com/pandemicsyn/oort/oort"
-	"github.com/pandemicsyn/oort/rediscache"
-	"github.com/spaolacci/murmur3"
-	"gopkg.in/gholt/brimtime.v1"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type OortGroupStore struct {
 	sync.RWMutex
 	waitGroup        *sync.WaitGroup
 	vs               store.GroupStore
+	grpc             *grpc.Server
+	grpcStopping     bool
 	t                *ring.TCPMsgRing
 	o                *oort.Server
 	C                *OortGroupConfig `toml:"OortGroupStoreConfig"` // load config using an explicit/different config header
-	ch               chan bool        //channel to signal stop
 	stopped          bool
 	GroupStoreConfig store.GroupStoreConfig
 	TCPMsgRingConfig ring.TCPMsgRingConfig
@@ -34,17 +34,18 @@ type OortGroupStore struct {
 }
 
 type OortGroupConfig struct {
-	Debug      bool
-	Profile    bool
-	ListenAddr string `toml:"ListenAddress"` //another example
-	MaxClients int
+	Debug              bool
+	Profile            bool
+	ListenAddr         string `toml:"ListenAddress"` //another example
+	InsecureSkipVerify bool
+	CertFile           string
+	KeyFile            string
 }
 
 func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 	s := &OortGroupStore{}
 	s.C = &OortGroupConfig{}
 	s.waitGroup = &sync.WaitGroup{}
-	s.ch = make(chan bool)
 	s.o = oort
 	err := s.o.LoadRingConfig(s)
 	if err != nil {
@@ -62,6 +63,11 @@ func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 	if s.TCPMsgRingConfig.UseTLS {
 		log.Println("TCPMsgRing using TLS")
 	}
+	cert, err := tls.LoadX509KeyPair(s.C.CertFile, s.C.KeyFile)
+	if err != nil {
+		return s, err
+	}
+	s.serverTLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: s.C.InsecureSkipVerify}
 	s.start()
 	s.stopped = false
 	return s, nil
@@ -82,7 +88,7 @@ func (s *OortGroupStore) start() {
 	s.vs.EnableAll()
 	go func(t *ring.TCPMsgRing) {
 		t.Listen()
-		log.Println("Listen() returned, shutdown?")
+		log.Println("TCPMsgRing Listen() returned, shutdown?")
 	}(s.t)
 	go func(t *ring.TCPMsgRing) {
 		tcpMsgRingStats := t.Stats(false)
@@ -102,44 +108,59 @@ func (s *OortGroupStore) UpdateRing(ring ring.Ring) {
 	log.Println("Oortstore updated tcp msg ring.")
 }
 
-// TODO: fix me, just need to build for now, blindly setting namekeya/b to key!
-func (s *OortGroupStore) Get(key []byte, value []byte) []byte {
-	keyA, keyB := murmur3.Sum128(key)
-	nameKeyA, nameKeyB := murmur3.Sum128(key)
+func (s *OortGroupStore) Read(ctx context.Context, req *groupproto.ReadRequest) (*groupproto.ReadResponse, error) {
+	resp := groupproto.ReadResponse{}
 	var err error
-	_, value, err = s.vs.Read(keyA, keyB, nameKeyA, nameKeyB, value)
+	resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, resp.Value)
 	if err != nil {
-		log.Printf("Get: %#v %s\n", string(key), err)
+		resp.Err = err.Error()
 	}
-	return value
+	return &resp, nil
 }
 
-// TODO: fix me, just need to build for now, blindly setting namekeya/b to key!
-func (s *OortGroupStore) Set(key []byte, value []byte) {
-	if bytes.Equal(key, rediscache.BYTES_SHUTDOWN) && bytes.Equal(value, rediscache.BYTES_NOW) {
-		s.vs.DisableAll()
-		s.vs.Flush()
-		log.Println(s.vs.Stats(true))
-		os.Exit(0)
-		return
-	}
-	keyA, keyB := murmur3.Sum128(key)
-	nameKeyA, nameKeyB := murmur3.Sum128(key)
-	_, err := s.vs.Write(keyA, keyB, nameKeyA, nameKeyB, brimtime.TimeToUnixMicro(time.Now()), value)
+func (s *OortGroupStore) Write(ctx context.Context, req *groupproto.WriteRequest) (*groupproto.WriteResponse, error) {
+	resp := groupproto.WriteResponse{}
+	var err error
+	resp.Tsm, err = s.vs.Write(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, req.Tsm, req.Value)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		resp.Err = err.Error()
 	}
+	return &resp, nil
 }
 
-// TODO: fix me, just need to build for now, blindly setting namekeya/b to key!
-func (s *OortGroupStore) Del(key []byte) {
-	keyA, keyB := murmur3.Sum128(key)
+func (s *OortGroupStore) Lookup(ctx context.Context, req *groupproto.LookupRequest) (*groupproto.LookupResponse, error) {
+	resp := groupproto.LookupResponse{}
 	var err error
-	nameKeyA, nameKeyB := murmur3.Sum128(key)
-	_, err = s.vs.Delete(keyA, keyB, nameKeyA, nameKeyB, brimtime.TimeToUnixMicro(time.Now()))
+	resp.Tsm, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB)
 	if err != nil {
-		log.Printf("Del: %#v %s\n", string(key), err)
+		resp.Err = err.Error()
 	}
+	return &resp, nil
+}
+
+func (s *OortGroupStore) LookupGroup(ctx context.Context, req *groupproto.LookupGroupRequest) (*groupproto.LookupGroupResponse, error) {
+	resp := groupproto.LookupGroupResponse{}
+	for _, v := range s.vs.LookupGroup(req.A, req.B) {
+		g := groupproto.LookupGroupItem{}
+		g.Length = v.Length
+		g.NameKeyA = v.NameKeyA
+		g.NameKeyB = v.NameKeyB
+		g.TimestampMicro = v.TimestampMicro
+		resp.Items = append(resp.Items, &g)
+	}
+	return &resp, nil
+}
+
+func (s *OortGroupStore) Delete(ctx context.Context, req *groupproto.DeleteRequest) (*groupproto.DeleteResponse, error) {
+	resp := groupproto.DeleteResponse{}
+	var err error
+	resp.Tsm, err = s.vs.Delete(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, req.Tsm)
+	if err != nil {
+		resp.Err = err.Error()
+	}
+	return &resp, nil
+
 }
 
 func (s *OortGroupStore) Start() {
@@ -151,6 +172,7 @@ func (s *OortGroupStore) Start() {
 	s.start()
 	s.stopped = false
 	s.Unlock()
+	log.Println(s.vs.Stats(true))
 	log.Println("GroupStore start complete")
 }
 
@@ -166,100 +188,49 @@ func (s *OortGroupStore) Stop() {
 	s.stopped = true
 	s.Unlock()
 	log.Println(s.vs.Stats(true))
-	log.Println("Ortstore stop complete")
+	log.Println("GroupStore stop complete")
 }
 
 func (s *OortGroupStore) Stats() []byte {
 	return []byte(s.vs.Stats(true).String())
 }
 
-// TODO: need to reimplement graceful shutdown
-func (s *OortGroupStore) handle_conn(conn net.Conn, handler *rediscache.RESPhandler) {
-	defer conn.Close()
-	defer s.waitGroup.Done()
-	for {
-		err := handler.Parse()
-		if err != nil {
-			return
-		}
-	}
-}
-
 func (s *OortGroupStore) ListenAndServe() {
-	s.ch = make(chan bool)
-	readerChan := make(chan *bufio.Reader, s.C.MaxClients)
-	for i := 0; i < cap(readerChan); i++ {
-		readerChan <- nil
-	}
-	writerChan := make(chan *bufio.Writer, s.C.MaxClients)
-	for i := 0; i < cap(writerChan); i++ {
-		writerChan <- nil
-	}
-	handlerChan := make(chan *rediscache.RESPhandler, s.C.MaxClients)
-	for i := 0; i < cap(handlerChan); i++ {
-		handlerChan <- rediscache.NewRESPhandler(s)
-	}
-	addr, err := net.ResolveTCPAddr("tcp", s.C.ListenAddr)
-	if err != nil {
-		log.Println("Error getting IP: ", err)
-		return
-	}
-	server, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		log.Println("Error starting: ", err)
-		return
-	}
-	log.Println("Listening on:", s.C.ListenAddr)
-	for {
-		select {
-		case <-s.ch:
-			log.Println("ListenAndServe Shutting down")
-			server.Close()
-			return
-		default:
-		}
-		server.SetDeadline(time.Now().Add(1e9))
-		var conn net.Conn
-		if s.serverTLSConfig != nil {
-			l := tls.NewListener(server, s.serverTLSConfig)
-			conn, err = l.Accept()
-		} else {
-			conn, err = server.AcceptTCP()
-		}
-		if err != nil {
-			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				continue
+	go func(s *OortGroupStore) {
+		s.grpcStopping = false
+		for {
+			var err error
+			l, err := net.Listen("tcp", s.C.ListenAddr)
+			if err != nil {
+				log.Fatalln("Unable to bind to address:", err)
 			}
-			log.Println(err)
+			log.Println("GroupStore bound to:", s.C.ListenAddr)
+			var opts []grpc.ServerOption
+			creds := credentials.NewTLS(s.serverTLSConfig)
+			opts = []grpc.ServerOption{grpc.Creds(creds)}
+			s.grpc = grpc.NewServer(opts...)
+			groupproto.RegisterGroupStoreServer(s.grpc, s)
+			err = s.grpc.Serve(l)
+			if err != nil && !s.grpcStopping {
+				log.Println("GroupStore Serve encountered error:", err, "will attempt to restart")
+			} else if err != nil && s.grpcStopping {
+				log.Println("GroupStore got error but halt is in progress:", err)
+				l.Close()
+				break
+			} else {
+				log.Println("GroupStore Serve exited without error, quiting")
+				l.Close()
+				break
+			}
 		}
-		reader := <-readerChan
-		if reader == nil {
-			reader = bufio.NewReaderSize(conn, 65536)
-		} else {
-			reader.Reset(conn)
-		}
-		writer := <-writerChan
-		if writer == nil {
-			writer = bufio.NewWriterSize(conn, 65536)
-		} else {
-			writer.Reset(conn)
-		}
-		handler := <-handlerChan
-		handler.Reset(reader, writer)
-		s.waitGroup.Add(1)
-		go s.handle_conn(conn, handler)
-		handlerChan <- handler
-		writerChan <- writer
-		readerChan <- reader
-	}
-
+	}(s)
 }
 
 func (s *OortGroupStore) StopListenAndServe() {
-	close(s.ch)
+	log.Println("GroupStore shutting down grpc")
+	s.grpcStopping = true
+	s.grpc.Stop()
 }
 
-func (s *OortGroupStore) Wait() {
-	s.waitGroup.Wait()
-	return
-}
+// Wait isn't implemented yet, need graceful shutdowns in grpc
+func (s *OortGroupStore) Wait() {}

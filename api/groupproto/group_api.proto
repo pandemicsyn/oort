@@ -69,7 +69,7 @@ message LookupGroupResponse {
 message LookupGroupItem {
     uint64 nameKeyA = 1;
     uint64 nameKeyB = 2;
-    uint64 tsm = 3;
+    uint64 timestampMicro = 3;
     uint32 length = 4;
 }
 
