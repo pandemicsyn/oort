@@ -25,7 +25,7 @@ oort
 Make sure you have a synd instance setup and running.
 
 1. mkdir -p /etc/oort/value
-2. touch /etc/default/oort-valued
+2. touch /etc/default/oort-valued && /etc/default/oort-groupd
 3. go get -u github.com/pandemicsyn/oort/oort-valued && go install -a github.com/pandemicsyn/oort/oort-valued
 4. cp -av $GOHOME/github.com/pandemicsyn/oort/packaging/root/usr/share/oort/systemd/oort-valued.service /lib/systemd/system
 5. cp -av $GOHOME/github.com/pandemicsyn/oort/packaging/root/etc/oort/server.crt /etc/oort/value
@@ -33,7 +33,7 @@ Make sure you have a synd instance setup and running.
 7. systemctl start oort-valued
 8. journalctl -u oort-valued -f
 
-Rinse and repeat for oort-groupd
+Rinse and repeat for oort-groupd (substitute the word "group" for "value")
 
 # Testing out a POC using cfs -> formic -> oort-valued | oort-groupd
 
@@ -44,7 +44,7 @@ To discover the syndicate server it either attempts to use SRV records. The SRV 
 
 ```_oortservicename-syndicate._tcp.iad3.velocillama.com. 300 IN SRV 1 1 8443 syndicate1.iad3.velocillama.com.```
 
-The service needs to be "syndicate", "proto" should be tcp. The rest of the service address (the iad3.velocillama.com portion) is derived from the systems local hostname. So if the local hostname is "devmachine.iad3.domain.com" and you're running the "value" (oort-valued) service the service record for it would be `_value-syndicate._tcp.iad3.domain.com`. The address and port target should be the address and port of your running synd instance. If you're running a local dev instance and don't have or want to setup a DNS record you can also use "env OORT_$(service)D_SYNDICATE_OVERRIDE=127.0.0.1:8443" to fake a return SRV record.
+The service needs to be "syndicate", "proto" should be tcp. The rest of the service address (the iad3.velocillama.com portion) is derived from the systems local hostname. So if the local hostname is "devmachine.iad3.domain.com" and you're running the "value" (oort-valued) service the service record for it would be `_value-syndicate._tcp.iad3.domain.com`. The address and port target should be the address and port of your running synd instance. If you're running a local dev instance and don't have or want to setup a DNS record you can also use "env OORT_$(service)_SYNDICATE_OVERRIDE=127.0.0.1:$(serviceport)" to fake a return SRV record.
 
 Configuration is applied in this order:
 
