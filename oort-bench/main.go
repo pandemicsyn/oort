@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -50,6 +51,47 @@ func omg(err error) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+}
+
+func grpcStreamWrite(id string, count int, value []byte, addr string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var err error
+	var opts []grpc.DialOption
+	var creds credentials.TransportAuthenticator
+	creds = credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: true,
+	})
+	opts = append(opts, grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(addr, opts...)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("Failed to dial server: %s", err))
+	}
+	defer conn.Close()
+	client := vp.NewValueStoreClient(conn)
+	w := &vp.WriteRequest{
+		Value: value,
+	}
+	stream, err := client.StreamWrite(context.Background())
+	for i := 1; i <= count; i++ {
+		w.KeyA, w.KeyB = murmur3.Sum128([]byte(fmt.Sprintf("%s-%d", id, i)))
+		w.Tsm = brimtime.TimeToUnixMicro(time.Now())
+		if err := stream.Send(w); err != nil {
+			log.Println(err)
+			continue
+		}
+		res, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		if res.Tsm > w.Tsm {
+			log.Printf("TSM is newer than attempted, Key %s-%d Got %s, Sent: %s", id, i, brimtime.UnixMicroToTime(res.Tsm), brimtime.UnixMicroToTime(w.Tsm))
+		}
+	}
+	stream.CloseSend()
 }
 
 func grpcWrite(id string, count int, value []byte, addr string, wg *sync.WaitGroup) {

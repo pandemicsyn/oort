@@ -10,6 +10,7 @@ option (gogoproto.goproto_getters_all) = false;
 
 service ValueStore {
     rpc Write(WriteRequest) returns (WriteResponse) {}
+    rpc StreamWrite(stream WriteRequest) returns (stream WriteResponse) {}
     rpc Lookup(LookupRequest) returns (LookupResponse) {}
     rpc Read(ReadRequest) returns (ReadResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}

@@ -144,6 +144,7 @@ var _ grpc.ClientConn
 
 type ValueStoreClient interface {
 	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
+	StreamWrite(ctx context.Context, opts ...grpc.CallOption) (ValueStore_StreamWriteClient, error)
 	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error)
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
@@ -164,6 +165,37 @@ func (c *valueStoreClient) Write(ctx context.Context, in *WriteRequest, opts ...
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *valueStoreClient) StreamWrite(ctx context.Context, opts ...grpc.CallOption) (ValueStore_StreamWriteClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_ValueStore_serviceDesc.Streams[0], c.cc, "/valueproto.ValueStore/StreamWrite", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &valueStoreStreamWriteClient{stream}
+	return x, nil
+}
+
+type ValueStore_StreamWriteClient interface {
+	Send(*WriteRequest) error
+	Recv() (*WriteResponse, error)
+	grpc.ClientStream
+}
+
+type valueStoreStreamWriteClient struct {
+	grpc.ClientStream
+}
+
+func (x *valueStoreStreamWriteClient) Send(m *WriteRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *valueStoreStreamWriteClient) Recv() (*WriteResponse, error) {
+	m := new(WriteResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *valueStoreClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error) {
@@ -197,6 +229,7 @@ func (c *valueStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts .
 
 type ValueStoreServer interface {
 	Write(context.Context, *WriteRequest) (*WriteResponse, error)
+	StreamWrite(ValueStore_StreamWriteServer) error
 	Lookup(context.Context, *LookupRequest) (*LookupResponse, error)
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
@@ -216,6 +249,32 @@ func _ValueStore_Write_Handler(srv interface{}, ctx context.Context, dec func(in
 		return nil, err
 	}
 	return out, nil
+}
+
+func _ValueStore_StreamWrite_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ValueStoreServer).StreamWrite(&valueStoreStreamWriteServer{stream})
+}
+
+type ValueStore_StreamWriteServer interface {
+	Send(*WriteResponse) error
+	Recv() (*WriteRequest, error)
+	grpc.ServerStream
+}
+
+type valueStoreStreamWriteServer struct {
+	grpc.ServerStream
+}
+
+func (x *valueStoreStreamWriteServer) Send(m *WriteResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *valueStoreStreamWriteServer) Recv() (*WriteRequest, error) {
+	m := new(WriteRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func _ValueStore_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
@@ -275,7 +334,14 @@ var _ValueStore_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ValueStore_Delete_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamWrite",
+			Handler:       _ValueStore_StreamWrite_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 }
 
 func (m *EmptyMsg) Marshal() (data []byte, err error) {

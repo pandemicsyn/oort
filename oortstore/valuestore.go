@@ -2,6 +2,7 @@ package oortstore
 
 import (
 	"crypto/tls"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -127,6 +128,28 @@ func (s *OortValueStore) Write(ctx context.Context, req *valueproto.WriteRequest
 		resp.Err = err.Error()
 	}
 	return &resp, nil
+}
+
+func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteServer) error {
+	var resp valueproto.WriteResponse
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		resp.Reset()
+		resp.Tsm, err = s.vs.Write(req.KeyA, req.KeyB, req.Tsm, req.Value)
+		if err != nil {
+			log.Println(err)
+			resp.Err = err.Error()
+		}
+		if err := stream.Send(&resp); err != nil {
+			return err
+		}
+	}
 }
 
 func (s *OortValueStore) Lookup(ctx context.Context, req *valueproto.LookupRequest) (*valueproto.LookupResponse, error) {
