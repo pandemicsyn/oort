@@ -1,0 +1,67 @@
+syntax = "proto3";
+package valueproto;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+service ValueStore {
+    rpc Write(WriteRequest) returns (WriteResponse) {}
+    rpc StreamWrite(stream WriteRequest) returns (stream WriteResponse) {}
+    rpc Lookup(LookupRequest) returns (LookupResponse) {}
+    rpc StreamLookup(stream LookupRequest) returns (stream LookupResponse) {}
+    rpc Read(ReadRequest) returns (ReadResponse) {}
+    rpc StreamRead(stream ReadRequest) returns (stream ReadResponse) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+    rpc StreamDelete(stream DeleteRequest) returns (stream DeleteResponse) {}
+}
+
+message EmptyMsg {}
+
+message WriteRequest {
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+    bytes  value = 3;
+    int64  tsm = 4;
+}
+
+message LookupRequest {
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+}
+
+message ReadRequest {
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+}
+
+message DeleteRequest {
+    uint64 keyA = 1;
+    uint64 keyB = 2;
+    int64  tsm = 3;
+}
+
+message WriteResponse {
+    int64  tsm = 1;
+    string err = 2;
+}
+
+message LookupResponse {
+    int64  tsm = 1;
+    uint32 length = 2;
+    string err = 3;
+}
+
+message ReadResponse {
+    int64  tsm = 1;
+    bytes  value = 2;
+    string err = 3;
+}
+
+message DeleteResponse {
+    int64  tsm = 1;
+    string err = 2;
+}

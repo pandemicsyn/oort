@@ -26,10 +26,10 @@ general:
 test:
   pre:
     - go version
-    - go get github.com/pandemicsyn/oort/rediscache/mapstore
-    - go install github.com/pandemicsyn/oort/rediscache/mapstore
   override:
-      - go test github.com/pandemicsyn/oort/...
+      - go test -i github.com/pandemicsyn/oort/...
+      - go install -v github.com/pandemicsyn/oort/oort-valued
+      - go install -v github.com/pandemicsyn/oort/oort-groupd
   post:
     - GOOS=linux GOARCH=amd64 make build
 deployment:
