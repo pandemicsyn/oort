@@ -190,10 +190,15 @@ var _ grpc.ClientConn
 
 type GroupStoreClient interface {
 	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
+	StreamWrite(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamWriteClient, error)
 	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error)
+	StreamLookup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamLookupClient, error)
 	LookupGroup(ctx context.Context, in *LookupGroupRequest, opts ...grpc.CallOption) (*LookupGroupResponse, error)
+	StreamLookupGroup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamLookupGroupClient, error)
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	StreamRead(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamReadClient, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
+	StreamDelete(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamDeleteClient, error)
 }
 
 type groupStoreClient struct {
@@ -213,6 +218,37 @@ func (c *groupStoreClient) Write(ctx context.Context, in *WriteRequest, opts ...
 	return out, nil
 }
 
+func (c *groupStoreClient) StreamWrite(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamWriteClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[0], c.cc, "/groupproto.GroupStore/StreamWrite", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupStoreStreamWriteClient{stream}
+	return x, nil
+}
+
+type GroupStore_StreamWriteClient interface {
+	Send(*WriteRequest) error
+	Recv() (*WriteResponse, error)
+	grpc.ClientStream
+}
+
+type groupStoreStreamWriteClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupStoreStreamWriteClient) Send(m *WriteRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamWriteClient) Recv() (*WriteResponse, error) {
+	m := new(WriteResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *groupStoreClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupResponse, error) {
 	out := new(LookupResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/Lookup", in, out, c.cc, opts...)
@@ -220,6 +256,37 @@ func (c *groupStoreClient) Lookup(ctx context.Context, in *LookupRequest, opts .
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *groupStoreClient) StreamLookup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamLookupClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[1], c.cc, "/groupproto.GroupStore/StreamLookup", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupStoreStreamLookupClient{stream}
+	return x, nil
+}
+
+type GroupStore_StreamLookupClient interface {
+	Send(*LookupRequest) error
+	Recv() (*LookupResponse, error)
+	grpc.ClientStream
+}
+
+type groupStoreStreamLookupClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupStoreStreamLookupClient) Send(m *LookupRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamLookupClient) Recv() (*LookupResponse, error) {
+	m := new(LookupResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *groupStoreClient) LookupGroup(ctx context.Context, in *LookupGroupRequest, opts ...grpc.CallOption) (*LookupGroupResponse, error) {
@@ -231,6 +298,37 @@ func (c *groupStoreClient) LookupGroup(ctx context.Context, in *LookupGroupReque
 	return out, nil
 }
 
+func (c *groupStoreClient) StreamLookupGroup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamLookupGroupClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[2], c.cc, "/groupproto.GroupStore/StreamLookupGroup", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupStoreStreamLookupGroupClient{stream}
+	return x, nil
+}
+
+type GroupStore_StreamLookupGroupClient interface {
+	Send(*LookupGroupRequest) error
+	Recv() (*LookupGroupResponse, error)
+	grpc.ClientStream
+}
+
+type groupStoreStreamLookupGroupClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupStoreStreamLookupGroupClient) Send(m *LookupGroupRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamLookupGroupClient) Recv() (*LookupGroupResponse, error) {
+	m := new(LookupGroupResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *groupStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error) {
 	out := new(ReadResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/Read", in, out, c.cc, opts...)
@@ -238,6 +336,37 @@ func (c *groupStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...gr
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *groupStoreClient) StreamRead(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamReadClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[3], c.cc, "/groupproto.GroupStore/StreamRead", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupStoreStreamReadClient{stream}
+	return x, nil
+}
+
+type GroupStore_StreamReadClient interface {
+	Send(*ReadRequest) error
+	Recv() (*ReadResponse, error)
+	grpc.ClientStream
+}
+
+type groupStoreStreamReadClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupStoreStreamReadClient) Send(m *ReadRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamReadClient) Recv() (*ReadResponse, error) {
+	m := new(ReadResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *groupStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error) {
@@ -249,14 +378,50 @@ func (c *groupStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts .
 	return out, nil
 }
 
+func (c *groupStoreClient) StreamDelete(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamDeleteClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[4], c.cc, "/groupproto.GroupStore/StreamDelete", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupStoreStreamDeleteClient{stream}
+	return x, nil
+}
+
+type GroupStore_StreamDeleteClient interface {
+	Send(*DeleteRequest) error
+	Recv() (*DeleteResponse, error)
+	grpc.ClientStream
+}
+
+type groupStoreStreamDeleteClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupStoreStreamDeleteClient) Send(m *DeleteRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamDeleteClient) Recv() (*DeleteResponse, error) {
+	m := new(DeleteResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Server API for GroupStore service
 
 type GroupStoreServer interface {
 	Write(context.Context, *WriteRequest) (*WriteResponse, error)
+	StreamWrite(GroupStore_StreamWriteServer) error
 	Lookup(context.Context, *LookupRequest) (*LookupResponse, error)
+	StreamLookup(GroupStore_StreamLookupServer) error
 	LookupGroup(context.Context, *LookupGroupRequest) (*LookupGroupResponse, error)
+	StreamLookupGroup(GroupStore_StreamLookupGroupServer) error
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	StreamRead(GroupStore_StreamReadServer) error
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
+	StreamDelete(GroupStore_StreamDeleteServer) error
 }
 
 func RegisterGroupStoreServer(s *grpc.Server, srv GroupStoreServer) {
@@ -275,6 +440,32 @@ func _GroupStore_Write_Handler(srv interface{}, ctx context.Context, dec func(in
 	return out, nil
 }
 
+func _GroupStore_StreamWrite_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GroupStoreServer).StreamWrite(&groupStoreStreamWriteServer{stream})
+}
+
+type GroupStore_StreamWriteServer interface {
+	Send(*WriteResponse) error
+	Recv() (*WriteRequest, error)
+	grpc.ServerStream
+}
+
+type groupStoreStreamWriteServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupStoreStreamWriteServer) Send(m *WriteResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamWriteServer) Recv() (*WriteRequest, error) {
+	m := new(WriteRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _GroupStore_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(LookupRequest)
 	if err := dec(in); err != nil {
@@ -285,6 +476,32 @@ func _GroupStore_Lookup_Handler(srv interface{}, ctx context.Context, dec func(i
 		return nil, err
 	}
 	return out, nil
+}
+
+func _GroupStore_StreamLookup_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GroupStoreServer).StreamLookup(&groupStoreStreamLookupServer{stream})
+}
+
+type GroupStore_StreamLookupServer interface {
+	Send(*LookupResponse) error
+	Recv() (*LookupRequest, error)
+	grpc.ServerStream
+}
+
+type groupStoreStreamLookupServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupStoreStreamLookupServer) Send(m *LookupResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamLookupServer) Recv() (*LookupRequest, error) {
+	m := new(LookupRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func _GroupStore_LookupGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
@@ -299,6 +516,32 @@ func _GroupStore_LookupGroup_Handler(srv interface{}, ctx context.Context, dec f
 	return out, nil
 }
 
+func _GroupStore_StreamLookupGroup_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GroupStoreServer).StreamLookupGroup(&groupStoreStreamLookupGroupServer{stream})
+}
+
+type GroupStore_StreamLookupGroupServer interface {
+	Send(*LookupGroupResponse) error
+	Recv() (*LookupGroupRequest, error)
+	grpc.ServerStream
+}
+
+type groupStoreStreamLookupGroupServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupStoreStreamLookupGroupServer) Send(m *LookupGroupResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamLookupGroupServer) Recv() (*LookupGroupRequest, error) {
+	m := new(LookupGroupRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _GroupStore_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(ReadRequest)
 	if err := dec(in); err != nil {
@@ -311,6 +554,32 @@ func _GroupStore_Read_Handler(srv interface{}, ctx context.Context, dec func(int
 	return out, nil
 }
 
+func _GroupStore_StreamRead_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GroupStoreServer).StreamRead(&groupStoreStreamReadServer{stream})
+}
+
+type GroupStore_StreamReadServer interface {
+	Send(*ReadResponse) error
+	Recv() (*ReadRequest, error)
+	grpc.ServerStream
+}
+
+type groupStoreStreamReadServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupStoreStreamReadServer) Send(m *ReadResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamReadServer) Recv() (*ReadRequest, error) {
+	m := new(ReadRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _GroupStore_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(DeleteRequest)
 	if err := dec(in); err != nil {
@@ -321,6 +590,32 @@ func _GroupStore_Delete_Handler(srv interface{}, ctx context.Context, dec func(i
 		return nil, err
 	}
 	return out, nil
+}
+
+func _GroupStore_StreamDelete_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GroupStoreServer).StreamDelete(&groupStoreStreamDeleteServer{stream})
+}
+
+type GroupStore_StreamDeleteServer interface {
+	Send(*DeleteResponse) error
+	Recv() (*DeleteRequest, error)
+	grpc.ServerStream
+}
+
+type groupStoreStreamDeleteServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupStoreStreamDeleteServer) Send(m *DeleteResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamDeleteServer) Recv() (*DeleteRequest, error) {
+	m := new(DeleteRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 var _GroupStore_serviceDesc = grpc.ServiceDesc{
@@ -348,5 +643,36 @@ var _GroupStore_serviceDesc = grpc.ServiceDesc{
 			Handler:    _GroupStore_Delete_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamWrite",
+			Handler:       _GroupStore_StreamWrite_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "StreamLookup",
+			Handler:       _GroupStore_StreamLookup_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "StreamLookupGroup",
+			Handler:       _GroupStore_StreamLookupGroup_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "StreamRead",
+			Handler:       _GroupStore_StreamRead_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "StreamDelete",
+			Handler:       _GroupStore_StreamDelete_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 }

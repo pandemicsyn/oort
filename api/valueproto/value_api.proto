@@ -12,8 +12,11 @@ service ValueStore {
     rpc Write(WriteRequest) returns (WriteResponse) {}
     rpc StreamWrite(stream WriteRequest) returns (stream WriteResponse) {}
     rpc Lookup(LookupRequest) returns (LookupResponse) {}
+    rpc StreamLookup(stream LookupRequest) returns (stream LookupResponse) {}
     rpc Read(ReadRequest) returns (ReadResponse) {}
+    rpc StreamRead(stream ReadRequest) returns (stream ReadResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+    rpc StreamDelete(stream DeleteRequest) returns (stream DeleteResponse) {}
 }
 
 message EmptyMsg {}

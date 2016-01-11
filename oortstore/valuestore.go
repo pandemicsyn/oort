@@ -109,16 +109,6 @@ func (s *OortValueStore) UpdateRing(ring ring.Ring) {
 	log.Println("Oortstore updated tcp msg ring.")
 }
 
-func (s *OortValueStore) Read(ctx context.Context, req *valueproto.ReadRequest) (*valueproto.ReadResponse, error) {
-	resp := valueproto.ReadResponse{}
-	var err error
-	resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, resp.Value)
-	if err != nil {
-		resp.Err = err.Error()
-	}
-	return &resp, nil
-}
-
 func (s *OortValueStore) Write(ctx context.Context, req *valueproto.WriteRequest) (*valueproto.WriteResponse, error) {
 	resp := valueproto.WriteResponse{}
 	var err error
@@ -152,6 +142,39 @@ func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteSer
 	}
 }
 
+func (s *OortValueStore) Read(ctx context.Context, req *valueproto.ReadRequest) (*valueproto.ReadResponse, error) {
+	resp := valueproto.ReadResponse{}
+	var err error
+	resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, resp.Value)
+	if err != nil {
+		resp.Err = err.Error()
+	}
+	return &resp, nil
+}
+
+func (s *OortValueStore) StreamRead(stream valueproto.ValueStore_StreamReadServer) error {
+	var resp valueproto.ReadResponse
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		resp.Reset()
+		resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, resp.Value)
+		if err != nil {
+			log.Println(err)
+			resp.Err = err.Error()
+		}
+		if err := stream.Send(&resp); err != nil {
+			return err
+		}
+	}
+}
+
 func (s *OortValueStore) Lookup(ctx context.Context, req *valueproto.LookupRequest) (*valueproto.LookupResponse, error) {
 	resp := valueproto.LookupResponse{}
 	var err error
@@ -162,6 +185,28 @@ func (s *OortValueStore) Lookup(ctx context.Context, req *valueproto.LookupReque
 	return &resp, nil
 }
 
+func (s *OortValueStore) StreamLookup(stream valueproto.ValueStore_StreamLookupServer) error {
+	var resp valueproto.LookupResponse
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		resp.Reset()
+		resp.Tsm, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB)
+		if err != nil {
+			log.Println(err)
+			resp.Err = err.Error()
+		}
+		if err := stream.Send(&resp); err != nil {
+			return err
+		}
+	}
+}
+
 func (s *OortValueStore) Delete(ctx context.Context, req *valueproto.DeleteRequest) (*valueproto.DeleteResponse, error) {
 	resp := valueproto.DeleteResponse{}
 	var err error
@@ -170,7 +215,28 @@ func (s *OortValueStore) Delete(ctx context.Context, req *valueproto.DeleteReque
 		resp.Err = err.Error()
 	}
 	return &resp, nil
+}
 
+func (s *OortValueStore) StreamDelete(stream valueproto.ValueStore_StreamDeleteServer) error {
+	var resp valueproto.DeleteResponse
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		resp.Reset()
+		resp.Tsm, err = s.vs.Delete(req.KeyA, req.KeyB, req.Tsm)
+		if err != nil {
+			log.Println(err)
+			resp.Err = err.Error()
+		}
+		if err := stream.Send(&resp); err != nil {
+			return err
+		}
+	}
 }
 
 func (s *OortValueStore) Start() {
