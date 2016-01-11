@@ -31,13 +31,11 @@ message WriteRequest {
 message LookupRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
-    int64  tsm = 3;
 }
 
 message ReadRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
-    int64  tsm = 3;
 }
 
 message DeleteRequest {

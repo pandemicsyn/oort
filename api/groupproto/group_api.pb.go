@@ -63,7 +63,6 @@ type LookupRequest struct {
 	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
 	NameKeyB uint64 `protobuf:"varint,4,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
-	Tsm      int64  `protobuf:"varint,5,opt,name=tsm" json:"tsm,omitempty"`
 }
 
 func (m *LookupRequest) Reset()         { *m = LookupRequest{} }
@@ -75,7 +74,6 @@ type ReadRequest struct {
 	KeyB     uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 	NameKeyA uint64 `protobuf:"varint,3,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
 	NameKeyB uint64 `protobuf:"varint,4,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
-	Tsm      int64  `protobuf:"varint,5,opt,name=tsm" json:"tsm,omitempty"`
 }
 
 func (m *ReadRequest) Reset()         { *m = ReadRequest{} }

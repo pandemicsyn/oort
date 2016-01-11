@@ -59,7 +59,6 @@ func (*WriteRequest) ProtoMessage()    {}
 type LookupRequest struct {
 	KeyA uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
 	KeyB uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
-	Tsm  int64  `protobuf:"varint,3,opt,name=tsm,proto3" json:"tsm,omitempty"`
 }
 
 func (m *LookupRequest) Reset()         { *m = LookupRequest{} }
@@ -69,7 +68,6 @@ func (*LookupRequest) ProtoMessage()    {}
 type ReadRequest struct {
 	KeyA uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
 	KeyB uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
-	Tsm  int64  `protobuf:"varint,3,opt,name=tsm,proto3" json:"tsm,omitempty"`
 }
 
 func (m *ReadRequest) Reset()         { *m = ReadRequest{} }
@@ -623,11 +621,6 @@ func (m *LookupRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintValueApi(data, i, uint64(m.KeyB))
 	}
-	if m.Tsm != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintValueApi(data, i, uint64(m.Tsm))
-	}
 	return i, nil
 }
 
@@ -655,11 +648,6 @@ func (m *ReadRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x10
 		i++
 		i = encodeVarintValueApi(data, i, uint64(m.KeyB))
-	}
-	if m.Tsm != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintValueApi(data, i, uint64(m.Tsm))
 	}
 	return i, nil
 }
@@ -889,9 +877,6 @@ func (m *LookupRequest) Size() (n int) {
 	if m.KeyB != 0 {
 		n += 1 + sovValueApi(uint64(m.KeyB))
 	}
-	if m.Tsm != 0 {
-		n += 1 + sovValueApi(uint64(m.Tsm))
-	}
 	return n
 }
 
@@ -903,9 +888,6 @@ func (m *ReadRequest) Size() (n int) {
 	}
 	if m.KeyB != 0 {
 		n += 1 + sovValueApi(uint64(m.KeyB))
-	}
-	if m.Tsm != 0 {
-		n += 1 + sovValueApi(uint64(m.Tsm))
 	}
 	return n
 }
@@ -1251,25 +1233,6 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tsm", wireType)
-			}
-			m.Tsm = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowValueApi
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Tsm |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipValueApi(data[iNdEx:])
@@ -1354,25 +1317,6 @@ func (m *ReadRequest) Unmarshal(data []byte) error {
 				b := data[iNdEx]
 				iNdEx++
 				m.KeyB |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tsm", wireType)
-			}
-			m.Tsm = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowValueApi
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Tsm |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

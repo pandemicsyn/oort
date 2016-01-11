@@ -145,13 +145,9 @@ func grpcRead(id string, count int, value []byte, addr string, wg *sync.WaitGrou
 	for i := 1; i <= count; i++ {
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		r.KeyA, r.KeyB = murmur3.Sum128([]byte(fmt.Sprintf("%s-%d", id, i)))
-		r.Tsm = brimtime.TimeToUnixMicro(time.Now())
-		res, err := client.Read(ctx, r)
+		_, err := client.Read(ctx, r)
 		if err != nil {
 			log.Println("Client", id, ":", err)
-		}
-		if res.Tsm != r.Tsm {
-			log.Printf("TSM missmatch, Key %s-%d Got %s, Sent: %s", id, i, brimtime.UnixMicroToTime(res.Tsm), brimtime.UnixMicroToTime(r.Tsm))
 		}
 	}
 }

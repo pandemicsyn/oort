@@ -10,6 +10,10 @@ deps:
 	go get -u github.com/gholt/ring/ring
 	go get -u github.com/gholt/store
 	go get -u github.com/pandemicsyn/syndicate/cmdctrl
+	go get -v -u github.com/gogo/protobuf/proto
+	go get -v -u github.com/gogo/protobuf/protoc-gen-gogo
+	go get -v -u github.com/gogo/protobuf/gogoproto
+	go get -v -u github.com/gogo/protobuf/protoc-gen-gofast
 
 build:
 	mkdir -p packaging/output

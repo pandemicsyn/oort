@@ -32,7 +32,6 @@ message LookupRequest {
     uint64 keyB = 2;
     uint64 nameKeyA = 3;
     uint64 nameKeyB = 4;
-    int64  tsm = 5;
 }
 
 message ReadRequest {
@@ -40,7 +39,6 @@ message ReadRequest {
     uint64 keyB = 2;
     uint64 nameKeyA = 3;
     uint64 nameKeyB = 4;
-    int64  tsm = 5;
 }
 
 message DeleteRequest {
