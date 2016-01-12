@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
 	"github.com/gholt/brimtime"
 	vp "github.com/pandemicsyn/oort/api/valueproto"
+	"github.com/pkg/profile"
 	"github.com/spaolacci/murmur3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -94,6 +94,41 @@ func grpcStreamWrite(id string, count int, value []byte, addr string, wg *sync.W
 	stream.CloseSend()
 }
 
+func grpcStreamRead(id string, count int, value []byte, addr string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var err error
+	var opts []grpc.DialOption
+	var creds credentials.TransportAuthenticator
+	creds = credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: true,
+	})
+	opts = append(opts, grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(addr, opts...)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("Failed to dial server: %s", err))
+	}
+	defer conn.Close()
+	client := vp.NewValueStoreClient(conn)
+	r := &vp.ReadRequest{}
+	stream, err := client.StreamRead(context.Background())
+	for i := 1; i <= count; i++ {
+		r.KeyA, r.KeyB = murmur3.Sum128([]byte(fmt.Sprintf("%s-%d", id, i)))
+		if err := stream.Send(r); err != nil {
+			log.Println(err)
+			continue
+		}
+		_, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+	}
+	stream.CloseSend()
+}
+
 func grpcWrite(id string, count int, value []byte, addr string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var err error
@@ -165,8 +200,7 @@ func newClientTLSFromFile(certFile, serverName string, SkipVerify bool) (*tls.Co
 }
 
 var (
-	pool        *redis.Pool
-	redisServer = flag.String("redisServer", "localhost:6379", "")
+	oortServer = flag.String("oortServer", "localhost:6379", "")
 )
 
 func main() {
@@ -176,20 +210,32 @@ func main() {
 	clients := flag.Int("clients", 1, "# of client workers to spawn")
 	setTest := flag.Bool("settest", false, "do set test")
 	getTest := flag.Bool("gettest", false, "do get test")
-	flag.Parse()
-	runtime.GOMAXPROCS(*procs)
+	streamTest := flag.Bool("stream", false, "use streaming api")
+	profileEnable := flag.Bool("profile", false, "enable cpu profiling")
 
+	flag.Parse()
+
+	runtime.GOMAXPROCS(*procs)
+	if *profileEnable {
+		defer profile.Start().Stop()
+	}
 	s := NewScrambled()
 	value := make([]byte, *vsize)
 	s.Read(value)
 	perClient := *num / *clients
+
+	log.Println("Using streaming api:", *streamTest)
 
 	if *setTest {
 		t := time.Now()
 		var wg sync.WaitGroup
 		for w := 1; w <= *clients; w++ {
 			wg.Add(1)
-			go grpcWrite(fmt.Sprintf("somethingtestkey%d", w), perClient, value, *redisServer, &wg)
+			if *streamTest {
+				go grpcStreamWrite(fmt.Sprintf("somethingtestkey%d", w), perClient, value, *oortServer, &wg)
+			} else {
+				go grpcWrite(fmt.Sprintf("somethingtestkey%d", w), perClient, value, *oortServer, &wg)
+			}
 		}
 		wg.Wait()
 		log.Println("Issued", *num, "SETS")
@@ -204,7 +250,11 @@ func main() {
 		var wg sync.WaitGroup
 		for w := 1; w <= *clients; w++ {
 			wg.Add(1)
-			go grpcRead(fmt.Sprintf("somethingtestkey%d", w), perClient, value, *redisServer, &wg)
+			if *streamTest {
+				go grpcStreamRead(fmt.Sprintf("somethingtestkey%d", w), perClient, value, *oortServer, &wg)
+			} else {
+				go grpcRead(fmt.Sprintf("somethingtestkey%d", w), perClient, value, *oortServer, &wg)
+			}
 		}
 		wg.Wait()
 		log.Println("Issued", *num, "GETS")
