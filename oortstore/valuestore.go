@@ -82,10 +82,19 @@ func (s *OortValueStore) start() {
 	s.t = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
 	s.ValueStoreConfig.MsgRing = s.t
 	s.t.SetRing(s.o.Ring())
-	s.vs, err = store.NewValueStore(&s.ValueStoreConfig)
+	var restartChan chan error
+	s.vs, restartChan, err = store.NewValueStore(&s.ValueStoreConfig)
 	if err != nil {
 		panic(err)
 	}
+	// TODO: I'm guessing we'll want to do something more graceful here; but
+	// this will work for now since Systemd (or another service manager) should
+	// restart the service.
+	go func(restartChan chan error) {
+		if err := <-restartChan; err != nil {
+			panic(err)
+		}
+	}(restartChan)
 	s.vs.EnableAll()
 	go func(t *ring.TCPMsgRing) {
 		t.Listen()
