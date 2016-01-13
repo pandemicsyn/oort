@@ -131,7 +131,6 @@ func GroupStreamWrite(c *GroupClientConfig) {
 	client := gp.NewGroupStoreClient(conn)
 	empty := []byte("")
 	stream, err := client.StreamWrite(context.Background())
-
 	for i, _ := range c.wm {
 		c.wm[i].Value = *c.value
 		if err := stream.Send(c.wm[i]); err != nil {
@@ -352,7 +351,7 @@ func VSTests() {
 	vsconfigs := make([]ValueClientConfig, *clients)
 	var wg sync.WaitGroup
 	for w := 0; w < *clients; w++ {
-		vsconfigs[w].addr = *oortServer
+		vsconfigs[w].addr = *vsServer
 		vsconfigs[w].id = w
 		vsconfigs[w].count = perClient
 		vsconfigs[w].value = &value
@@ -409,34 +408,33 @@ func GSTests() {
 	gsconfigs := make([]GroupClientConfig, *clients)
 	var wg sync.WaitGroup
 	for w := 0; w < *clients; w++ {
-		gsconfigs[w].addr = *oortServer
+		gsconfigs[w].addr = *gsServer
 		gsconfigs[w].id = w
 		gsconfigs[w].count = perClient
 		gsconfigs[w].value = &value
 
 		gsconfigs[w].wg = &wg
-		gsconfigs[w].wm = make([]*gp.WriteRequest, perClient)
-		gsconfigs[w].rm = make([]*gp.ReadRequest, perClient)
 		perGroup := perClient / *groups
-		log.Printf("Will generate %d entries per group", perGroup)
 		for g := 0; g < *groups; g++ {
 			grpA, grpB := murmur3.Sum128([]byte(fmt.Sprintf("group%d-%d", gsconfigs[w].id, g)))
 			for k := 0; k < perGroup; k++ {
-				gsconfigs[w].wm[k] = &gp.WriteRequest{}
-				gsconfigs[w].rm[k] = &gp.ReadRequest{}
-				gsconfigs[w].wm[k].KeyA = grpA
-				gsconfigs[w].wm[k].KeyB = grpB
-				gsconfigs[w].rm[k].KeyA = grpA
-				gsconfigs[w].rm[k].KeyB = grpB
-
-				gsconfigs[w].wm[k].NameKeyA, gsconfigs[w].wm[k].NameKeyB = murmur3.Sum128([]byte(fmt.Sprintf("somethingtestkey%d-%d", gsconfigs[w].id, k)))
-				gsconfigs[w].wm[k].Tsm = brimtime.TimeToUnixMicro(time.Now())
-				gsconfigs[w].rm[k].NameKeyA = gsconfigs[w].wm[k].KeyA
-				gsconfigs[w].rm[k].NameKeyB = gsconfigs[w].wm[k].KeyB
-
+				tsm := brimtime.TimeToUnixMicro(time.Now())
+				wr := &gp.WriteRequest{
+					KeyA: grpA,
+					KeyB: grpB,
+					Tsm:  tsm,
+				}
+				wr.NameKeyA, wr.NameKeyB = murmur3.Sum128([]byte(fmt.Sprintf("somethingtestkey%d-%d", gsconfigs[w].id, k)))
+				rr := &gp.ReadRequest{
+					KeyA:     grpA,
+					KeyB:     grpB,
+					NameKeyA: wr.NameKeyA,
+					NameKeyB: wr.NameKeyB,
+				}
+				gsconfigs[w].wm = append(gsconfigs[w].wm, wr)
+				gsconfigs[w].rm = append(gsconfigs[w].rm, rr)
 			}
 		}
-
 	}
 	log.Println("GroupStore Key/hash generation complete. Spawning tests.")
 
@@ -475,25 +473,29 @@ func GSTests() {
 }
 
 var (
-	num           = flag.Int("num", 1000000, "# of entries")
+	num           = flag.Int("num", 1000, "total # of entries to write")
 	vsize         = flag.Int("vsize", 128, "value size")
 	procs         = flag.Int("procs", 1, "gomaxprocs count")
-	clients       = flag.Int("clients", 1, "# of client workers to spawn")
+	clients       = flag.Int("clients", 1, "# of client workers to split writes across")
 	vsWriteTest   = flag.Bool("vswrite", false, "do valuestore write test")
 	vsReadTest    = flag.Bool("vsread", false, "do valuestore read test")
-	groups        = flag.Int("groups", 1, "# of groups to use per client")
+	groups        = flag.Int("groups", 1, "# of groups per client to split writes across")
 	gsWriteTest   = flag.Bool("gswrite", false, "do groupstore write test")
 	gsReadTest    = flag.Bool("gsread", false, "do groupstore read test")
 	streamTest    = flag.Bool("stream", false, "use streaming api")
 	profileEnable = flag.Bool("profile", false, "enable cpu profiling")
-	oortServer    = flag.String("oortServer", "localhost:6379", "")
-	perClient     int
-	value         []byte
+	vsServer      = flag.String("vshost", "localhost:6379", "")
+	gsServer      = flag.String("gshost", "localhost:6380", "")
+	perClient     = 0
+	value         = []byte("")
 )
 
 func main() {
 	flag.Parse()
-
+	if *clients > *num {
+		log.Println("# of clients can't be greater than # of keys written")
+		return
+	}
 	runtime.GOMAXPROCS(*procs)
 	if *profileEnable {
 		defer profile.Start().Stop()
@@ -502,6 +504,12 @@ func main() {
 	value = make([]byte, *vsize)
 	s.Read(value)
 	perClient = *num / *clients
+	perGroup := perClient / *groups
+	if perGroup == 0 {
+		log.Printf("Can't split %d writes across %d groups", perClient, *groups)
+		log.Println("Need -num to be at least:", *clients**groups)
+		return
+	}
 
 	log.Println("Using streaming api:", *streamTest)
 
