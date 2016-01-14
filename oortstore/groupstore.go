@@ -305,8 +305,8 @@ func (s *OortGroupStore) Stop() {
 		return
 	}
 	s.vs.DisableAll()
-	s.vs.Flush()
 	s.t.Shutdown()
+	s.vs.Flush()
 	s.stopped = true
 	s.Unlock()
 	log.Println(s.vs.Stats(true))
