@@ -10,15 +10,16 @@ oort
 * go get -u github.com/pandemicsyn/oort-groupd
 * go install github.com/pandemicsyn/oort/oort-valued
 * go install github.com/pandemicsyn/oort/oort-groupd
+* go install github.com/pandemicsyn/oort/oort-cli
 * mkdir -p /etc/oort/value /etc/oort/group
 * If you'll be using the CmdCtrl interface you'll need to deploy your SSL key/crt to /etc/oort or whatever path you've specified in the ring config.
 
 ### Oort Daemons/Binaries/Backends
 
-* oort-valued - The redis speaking value storage daemon
-* oort-groupd - The redis speaking group storage daemon
-* oort-bench - The redis speaking simple benchmark utility
-* mapstore - The map based kv storage
+* oort-valued - The grpc speaking value storage daemon
+* oort-groupd - The grpc speaking group storage daemon
+* oort-bench - The grpc speaking simple benchmark utility
+* oort-cli - A small redis-cli like utility for performing basic ops against the store's
 
 # installing a non-dev instance (i.e. you actually want an init script)
 
