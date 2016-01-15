@@ -10,10 +10,10 @@ deps:
 	go get -u github.com/gholt/ring/ring
 	go get -u github.com/gholt/store
 	go get -u github.com/pandemicsyn/syndicate/cmdctrl
-	go get -v -u github.com/gogo/protobuf/proto
-	go get -v -u github.com/gogo/protobuf/protoc-gen-gogo
-	go get -v -u github.com/gogo/protobuf/gogoproto
-	go get -v -u github.com/gogo/protobuf/protoc-gen-gofast
+	go get -u github.com/gogo/protobuf/proto
+	go get -u github.com/gogo/protobuf/protoc-gen-gogo
+	go get -u github.com/gogo/protobuf/gogoproto
+	go get -u github.com/gogo/protobuf/protoc-gen-gofast
 
 build:
 	mkdir -p packaging/output
@@ -32,11 +32,13 @@ build:
 		-X main.cmdctrlVersion=$(shell git -C $$GOPATH/src/github.com/pandemicsyn/syndicate rev-parse HEAD) \
 		-X main.goVersion=$(shell go version | sed -e 's/ /-/g') \
 		-X main.buildDate=$(shell date -u +%Y-%m-%d.%H:%M:%S)" github.com/pandemicsyn/oort/oort-groupd
+	go build -i -v -o packaging/root/usr/local/bin/oort-cli github.com/pandemicsyn/oort/oort-cli
 
 clean:
 	rm -rf packaging/output
 	rm -f packaging/root/usr/local/bin/oort-valued
 	rm -f packaging/root/usr/local/bin/oort-groupd
+	rm -f packaging/root/usr/local/bin/oort-cli
 
 install: build
 	mkdir -p /etc/oort/value
