@@ -16,7 +16,7 @@ machine:
 dependencies:
   pre:
     - mkdir -p ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
-    - mv ~/$CIRCLE_PROJECT_sREPONAME ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
+    - mv ~/$CIRCLE_PROJECT_REPONAME ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
     - ln -s $PPATH ~/$CIRCLE_PROJECT_REPONAME
 general:
   artifacts:
