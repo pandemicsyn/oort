@@ -1,10 +1,10 @@
 machine:
   pre:
-    - wget https://storage.googleapis.com/golang/go1.5.1.linux-amd64.tar.gz
-    - mkdir ~/go1.5.1
-    - tar -C ~/go1.5.1 -xzf go1.5.1.linux-amd64.tar.gz
+    - wget https://storage.googleapis.com/golang/go1.5.3.linux-amd64.tar.gz
+    - mkdir ~/go1.5.3
+    - tar -C ~/go1.5.3 -xzf go1.5.3.linux-amd64.tar.gz
   environment:
-    GOROOT: ${HOME}/go1.5.1/go
+    GOROOT: ${HOME}/go1.5.3/go
     GO15VENDOREXPERIMENT: 1
     GOPATH: ${HOME}/go
     PATH: $GOPATH/bin:${GOROOT}/bin:${PATH}
@@ -16,10 +16,8 @@ machine:
 dependencies:
   pre:
     - mkdir -p ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
-    - mv ~/$CIRCLE_PROJECT_REPONAME ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
+    - mv ~/$CIRCLE_PROJECT_sREPONAME ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
     - ln -s $PPATH ~/$CIRCLE_PROJECT_REPONAME
-  override:
-    - go get -v github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/...
 general:
   artifacts:
     - "$PPATH/packaging/root/usr/local/bin"
@@ -27,9 +25,12 @@ test:
   pre:
     - go version
   override:
-      - go test -i github.com/pandemicsyn/oort/...
+      - go test -i github.com/pandemicsyn/oort/oort-valued
+      - go test -i github.com/pandemicsyn/oort/oort-groupd
+      - go test -i github.com/pandemicsyn/oort/oort-cli
       - go install -v github.com/pandemicsyn/oort/oort-valued
       - go install -v github.com/pandemicsyn/oort/oort-groupd
+      - go install -v github.com/pandemicsyn/oort/oort-cli
   post:
     - GOOS=linux GOARCH=amd64 make build
 deployment:
@@ -42,6 +43,13 @@ deployment:
       - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease ci-`cat VERSION` $BUILDPATH
   qa:
     branch: qa
+    owner: pandemicsyn
+    commands:
+      - go get github.com/tcnksm/ghr
+      - go install github.com/tcnksm/ghr
+      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease qa-`cat VERSION` $BUILDPATH
+  stable:
+    branch: stable
     owner: pandemicsyn
     commands:
       - go get github.com/tcnksm/ghr

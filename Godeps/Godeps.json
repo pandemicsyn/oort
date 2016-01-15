@@ -1,0 +1,121 @@
+{
+	"ImportPath": "github.com/pandemicsyn/oort",
+	"GoVersion": "go1.5",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/BurntSushi/toml",
+			"Comment": "v0.1.0-21-g056c9bc",
+			"Rev": "056c9bc7be7190eaa7715723883caffa5f8fa3e4"
+		},
+		{
+			"ImportPath": "github.com/gholt/brimtext",
+			"Rev": "b8eb3a58806ad6cba438e4b372470fd89c837523"
+		},
+		{
+			"ImportPath": "github.com/gholt/brimtime",
+			"Rev": "f8418e0afa7ef59954a67f406da5e8e137c6b984"
+		},
+		{
+			"ImportPath": "github.com/gholt/locmap",
+			"Rev": "4f44be5ef76345d085e673aad44ed3aa6ea14fdb"
+		},
+		{
+			"ImportPath": "github.com/gholt/ring",
+			"Rev": "be0474228d758766c3fe09cbe10ba72dce2ead2f"
+		},
+		{
+			"ImportPath": "github.com/gholt/store",
+			"Rev": "2c6686a38d4fbcf2fb65d93ef3a503efa824674b"
+		},
+		{
+			"ImportPath": "github.com/gogo/protobuf/gogoproto",
+			"Comment": "v0.1-115-gc57e439",
+			"Rev": "c57e439bad574c2e0877ff18d514badcfced004d"
+		},
+		{
+			"ImportPath": "github.com/gogo/protobuf/proto",
+			"Comment": "v0.1-115-gc57e439",
+			"Rev": "c57e439bad574c2e0877ff18d514badcfced004d"
+		},
+		{
+			"ImportPath": "github.com/gogo/protobuf/protoc-gen-gogo/descriptor",
+			"Comment": "v0.1-115-gc57e439",
+			"Rev": "c57e439bad574c2e0877ff18d514badcfced004d"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "2402d76f3d41f928c7902a765dfc872356dd3aad"
+		},
+		{
+			"ImportPath": "github.com/pandemicsyn/syndicate/api/cmdctrl",
+			"Comment": "stable-0.0.2",
+			"Rev": "e82ae4da8554b20baa6dc1d3e22d1f35b88fef5b"
+		},
+		{
+			"ImportPath": "github.com/pandemicsyn/syndicate/api/proto",
+			"Comment": "stable-0.0.2",
+			"Rev": "e82ae4da8554b20baa6dc1d3e22d1f35b88fef5b"
+		},
+		{
+			"ImportPath": "github.com/pandemicsyn/syndicate/cmdctrl",
+			"Comment": "stable-0.0.2",
+			"Rev": "e82ae4da8554b20baa6dc1d3e22d1f35b88fef5b"
+		},
+		{
+			"ImportPath": "github.com/peterh/liner",
+			"Rev": "3f1c20449d1836aa4cbe38731b96f95cdf89634d"
+		},
+		{
+			"ImportPath": "github.com/pkg/profile",
+			"Comment": "v1.0.0",
+			"Rev": "c795610ec6e479e5795f7852db65ea15073674a6"
+		},
+		{
+			"ImportPath": "github.com/ricochet2200/go-disk-usage/du",
+			"Rev": "f0d1b743428fc09792f93233d9412f89f88fa2ab"
+		},
+		{
+			"ImportPath": "github.com/spaolacci/murmur3",
+			"Rev": "0d12bf811670bf6a1a63828dfbd003eded177fce"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"Rev": "3760e016850398b85094c4c99e955b8c3dea5711"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "a8e212f3d10e1cd58f7669dd2c9d757bf7b98f93"
+		},
+		{
+			"ImportPath": "golang.org/x/net/http2",
+			"Rev": "a8e212f3d10e1cd58f7669dd2c9d757bf7b98f93"
+		},
+		{
+			"ImportPath": "golang.org/x/net/internal/timeseries",
+			"Rev": "a8e212f3d10e1cd58f7669dd2c9d757bf7b98f93"
+		},
+		{
+			"ImportPath": "golang.org/x/net/trace",
+			"Rev": "a8e212f3d10e1cd58f7669dd2c9d757bf7b98f93"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc",
+			"Rev": "5da22b92e9485c15a6b284d52cc54d6580864c99"
+		},
+		{
+			"ImportPath": "gopkg.in/gholt/brimtext.v1",
+			"Rev": "57edd2a5013c4c6942404de8f605534c63fd4149"
+		},
+		{
+			"ImportPath": "gopkg.in/gholt/brimtime.v1",
+			"Rev": "3166efe39e1e4ad294eadda39bdaa96d268d4979"
+		},
+		{
+			"ImportPath": "gopkg.in/gholt/brimutil.v1",
+			"Rev": "aa1feccc9a92d38df63cf30f3777159db9c753bf"
+		}
+	]
+}

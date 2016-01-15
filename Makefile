@@ -1,7 +1,9 @@
 SHA := $(shell git rev-parse --short HEAD)
 VERSION := $(shell cat VERSION)
 ITTERATION := $(shell date +%s)
+RINGVERSION := $(shell python -c 'import sys, json; print [x["Rev"] for x in json.load(sys.stdin)["Deps"] if x["ImportPath"] == "github.com/gholt/ring"][0]' < Godeps/Godeps.json)
 
+deps: export GO15VENDOREXPERIMENT=1
 deps:
 	go get -u google.golang.org/grpc
 	go get -u github.com/golang/protobuf/proto
@@ -14,7 +16,10 @@ deps:
 	go get -u github.com/gogo/protobuf/protoc-gen-gogo
 	go get -u github.com/gogo/protobuf/gogoproto
 	go get -u github.com/gogo/protobuf/protoc-gen-gofast
+	godep save ./...
+	godep update ./...
 
+build: export GO15VENDOREXPERIMENT=1
 build:
 	mkdir -p packaging/output
 	mkdir -p packaging/root/usr/local/bin
@@ -45,9 +50,11 @@ install: build
 	mkdir -p /etc/oort/group
 	cp -av packaging/root/usr/local/bin/* $(GOPATH)/bin
 
+run: export GO15VENDOREXPERIMENT=1
 run:
 	go run oort-valued/*.go
 
+test: export GO15VENDOREXPERIMENT=1
 test:
 	go test ./...
 
