@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/gholt/ring"
-	"github.com/pandemicsyn/syndicate/cmdctrl"
+	"github.com/pandemicsyn/cmdctrl"
 )
 
 type OortService interface {
