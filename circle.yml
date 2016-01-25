@@ -18,40 +18,16 @@ dependencies:
     - mkdir -p ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
     - mv ~/$CIRCLE_PROJECT_REPONAME ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
     - ln -s $PPATH ~/$CIRCLE_PROJECT_REPONAME
+  override:
+    - go get -v github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/...
 general:
   artifacts:
     - "$PPATH/packaging/root/usr/local/bin"
 test:
   pre:
     - go version
+    - make deps
   override:
-      - go test -i github.com/pandemicsyn/oort/oort-valued
-      - go test -i github.com/pandemicsyn/oort/oort-groupd
-      - go test -i github.com/pandemicsyn/oort/oort-cli
-      - go install -v github.com/pandemicsyn/oort/oort-valued
-      - go install -v github.com/pandemicsyn/oort/oort-groupd
-      - go install -v github.com/pandemicsyn/oort/oort-cli
+    - make test
   post:
     - GOOS=linux GOARCH=amd64 make build
-deployment:
-  ci:
-    branch: ci
-    owner: pandemicsyn
-    commands:
-      - go get github.com/tcnksm/ghr
-      - go install github.com/tcnksm/ghr
-      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease ci-`cat VERSION` $BUILDPATH
-  qa:
-    branch: qa
-    owner: pandemicsyn
-    commands:
-      - go get github.com/tcnksm/ghr
-      - go install github.com/tcnksm/ghr
-      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease qa-`cat VERSION` $BUILDPATH
-  stable:
-    branch: stable
-    owner: pandemicsyn
-    commands:
-      - go get github.com/tcnksm/ghr
-      - go install github.com/tcnksm/ghr
-      - ghr -t $GITHUB_TOKEN -u pandemicsyn -r oort --replace --prerelease qa-`cat VERSION` $BUILDPATH
