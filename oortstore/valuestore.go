@@ -75,7 +75,6 @@ func NewValueStore(oort *oort.Server) (*OortValueStore, error) {
 }
 
 func (s *OortValueStore) start() {
-	var err error
 	s.vs = nil
 	runtime.GC()
 	log.Println("LocalID appears to be:", s.o.GetLocalID())
@@ -83,10 +82,7 @@ func (s *OortValueStore) start() {
 	s.ValueStoreConfig.MsgRing = s.t
 	s.t.SetRing(s.o.Ring())
 	var restartChan chan error
-	s.vs, restartChan, err = store.NewValueStore(&s.ValueStoreConfig)
-	if err != nil {
-		panic(err)
-	}
+	s.vs, restartChan = store.NewValueStore(&s.ValueStoreConfig)
 	// TODO: I'm guessing we'll want to do something more graceful here; but
 	// this will work for now since Systemd (or another service manager) should
 	// restart the service.
@@ -95,7 +91,9 @@ func (s *OortValueStore) start() {
 			panic(err)
 		}
 	}(restartChan)
-	s.vs.EnableAll()
+	if err := s.vs.Startup(); err != nil {
+		panic(err)
+	}
 	go func(t *ring.TCPMsgRing) {
 		t.Listen()
 		log.Println("TCPMsgRing Listen() returned, shutdown?")
@@ -267,9 +265,8 @@ func (s *OortValueStore) Stop() {
 		s.Unlock()
 		return
 	}
-	s.vs.DisableAll()
+	s.vs.Shutdown()
 	s.t.Shutdown()
-	s.vs.Flush()
 	s.stopped = true
 	s.Unlock()
 	log.Println(s.vs.Stats(true))
