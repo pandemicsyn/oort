@@ -75,7 +75,6 @@ func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 }
 
 func (s *OortGroupStore) start() {
-	var err error
 	s.vs = nil
 	runtime.GC()
 	log.Println("LocalID appears to be:", s.o.GetLocalID())
@@ -83,10 +82,7 @@ func (s *OortGroupStore) start() {
 	s.GroupStoreConfig.MsgRing = s.t
 	s.t.SetRing(s.o.Ring())
 	var restartChan chan error
-	s.vs, restartChan, err = store.NewGroupStore(&s.GroupStoreConfig)
-	if err != nil {
-		panic(err)
-	}
+	s.vs, restartChan = store.NewGroupStore(&s.GroupStoreConfig)
 	// TODO: I'm guessing we'll want to do something more graceful here; but
 	// this will work for now since Systemd (or another service manager) should
 	// restart the service.
@@ -95,7 +91,9 @@ func (s *OortGroupStore) start() {
 			panic(err)
 		}
 	}(restartChan)
-	s.vs.EnableAll()
+	if err := s.vs.Startup(); err != nil {
+		panic(err)
+	}
 	go func(t *ring.TCPMsgRing) {
 		t.Listen()
 		log.Println("TCPMsgRing Listen() returned, shutdown?")
@@ -304,9 +302,8 @@ func (s *OortGroupStore) Stop() {
 		s.Unlock()
 		return
 	}
-	s.vs.DisableAll()
+	s.vs.Shutdown()
 	s.t.Shutdown()
-	s.vs.Flush()
 	s.stopped = true
 	s.Unlock()
 	log.Println(s.vs.Stats(true))
