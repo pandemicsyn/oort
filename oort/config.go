@@ -11,7 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gholt/ring"
 	"github.com/pandemicsyn/cmdctrl"
-	"github.com/pandemicsyn/oort/utils/srvconf"
+	"github.com/pandemicsyn/syndicate/utils/srvconf"
 )
 
 // FExists true if a file or dir exists

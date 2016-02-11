@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ var (
 	prompt    = "> "
 	errprompt = "┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻> "
 	historyf  = filepath.Join(os.TempDir(), ".oort-cli-history")
-	cmdnames  = []string{"write", "read", "delete", "lookup", "group-lookup", "mode", "exit", "help"}
+	cmdnames  = []string{"write", "write-hash", "read", "read-hash", "delete", "lookup", "lookup-group", "mode", "exit", "help"}
 )
 
 func lineCompleter(line string) (c []string) {
@@ -45,10 +46,12 @@ func (c *Client) printHelp() string {
 		return fmt.Sprintf(`
 	Valid cmd's are:
 	write <groupkey> <subkey> <some string value>
+	write-hash <groupkey> <subkeyhasha> <subkeyhashb> <value>
 	read <groupkey> <subkey>
+	read-hash <groupkey> <subkeyhasha> <subkeyhashb>
 	delete <groupkey> <subkey>
 	lookup <groupkey> <subkey>
-	group-lookup <key>
+	lookup-group <key>
 	mode group|value
 	exit
 	help
@@ -176,6 +179,30 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 			return "", err
 		}
 		return fmt.Sprintf("WRITE TSM: %d\nTSM: %d", w.Tsm, res.Tsm), nil
+	case "write-hash":
+		sarg := strings.SplitN(args, " ", 4)
+		if len(sarg) < 4 {
+			return fmt.Sprintf("write-hash needs groupkey, keyahash keybhash, value: `write-hash groupkey 19191919 19191919 some value thing here`"), nil
+		}
+		w := &gp.WriteRequest{}
+		w.KeyA, w.KeyB = murmur3.Sum128([]byte(sarg[0]))
+		namekeyA, err := strconv.ParseUint(sarg[1], 10, 64)
+		if err != nil {
+			return "", err
+		}
+		namekeyB, err := strconv.ParseUint(sarg[2], 10, 64)
+		if err != nil {
+			return "", err
+		}
+		w.NameKeyA, w.NameKeyB = namekeyA, namekeyB
+		w.Value = []byte(sarg[3])
+		w.Tsm = brimtime.TimeToUnixMicro(time.Now())
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		res, err := c.gc.Write(ctx, w)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("WRITE TSM: %d\nTSM: %d", w.Tsm, res.Tsm), nil
 	case "read":
 		sarg := strings.SplitN(args, " ", 2)
 		if len(sarg) < 2 {
@@ -184,6 +211,28 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		r := &gp.ReadRequest{}
 		r.KeyA, r.KeyB = murmur3.Sum128([]byte(sarg[0]))
 		r.NameKeyA, r.NameKeyB = murmur3.Sum128([]byte(sarg[1]))
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		res, err := c.gc.Read(ctx, r)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("TSM: %d\nVALUE: %s", res.Tsm, res.Value), nil
+	case "read-hash":
+		sarg := strings.SplitN(args, " ", 3)
+		if len(sarg) < 3 {
+			return fmt.Sprintf("read needs groupkey, subkeyA, subkeyB"), nil
+		}
+		r := &gp.ReadRequest{}
+		r.KeyA, r.KeyB = murmur3.Sum128([]byte(sarg[0]))
+		namekeyA, err := strconv.ParseUint(sarg[1], 10, 64)
+		if err != nil {
+			return "", err
+		}
+		namekeyB, err := strconv.ParseUint(sarg[2], 10, 64)
+		if err != nil {
+			return "", err
+		}
+		r.NameKeyA, r.NameKeyB = namekeyA, namekeyB
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		res, err := c.gc.Read(ctx, r)
 		if err != nil {
@@ -219,7 +268,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 			return "", err
 		}
 		return fmt.Sprintf("TSM: %d", res.Tsm), nil
-	case "group-lookup":
+	case "lookup-group":
 		l := &gp.LookupGroupRequest{}
 		l.A, l.B = murmur3.Sum128([]byte(args))
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -305,7 +354,6 @@ func main() {
 		gaddr: *gaddr,
 		gmode: *groupmode,
 	}
-
 	sm := "value"
 	if client.gmode {
 		sm = "group"
@@ -343,7 +391,5 @@ func main() {
 			line.WriteHistory(f)
 			f.Close()
 		}
-
 	}
-
 }
