@@ -37,7 +37,7 @@ func (o *Server) LoadRingConfig(config interface{}) (err error) {
 	o.Lock()
 	defer o.Unlock()
 	log.Println("Using ring version:", o.ring.Version())
-	b := bytes.NewReader(o.ring.Conf())
+	b := bytes.NewReader(o.ring.Config())
 	if b.Len() > 0 {
 		_, err = toml.DecodeReader(b, config)
 		if err != nil {
@@ -49,15 +49,15 @@ func (o *Server) LoadRingConfig(config interface{}) (err error) {
 	if n == nil {
 		panic("n is nil")
 	}
-	b = bytes.NewReader(o.ring.LocalNode().Conf())
+	b = bytes.NewReader(o.ring.LocalNode().Config())
 	if b.Len() > 0 {
 		_, err = toml.DecodeReader(b, config)
 		if err != nil {
 			return err
 		}
 	}
-	log.Printf("Local Node config is: \n%s", o.ring.LocalNode().Conf())
-	log.Printf("Ring config is: \n%s", o.ring.Conf())
+	log.Printf("Local Node config is: \n%s", o.ring.LocalNode().Config())
+	log.Printf("Ring config is: \n%s", o.ring.Config())
 	return nil
 }
 
