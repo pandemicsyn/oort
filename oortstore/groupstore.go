@@ -251,6 +251,57 @@ func (s *OortGroupStore) StreamLookupGroup(stream groupproto.GroupStore_StreamLo
 	}
 }
 
+func (s *OortGroupStore) ReadGroup(ctx context.Context, req *groupproto.ReadGroupRequest) (*groupproto.ReadGroupResponse, error) {
+	resp := groupproto.ReadGroupResponse{}
+	lgis := s.vs.LookupGroup(req.A, req.B)
+	resp.Items = make([]*groupproto.ReadGroupItem, len(lgis))
+	itemCount := 0
+	var err error
+	for _, lgi := range lgis {
+		g := groupproto.ReadGroupItem{}
+		g.TimestampMicro, g.Value, err = s.vs.Read(req.A, req.B, lgi.NameKeyA, lgi.NameKeyB, nil)
+		if err != nil {
+			continue
+		}
+		g.NameKeyA = lgi.NameKeyA
+		g.NameKeyB = lgi.NameKeyB
+		itemCount++
+	}
+	resp.Items = resp.Items[:itemCount]
+	return &resp, nil
+}
+
+func (s *OortGroupStore) StreamReadGroup(stream groupproto.GroupStore_StreamReadGroupServer) error {
+	var resp groupproto.ReadGroupResponse
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		resp.Reset()
+		lgis := s.vs.LookupGroup(req.A, req.B)
+		resp.Items = make([]*groupproto.ReadGroupItem, len(lgis))
+		itemCount := 0
+		for _, lgi := range lgis {
+			g := groupproto.ReadGroupItem{}
+			g.TimestampMicro, g.Value, err = s.vs.Read(req.A, req.B, lgi.NameKeyA, lgi.NameKeyB, nil)
+			if err != nil {
+				continue
+			}
+			g.NameKeyA = lgi.NameKeyA
+			g.NameKeyB = lgi.NameKeyB
+			itemCount++
+		}
+		resp.Items = resp.Items[:itemCount]
+		if err := stream.Send(&resp); err != nil {
+			return err
+		}
+	}
+}
+
 func (s *OortGroupStore) Delete(ctx context.Context, req *groupproto.DeleteRequest) (*groupproto.DeleteResponse, error) {
 	resp := groupproto.DeleteResponse{}
 	var err error

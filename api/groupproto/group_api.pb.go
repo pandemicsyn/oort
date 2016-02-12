@@ -15,10 +15,13 @@ It has these top-level messages:
 	ReadRequest
 	DeleteRequest
 	LookupGroupRequest
+	ReadGroupRequest
 	WriteResponse
 	LookupResponse
 	LookupGroupResponse
 	LookupGroupItem
+	ReadGroupResponse
+	ReadGroupItem
 	ReadResponse
 	DeleteResponse
 */
@@ -101,6 +104,15 @@ func (m *LookupGroupRequest) Reset()         { *m = LookupGroupRequest{} }
 func (m *LookupGroupRequest) String() string { return proto.CompactTextString(m) }
 func (*LookupGroupRequest) ProtoMessage()    {}
 
+type ReadGroupRequest struct {
+	A uint64 `protobuf:"varint,1,opt,name=a" json:"a,omitempty"`
+	B uint64 `protobuf:"varint,2,opt,name=b" json:"b,omitempty"`
+}
+
+func (m *ReadGroupRequest) Reset()         { *m = ReadGroupRequest{} }
+func (m *ReadGroupRequest) String() string { return proto.CompactTextString(m) }
+func (*ReadGroupRequest) ProtoMessage()    {}
+
 type WriteResponse struct {
 	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
 	Err string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
@@ -138,13 +150,39 @@ func (m *LookupGroupResponse) GetItems() []*LookupGroupItem {
 type LookupGroupItem struct {
 	NameKeyA       uint64 `protobuf:"varint,1,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
 	NameKeyB       uint64 `protobuf:"varint,2,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
-	TimestampMicro uint64 `protobuf:"varint,3,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,3,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
 	Length         uint32 `protobuf:"varint,4,opt,name=length" json:"length,omitempty"`
 }
 
 func (m *LookupGroupItem) Reset()         { *m = LookupGroupItem{} }
 func (m *LookupGroupItem) String() string { return proto.CompactTextString(m) }
 func (*LookupGroupItem) ProtoMessage()    {}
+
+type ReadGroupResponse struct {
+	Items []*ReadGroupItem `protobuf:"bytes,1,rep,name=items" json:"items,omitempty"`
+}
+
+func (m *ReadGroupResponse) Reset()         { *m = ReadGroupResponse{} }
+func (m *ReadGroupResponse) String() string { return proto.CompactTextString(m) }
+func (*ReadGroupResponse) ProtoMessage()    {}
+
+func (m *ReadGroupResponse) GetItems() []*ReadGroupItem {
+	if m != nil {
+		return m.Items
+	}
+	return nil
+}
+
+type ReadGroupItem struct {
+	NameKeyA       uint64 `protobuf:"varint,1,opt,name=nameKeyA" json:"nameKeyA,omitempty"`
+	NameKeyB       uint64 `protobuf:"varint,2,opt,name=nameKeyB" json:"nameKeyB,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,3,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
+	Value          []byte `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *ReadGroupItem) Reset()         { *m = ReadGroupItem{} }
+func (m *ReadGroupItem) String() string { return proto.CompactTextString(m) }
+func (*ReadGroupItem) ProtoMessage()    {}
 
 type ReadResponse struct {
 	Tsm   int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
@@ -165,21 +203,6 @@ func (m *DeleteResponse) Reset()         { *m = DeleteResponse{} }
 func (m *DeleteResponse) String() string { return proto.CompactTextString(m) }
 func (*DeleteResponse) ProtoMessage()    {}
 
-func init() {
-	proto.RegisterType((*EmptyMsg)(nil), "groupproto.EmptyMsg")
-	proto.RegisterType((*WriteRequest)(nil), "groupproto.WriteRequest")
-	proto.RegisterType((*LookupRequest)(nil), "groupproto.LookupRequest")
-	proto.RegisterType((*ReadRequest)(nil), "groupproto.ReadRequest")
-	proto.RegisterType((*DeleteRequest)(nil), "groupproto.DeleteRequest")
-	proto.RegisterType((*LookupGroupRequest)(nil), "groupproto.LookupGroupRequest")
-	proto.RegisterType((*WriteResponse)(nil), "groupproto.WriteResponse")
-	proto.RegisterType((*LookupResponse)(nil), "groupproto.LookupResponse")
-	proto.RegisterType((*LookupGroupResponse)(nil), "groupproto.LookupGroupResponse")
-	proto.RegisterType((*LookupGroupItem)(nil), "groupproto.LookupGroupItem")
-	proto.RegisterType((*ReadResponse)(nil), "groupproto.ReadResponse")
-	proto.RegisterType((*DeleteResponse)(nil), "groupproto.DeleteResponse")
-}
-
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
@@ -193,6 +216,8 @@ type GroupStoreClient interface {
 	StreamLookup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamLookupClient, error)
 	LookupGroup(ctx context.Context, in *LookupGroupRequest, opts ...grpc.CallOption) (*LookupGroupResponse, error)
 	StreamLookupGroup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamLookupGroupClient, error)
+	ReadGroup(ctx context.Context, in *ReadGroupRequest, opts ...grpc.CallOption) (*ReadGroupResponse, error)
+	StreamReadGroup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamReadGroupClient, error)
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
 	StreamRead(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamReadClient, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
@@ -327,6 +352,46 @@ func (x *groupStoreStreamLookupGroupClient) Recv() (*LookupGroupResponse, error)
 	return m, nil
 }
 
+func (c *groupStoreClient) ReadGroup(ctx context.Context, in *ReadGroupRequest, opts ...grpc.CallOption) (*ReadGroupResponse, error) {
+	out := new(ReadGroupResponse)
+	err := grpc.Invoke(ctx, "/groupproto.GroupStore/ReadGroup", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupStoreClient) StreamReadGroup(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamReadGroupClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[3], c.cc, "/groupproto.GroupStore/StreamReadGroup", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupStoreStreamReadGroupClient{stream}
+	return x, nil
+}
+
+type GroupStore_StreamReadGroupClient interface {
+	Send(*ReadGroupRequest) error
+	Recv() (*ReadGroupResponse, error)
+	grpc.ClientStream
+}
+
+type groupStoreStreamReadGroupClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupStoreStreamReadGroupClient) Send(m *ReadGroupRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamReadGroupClient) Recv() (*ReadGroupResponse, error) {
+	m := new(ReadGroupResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *groupStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error) {
 	out := new(ReadResponse)
 	err := grpc.Invoke(ctx, "/groupproto.GroupStore/Read", in, out, c.cc, opts...)
@@ -337,7 +402,7 @@ func (c *groupStoreClient) Read(ctx context.Context, in *ReadRequest, opts ...gr
 }
 
 func (c *groupStoreClient) StreamRead(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamReadClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[3], c.cc, "/groupproto.GroupStore/StreamRead", opts...)
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[4], c.cc, "/groupproto.GroupStore/StreamRead", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +442,7 @@ func (c *groupStoreClient) Delete(ctx context.Context, in *DeleteRequest, opts .
 }
 
 func (c *groupStoreClient) StreamDelete(ctx context.Context, opts ...grpc.CallOption) (GroupStore_StreamDeleteClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[4], c.cc, "/groupproto.GroupStore/StreamDelete", opts...)
+	stream, err := grpc.NewClientStream(ctx, &_GroupStore_serviceDesc.Streams[5], c.cc, "/groupproto.GroupStore/StreamDelete", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -416,6 +481,8 @@ type GroupStoreServer interface {
 	StreamLookup(GroupStore_StreamLookupServer) error
 	LookupGroup(context.Context, *LookupGroupRequest) (*LookupGroupResponse, error)
 	StreamLookupGroup(GroupStore_StreamLookupGroupServer) error
+	ReadGroup(context.Context, *ReadGroupRequest) (*ReadGroupResponse, error)
+	StreamReadGroup(GroupStore_StreamReadGroupServer) error
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
 	StreamRead(GroupStore_StreamReadServer) error
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
@@ -540,6 +607,44 @@ func (x *groupStoreStreamLookupGroupServer) Recv() (*LookupGroupRequest, error) 
 	return m, nil
 }
 
+func _GroupStore_ReadGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ReadGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(GroupStoreServer).ReadGroup(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _GroupStore_StreamReadGroup_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GroupStoreServer).StreamReadGroup(&groupStoreStreamReadGroupServer{stream})
+}
+
+type GroupStore_StreamReadGroupServer interface {
+	Send(*ReadGroupResponse) error
+	Recv() (*ReadGroupRequest, error)
+	grpc.ServerStream
+}
+
+type groupStoreStreamReadGroupServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupStoreStreamReadGroupServer) Send(m *ReadGroupResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *groupStoreStreamReadGroupServer) Recv() (*ReadGroupRequest, error) {
+	m := new(ReadGroupRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _GroupStore_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(ReadRequest)
 	if err := dec(in); err != nil {
@@ -633,6 +738,10 @@ var _GroupStore_serviceDesc = grpc.ServiceDesc{
 			Handler:    _GroupStore_LookupGroup_Handler,
 		},
 		{
+			MethodName: "ReadGroup",
+			Handler:    _GroupStore_ReadGroup_Handler,
+		},
+		{
 			MethodName: "Read",
 			Handler:    _GroupStore_Read_Handler,
 		},
@@ -657,6 +766,12 @@ var _GroupStore_serviceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "StreamLookupGroup",
 			Handler:       _GroupStore_StreamLookupGroup_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "StreamReadGroup",
+			Handler:       _GroupStore_StreamReadGroup_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
