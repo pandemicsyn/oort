@@ -4,7 +4,7 @@ ITTERATION := $(shell date +%s)
 LOCALPKGS :=  $(shell go list ./... | grep -v /vendor/)
 
 deps:
-	go get -f -u $(LOCALPKGS)
+	go get $(LOCALPKGS)
 
 build:
 	mkdir -p packaging/output
