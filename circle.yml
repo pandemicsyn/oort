@@ -26,7 +26,6 @@ general:
 test:
   pre:
     - go version
-    - make deps
   override:
     - make test
   post:
