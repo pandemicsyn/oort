@@ -10,6 +10,8 @@ service GroupStore {
     rpc StreamLookup(stream LookupRequest) returns (stream LookupResponse) {}
     rpc LookupGroup(LookupGroupRequest) returns (LookupGroupResponse) {}
     rpc StreamLookupGroup(stream LookupGroupRequest) returns (stream LookupGroupResponse) {}
+    rpc ReadGroup(ReadGroupRequest) returns (ReadGroupResponse) {}
+    rpc StreamReadGroup(stream ReadGroupRequest) returns (stream ReadGroupResponse) {}
     rpc Read(ReadRequest) returns (ReadResponse) {}
     rpc StreamRead(stream ReadRequest) returns (stream ReadResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
@@ -54,6 +56,11 @@ message LookupGroupRequest {
     uint64 b = 2;
 }
 
+message ReadGroupRequest {
+    uint64 a = 1;
+    uint64 b = 2;
+}
+
 message WriteResponse {
     int64  tsm = 1;
     string err = 2;
@@ -72,8 +79,19 @@ message LookupGroupResponse {
 message LookupGroupItem {
     uint64 nameKeyA = 1;
     uint64 nameKeyB = 2;
-    uint64 timestampMicro = 3;
+    int64 timestampMicro = 3;
     uint32 length = 4;
+}
+
+message ReadGroupResponse {
+    repeated ReadGroupItem items = 1;
+}
+
+message ReadGroupItem {
+    uint64 nameKeyA = 1;
+    uint64 nameKeyB = 2;
+    int64 timestampMicro = 3;
+    bytes value = 4;
 }
 
 message ReadResponse {
