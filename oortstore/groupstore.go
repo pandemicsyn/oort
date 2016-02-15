@@ -119,7 +119,7 @@ func (s *OortGroupStore) UpdateRing(ring ring.Ring) {
 func (s *OortGroupStore) Write(ctx context.Context, req *groupproto.WriteRequest) (*groupproto.WriteResponse, error) {
 	resp := groupproto.WriteResponse{}
 	var err error
-	resp.Tsm, err = s.vs.Write(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, req.Tsm, req.Value)
+	resp.Tsm, err = s.vs.Write(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, req.Tsm, req.Value)
 	if err != nil {
 		log.Println(err)
 		resp.Err = err.Error()
@@ -138,7 +138,7 @@ func (s *OortGroupStore) StreamWrite(stream groupproto.GroupStore_StreamWriteSer
 			return err
 		}
 		resp.Reset()
-		resp.Tsm, err = s.vs.Write(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, req.Tsm, req.Value)
+		resp.Tsm, err = s.vs.Write(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, req.Tsm, req.Value)
 		if err != nil {
 			log.Println(err)
 			resp.Err = err.Error()
@@ -152,7 +152,7 @@ func (s *OortGroupStore) StreamWrite(stream groupproto.GroupStore_StreamWriteSer
 func (s *OortGroupStore) Read(ctx context.Context, req *groupproto.ReadRequest) (*groupproto.ReadResponse, error) {
 	resp := groupproto.ReadResponse{}
 	var err error
-	resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, resp.Value)
+	resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, resp.Value)
 	if err != nil {
 		resp.Err = err.Error()
 	}
@@ -170,7 +170,7 @@ func (s *OortGroupStore) StreamRead(stream groupproto.GroupStore_StreamReadServe
 			return err
 		}
 		resp.Reset()
-		resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, resp.Value)
+		resp.Tsm, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, resp.Value)
 		if err != nil {
 			log.Println(err)
 			resp.Err = err.Error()
@@ -184,7 +184,7 @@ func (s *OortGroupStore) StreamRead(stream groupproto.GroupStore_StreamReadServe
 func (s *OortGroupStore) Lookup(ctx context.Context, req *groupproto.LookupRequest) (*groupproto.LookupResponse, error) {
 	resp := groupproto.LookupResponse{}
 	var err error
-	resp.Tsm, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB)
+	resp.Tsm, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB)
 	if err != nil {
 		resp.Err = err.Error()
 	}
@@ -202,7 +202,7 @@ func (s *OortGroupStore) StreamLookup(stream groupproto.GroupStore_StreamLookupS
 			return err
 		}
 		resp.Reset()
-		resp.Tsm, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB)
+		resp.Tsm, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB)
 		if err != nil {
 			log.Println(err)
 			resp.Err = err.Error()
@@ -218,8 +218,8 @@ func (s *OortGroupStore) LookupGroup(ctx context.Context, req *groupproto.Lookup
 	for _, v := range s.vs.LookupGroup(req.A, req.B) {
 		g := groupproto.LookupGroupItem{}
 		g.Length = v.Length
-		g.NameKeyA = v.NameKeyA
-		g.NameKeyB = v.NameKeyB
+		g.ChildKeyA = v.ChildKeyA
+		g.ChildKeyB = v.ChildKeyB
 		g.TimestampMicro = v.TimestampMicro
 		resp.Items = append(resp.Items, &g)
 	}
@@ -240,8 +240,8 @@ func (s *OortGroupStore) StreamLookupGroup(stream groupproto.GroupStore_StreamLo
 		for _, v := range s.vs.LookupGroup(req.A, req.B) {
 			g := groupproto.LookupGroupItem{}
 			g.Length = v.Length
-			g.NameKeyA = v.NameKeyA
-			g.NameKeyB = v.NameKeyB
+			g.ChildKeyA = v.ChildKeyA
+			g.ChildKeyB = v.ChildKeyB
 			g.TimestampMicro = v.TimestampMicro
 			resp.Items = append(resp.Items, &g)
 		}
@@ -259,12 +259,12 @@ func (s *OortGroupStore) ReadGroup(ctx context.Context, req *groupproto.ReadGrou
 	var err error
 	for _, lgi := range lgis {
 		g := groupproto.ReadGroupItem{}
-		g.TimestampMicro, g.Value, err = s.vs.Read(req.A, req.B, lgi.NameKeyA, lgi.NameKeyB, nil)
+		g.TimestampMicro, g.Value, err = s.vs.Read(req.A, req.B, lgi.ChildKeyA, lgi.ChildKeyB, nil)
 		if err != nil {
 			continue
 		}
-		g.NameKeyA = lgi.NameKeyA
-		g.NameKeyB = lgi.NameKeyB
+		g.ChildKeyA = lgi.ChildKeyA
+		g.ChildKeyB = lgi.ChildKeyB
 		itemCount++
 	}
 	resp.Items = resp.Items[:itemCount]
@@ -287,12 +287,12 @@ func (s *OortGroupStore) StreamReadGroup(stream groupproto.GroupStore_StreamRead
 		itemCount := 0
 		for _, lgi := range lgis {
 			g := groupproto.ReadGroupItem{}
-			g.TimestampMicro, g.Value, err = s.vs.Read(req.A, req.B, lgi.NameKeyA, lgi.NameKeyB, nil)
+			g.TimestampMicro, g.Value, err = s.vs.Read(req.A, req.B, lgi.ChildKeyA, lgi.ChildKeyB, nil)
 			if err != nil {
 				continue
 			}
-			g.NameKeyA = lgi.NameKeyA
-			g.NameKeyB = lgi.NameKeyB
+			g.ChildKeyA = lgi.ChildKeyA
+			g.ChildKeyB = lgi.ChildKeyB
 			itemCount++
 		}
 		resp.Items = resp.Items[:itemCount]
@@ -305,7 +305,7 @@ func (s *OortGroupStore) StreamReadGroup(stream groupproto.GroupStore_StreamRead
 func (s *OortGroupStore) Delete(ctx context.Context, req *groupproto.DeleteRequest) (*groupproto.DeleteResponse, error) {
 	resp := groupproto.DeleteResponse{}
 	var err error
-	resp.Tsm, err = s.vs.Delete(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, req.Tsm)
+	resp.Tsm, err = s.vs.Delete(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, req.Tsm)
 	if err != nil {
 		resp.Err = err.Error()
 	}
@@ -323,7 +323,7 @@ func (s *OortGroupStore) StreamDelete(stream groupproto.GroupStore_StreamDeleteS
 			return err
 		}
 		resp.Reset()
-		resp.Tsm, err = s.vs.Delete(req.KeyA, req.KeyB, req.NameKeyA, req.NameKeyB, req.Tsm)
+		resp.Tsm, err = s.vs.Delete(req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, req.Tsm)
 		if err != nil {
 			log.Println(err)
 			resp.Err = err.Error()

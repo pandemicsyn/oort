@@ -170,7 +170,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		w := &gp.WriteRequest{}
 		w.KeyA, w.KeyB = murmur3.Sum128([]byte(sarg[0]))
-		w.NameKeyA, w.NameKeyB = murmur3.Sum128([]byte(sarg[1]))
+		w.ChildKeyA, w.ChildKeyB = murmur3.Sum128([]byte(sarg[1]))
 		w.Value = []byte(sarg[2])
 		w.Tsm = brimtime.TimeToUnixMicro(time.Now())
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -186,15 +186,15 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		w := &gp.WriteRequest{}
 		w.KeyA, w.KeyB = murmur3.Sum128([]byte(sarg[0]))
-		namekeyA, err := strconv.ParseUint(sarg[1], 10, 64)
+		childKeyA, err := strconv.ParseUint(sarg[1], 10, 64)
 		if err != nil {
 			return "", err
 		}
-		namekeyB, err := strconv.ParseUint(sarg[2], 10, 64)
+		childKeyB, err := strconv.ParseUint(sarg[2], 10, 64)
 		if err != nil {
 			return "", err
 		}
-		w.NameKeyA, w.NameKeyB = namekeyA, namekeyB
+		w.ChildKeyA, w.ChildKeyB = childKeyA, childKeyB
 		w.Value = []byte(sarg[3])
 		w.Tsm = brimtime.TimeToUnixMicro(time.Now())
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -210,7 +210,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		r := &gp.ReadRequest{}
 		r.KeyA, r.KeyB = murmur3.Sum128([]byte(sarg[0]))
-		r.NameKeyA, r.NameKeyB = murmur3.Sum128([]byte(sarg[1]))
+		r.ChildKeyA, r.ChildKeyB = murmur3.Sum128([]byte(sarg[1]))
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		res, err := c.gc.Read(ctx, r)
 		if err != nil {
@@ -224,15 +224,15 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		r := &gp.ReadRequest{}
 		r.KeyA, r.KeyB = murmur3.Sum128([]byte(sarg[0]))
-		namekeyA, err := strconv.ParseUint(sarg[1], 10, 64)
+		childKeyA, err := strconv.ParseUint(sarg[1], 10, 64)
 		if err != nil {
 			return "", err
 		}
-		namekeyB, err := strconv.ParseUint(sarg[2], 10, 64)
+		childKeyB, err := strconv.ParseUint(sarg[2], 10, 64)
 		if err != nil {
 			return "", err
 		}
-		r.NameKeyA, r.NameKeyB = namekeyA, namekeyB
+		r.ChildKeyA, r.ChildKeyB = childKeyA, childKeyB
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		res, err := c.gc.Read(ctx, r)
 		if err != nil {
@@ -246,7 +246,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		d := &gp.DeleteRequest{}
 		d.KeyA, d.KeyB = murmur3.Sum128([]byte(sarg[0]))
-		d.NameKeyA, d.NameKeyB = murmur3.Sum128([]byte(sarg[1]))
+		d.ChildKeyA, d.ChildKeyB = murmur3.Sum128([]byte(sarg[1]))
 		d.Tsm = brimtime.TimeToUnixMicro(time.Now())
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		res, err := c.gc.Delete(ctx, d)
@@ -261,7 +261,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		l := &gp.LookupRequest{}
 		l.KeyA, l.KeyB = murmur3.Sum128([]byte(sarg[0]))
-		l.NameKeyA, l.NameKeyB = murmur3.Sum128([]byte(sarg[1]))
+		l.ChildKeyA, l.ChildKeyB = murmur3.Sum128([]byte(sarg[1]))
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		res, err := c.gc.Lookup(ctx, l)
 		if err != nil {
@@ -278,7 +278,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		keys := make([]string, len(res.Items))
 		for k, v := range res.Items {
-			keys[k] = fmt.Sprintf("TSM: %d [ %d | %d ]", v.TimestampMicro, v.NameKeyA, v.NameKeyB)
+			keys[k] = fmt.Sprintf("TSM: %d [ %d | %d ]", v.TimestampMicro, v.ChildKeyA, v.ChildKeyB)
 		}
 		return fmt.Sprintf(strings.Join(keys, "\n")), nil
 	case "mode":
