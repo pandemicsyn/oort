@@ -33,6 +33,7 @@ type group struct {
 	conn               *grpc.ClientConn
 	client             groupproto.GroupStoreClient
 	streamLookup       groupproto.GroupStore_StreamLookupClient
+	streamLookupGroup  groupproto.GroupStore_StreamLookupGroupClient
 }
 
 func NewGroup(addr string, insecureSkipVerify bool, opts ...grpc.DialOption) (Group, error) {
@@ -78,6 +79,7 @@ func (g *group) Shutdown() {
 	g.conn = nil
 	g.client = nil
 	g.streamLookup = nil
+	g.streamLookupGroup = nil
 }
 
 func (g *group) EnableWrites() {
@@ -137,8 +139,42 @@ func (g *group) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (tim
 	return res.TimestampMicro, res.Length, nil
 }
 
-func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) []store.LookupGroupItem {
-	return nil
+func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) []*store.LookupGroupItem {
+	var err error
+	g.lock.RLock()
+	if g.streamLookupGroup == nil {
+		// TODO: Background should probably be replaced with a "real" context
+		// with deadlines, etc.
+		g.streamLookupGroup, err = g.client.StreamLookupGroup(context.Background())
+		if err != nil {
+			g.streamLookupGroup = nil
+			g.lock.RUnlock()
+			return nil
+		}
+	}
+	s := g.streamLookupGroup
+	g.lock.RUnlock()
+	req := &groupproto.LookupGroupRequest{
+		KeyA: parentKeyA,
+		KeyB: parentKeyB,
+	}
+	if err = s.Send(req); err != nil {
+		return nil
+	}
+	res, err := s.Recv()
+	if err != nil {
+		return nil
+	}
+	rv := make([]*store.LookupGroupItem, len(res.Items))
+	for i, v := range res.Items {
+		rv[i] = &store.LookupGroupItem{
+			ChildKeyA:      v.ChildKeyA,
+			ChildKeyB:      v.ChildKeyB,
+			TimestampMicro: v.TimestampMicro,
+			Length:         v.Length,
+		}
+	}
+	return rv
 }
 
 func (g *group) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
