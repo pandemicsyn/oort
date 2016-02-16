@@ -424,12 +424,12 @@ func GSTests() {
 					KeyB: grpB,
 					Tsm:  tsm,
 				}
-				wr.NameKeyA, wr.NameKeyB = murmur3.Sum128([]byte(fmt.Sprintf("somethingtestkey%d-%d", gsconfigs[w].id, k)))
+				wr.ChildKeyA, wr.ChildKeyB = murmur3.Sum128([]byte(fmt.Sprintf("somethingtestkey%d-%d", gsconfigs[w].id, k)))
 				rr := &gp.ReadRequest{
-					KeyA:     grpA,
-					KeyB:     grpB,
-					NameKeyA: wr.NameKeyA,
-					NameKeyB: wr.NameKeyB,
+					KeyA:      grpA,
+					KeyB:      grpB,
+					ChildKeyA: wr.ChildKeyA,
+					ChildKeyB: wr.ChildKeyB,
 				}
 				gsconfigs[w].wm = append(gsconfigs[w].wm, wr)
 				gsconfigs[w].rm = append(gsconfigs[w].rm, rr)

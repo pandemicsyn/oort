@@ -23,8 +23,8 @@ message EmptyMsg {}
 message WriteRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
-    uint64 nameKeyA = 3;
-    uint64 nameKeyB = 4;
+    uint64 childKeyA = 3;
+    uint64 childKeyB = 4;
     bytes  value = 5;
     int64  tsm = 6;
 }
@@ -32,22 +32,22 @@ message WriteRequest {
 message LookupRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
-    uint64 nameKeyA = 3;
-    uint64 nameKeyB = 4;
+    uint64 childKeyA = 3;
+    uint64 childKeyB = 4;
 }
 
 message ReadRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
-    uint64 nameKeyA = 3;
-    uint64 nameKeyB = 4;
+    uint64 childKeyA = 3;
+    uint64 childKeyB = 4;
 }
 
 message DeleteRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
-    uint64 nameKeyA = 3;
-    uint64 nameKeyB = 4;
+    uint64 childKeyA = 3;
+    uint64 childKeyB = 4;
     int64  tsm = 5;
 }
 
@@ -77,8 +77,8 @@ message LookupGroupResponse {
 }
 
 message LookupGroupItem {
-    uint64 nameKeyA = 1;
-    uint64 nameKeyB = 2;
+    uint64 childKeyA = 1;
+    uint64 childKeyB = 2;
     int64 timestampMicro = 3;
     uint32 length = 4;
 }
@@ -88,8 +88,8 @@ message ReadGroupResponse {
 }
 
 message ReadGroupItem {
-    uint64 nameKeyA = 1;
-    uint64 nameKeyB = 2;
+    uint64 childKeyA = 1;
+    uint64 childKeyB = 2;
     int64 timestampMicro = 3;
     bytes value = 4;
 }
