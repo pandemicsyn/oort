@@ -106,8 +106,8 @@ func ValueStreamWrite(c *ValueClientConfig) {
 			log.Println(err)
 			continue
 		}
-		if res.Tsm > c.wm[i].Tsm {
-			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.Tsm), brimtime.UnixMicroToTime(c.wm[i].Tsm))
+		if res.TimestampMicro > c.wm[i].TimestampMicro {
+			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.TimestampMicro), brimtime.UnixMicroToTime(c.wm[i].TimestampMicro))
 		}
 		c.wm[i].Value = empty
 	}
@@ -145,8 +145,8 @@ func GroupStreamWrite(c *GroupClientConfig) {
 			log.Println(err)
 			continue
 		}
-		if res.Tsm > c.wm[i].Tsm {
-			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.Tsm), brimtime.UnixMicroToTime(c.wm[i].Tsm))
+		if res.TimestampMicro > c.wm[i].TimestampMicro {
+			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.TimestampMicro), brimtime.UnixMicroToTime(c.wm[i].TimestampMicro))
 		}
 		c.wm[i].Value = empty
 	}
@@ -241,13 +241,13 @@ func ValueWrite(c *ValueClientConfig) {
 	for i, _ := range c.wm {
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		c.wm[i].Value = *c.value
-		w.Tsm = brimtime.TimeToUnixMicro(time.Now())
+		w.TimestampMicro = brimtime.TimeToUnixMicro(time.Now())
 		res, err := client.Write(ctx, c.wm[i])
 		if err != nil {
 			log.Println("Client", c.id, ":", err)
 		}
-		if res.Tsm > w.Tsm {
-			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.Tsm), brimtime.UnixMicroToTime(w.Tsm))
+		if res.TimestampMicro > w.TimestampMicro {
+			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.TimestampMicro), brimtime.UnixMicroToTime(w.TimestampMicro))
 		}
 		c.wm[i].Value = empty
 	}
@@ -275,13 +275,13 @@ func GroupWrite(c *GroupClientConfig) {
 	for i, _ := range c.wm {
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		c.wm[i].Value = *c.value
-		w.Tsm = brimtime.TimeToUnixMicro(time.Now())
+		w.TimestampMicro = brimtime.TimeToUnixMicro(time.Now())
 		res, err := client.Write(ctx, c.wm[i])
 		if err != nil {
 			log.Println("Client", c.id, ":", err)
 		}
-		if res.Tsm > w.Tsm {
-			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.Tsm), brimtime.UnixMicroToTime(w.Tsm))
+		if res.TimestampMicro > w.TimestampMicro {
+			log.Printf("TSM is newer than attempted, Key %d-%d Got %s, Sent: %s", c.id, i, brimtime.UnixMicroToTime(res.TimestampMicro), brimtime.UnixMicroToTime(w.TimestampMicro))
 		}
 		c.wm[i].Value = empty
 	}
@@ -362,7 +362,7 @@ func VSTests() {
 			vsconfigs[w].wm[k] = &vp.WriteRequest{}
 			vsconfigs[w].rm[k] = &vp.ReadRequest{}
 			vsconfigs[w].wm[k].KeyA, vsconfigs[w].wm[k].KeyB = murmur3.Sum128([]byte(fmt.Sprintf("somethingtestkey%d-%d", vsconfigs[w].id, k)))
-			vsconfigs[w].wm[k].Tsm = brimtime.TimeToUnixMicro(time.Now())
+			vsconfigs[w].wm[k].TimestampMicro = brimtime.TimeToUnixMicro(time.Now())
 			vsconfigs[w].rm[k].KeyA = vsconfigs[w].wm[k].KeyA
 			vsconfigs[w].rm[k].KeyB = vsconfigs[w].wm[k].KeyB
 		}
@@ -420,9 +420,9 @@ func GSTests() {
 			for k := 0; k < perGroup; k++ {
 				tsm := brimtime.TimeToUnixMicro(time.Now())
 				wr := &gp.WriteRequest{
-					KeyA: grpA,
-					KeyB: grpB,
-					Tsm:  tsm,
+					KeyA:           grpA,
+					KeyB:           grpB,
+					TimestampMicro: tsm,
 				}
 				wr.ChildKeyA, wr.ChildKeyB = murmur3.Sum128([]byte(fmt.Sprintf("somethingtestkey%d-%d", gsconfigs[w].id, k)))
 				rr := &gp.ReadRequest{
