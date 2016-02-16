@@ -49,12 +49,12 @@ func (m *EmptyMsg) String() string { return proto.CompactTextString(m) }
 func (*EmptyMsg) ProtoMessage()    {}
 
 type WriteRequest struct {
-	KeyA      uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
-	KeyB      uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
-	ChildKeyA uint64 `protobuf:"varint,3,opt,name=childKeyA" json:"childKeyA,omitempty"`
-	ChildKeyB uint64 `protobuf:"varint,4,opt,name=childKeyB" json:"childKeyB,omitempty"`
-	Value     []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
-	Tsm       int64  `protobuf:"varint,6,opt,name=tsm" json:"tsm,omitempty"`
+	KeyA           uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB           uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	ChildKeyA      uint64 `protobuf:"varint,3,opt,name=childKeyA" json:"childKeyA,omitempty"`
+	ChildKeyB      uint64 `protobuf:"varint,4,opt,name=childKeyB" json:"childKeyB,omitempty"`
+	Value          []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,6,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
 }
 
 func (m *WriteRequest) Reset()         { *m = WriteRequest{} }
@@ -84,11 +84,11 @@ func (m *ReadRequest) String() string { return proto.CompactTextString(m) }
 func (*ReadRequest) ProtoMessage()    {}
 
 type DeleteRequest struct {
-	KeyA      uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
-	KeyB      uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
-	ChildKeyA uint64 `protobuf:"varint,3,opt,name=childKeyA" json:"childKeyA,omitempty"`
-	ChildKeyB uint64 `protobuf:"varint,4,opt,name=childKeyB" json:"childKeyB,omitempty"`
-	Tsm       int64  `protobuf:"varint,5,opt,name=tsm" json:"tsm,omitempty"`
+	KeyA           uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB           uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
+	ChildKeyA      uint64 `protobuf:"varint,3,opt,name=childKeyA" json:"childKeyA,omitempty"`
+	ChildKeyB      uint64 `protobuf:"varint,4,opt,name=childKeyB" json:"childKeyB,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,5,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
 }
 
 func (m *DeleteRequest) Reset()         { *m = DeleteRequest{} }
@@ -96,8 +96,8 @@ func (m *DeleteRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteRequest) ProtoMessage()    {}
 
 type LookupGroupRequest struct {
-	A uint64 `protobuf:"varint,1,opt,name=a" json:"a,omitempty"`
-	B uint64 `protobuf:"varint,2,opt,name=b" json:"b,omitempty"`
+	KeyA uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 }
 
 func (m *LookupGroupRequest) Reset()         { *m = LookupGroupRequest{} }
@@ -105,8 +105,8 @@ func (m *LookupGroupRequest) String() string { return proto.CompactTextString(m)
 func (*LookupGroupRequest) ProtoMessage()    {}
 
 type ReadGroupRequest struct {
-	A uint64 `protobuf:"varint,1,opt,name=a" json:"a,omitempty"`
-	B uint64 `protobuf:"varint,2,opt,name=b" json:"b,omitempty"`
+	KeyA uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
+	KeyB uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 }
 
 func (m *ReadGroupRequest) Reset()         { *m = ReadGroupRequest{} }
@@ -114,8 +114,8 @@ func (m *ReadGroupRequest) String() string { return proto.CompactTextString(m) }
 func (*ReadGroupRequest) ProtoMessage()    {}
 
 type WriteResponse struct {
-	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
-	Err string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
+	Err            string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
 func (m *WriteResponse) Reset()         { *m = WriteResponse{} }
@@ -123,9 +123,9 @@ func (m *WriteResponse) String() string { return proto.CompactTextString(m) }
 func (*WriteResponse) ProtoMessage()    {}
 
 type LookupResponse struct {
-	Tsm    int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
-	Length uint32 `protobuf:"varint,2,opt,name=length" json:"length,omitempty"`
-	Err    string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
+	Length         uint32 `protobuf:"varint,2,opt,name=length" json:"length,omitempty"`
+	Err            string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
 }
 
 func (m *LookupResponse) Reset()         { *m = LookupResponse{} }
@@ -185,9 +185,9 @@ func (m *ReadGroupItem) String() string { return proto.CompactTextString(m) }
 func (*ReadGroupItem) ProtoMessage()    {}
 
 type ReadResponse struct {
-	Tsm   int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
-	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	Err   string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
+	Value          []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Err            string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
 }
 
 func (m *ReadResponse) Reset()         { *m = ReadResponse{} }
@@ -195,8 +195,8 @@ func (m *ReadResponse) String() string { return proto.CompactTextString(m) }
 func (*ReadResponse) ProtoMessage()    {}
 
 type DeleteResponse struct {
-	Tsm int64  `protobuf:"varint,1,opt,name=tsm" json:"tsm,omitempty"`
-	Err string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
+	Err            string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
 func (m *DeleteResponse) Reset()         { *m = DeleteResponse{} }

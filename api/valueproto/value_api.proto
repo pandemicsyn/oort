@@ -25,7 +25,7 @@ message WriteRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
     bytes  value = 3;
-    int64  tsm = 4;
+    int64  timestampMicro = 4;
 }
 
 message LookupRequest {
@@ -41,27 +41,27 @@ message ReadRequest {
 message DeleteRequest {
     uint64 keyA = 1;
     uint64 keyB = 2;
-    int64  tsm = 3;
+    int64  timestampMicro = 3;
 }
 
 message WriteResponse {
-    int64  tsm = 1;
+    int64  timestampMicro = 1;
     string err = 2;
 }
 
 message LookupResponse {
-    int64  tsm = 1;
+    int64  timestampMicro = 1;
     uint32 length = 2;
     string err = 3;
 }
 
 message ReadResponse {
-    int64  tsm = 1;
+    int64  timestampMicro = 1;
     bytes  value = 2;
     string err = 3;
 }
 
 message DeleteResponse {
-    int64  tsm = 1;
+    int64  timestampMicro = 1;
     string err = 2;
 }
