@@ -41,12 +41,17 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.ProtoPackageIsVersion1
+
 type EmptyMsg struct {
 }
 
-func (m *EmptyMsg) Reset()         { *m = EmptyMsg{} }
-func (m *EmptyMsg) String() string { return proto.CompactTextString(m) }
-func (*EmptyMsg) ProtoMessage()    {}
+func (m *EmptyMsg) Reset()                    { *m = EmptyMsg{} }
+func (m *EmptyMsg) String() string            { return proto.CompactTextString(m) }
+func (*EmptyMsg) ProtoMessage()               {}
+func (*EmptyMsg) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type WriteRequest struct {
 	KeyA           uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
@@ -57,9 +62,10 @@ type WriteRequest struct {
 	TimestampMicro int64  `protobuf:"varint,6,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
 }
 
-func (m *WriteRequest) Reset()         { *m = WriteRequest{} }
-func (m *WriteRequest) String() string { return proto.CompactTextString(m) }
-func (*WriteRequest) ProtoMessage()    {}
+func (m *WriteRequest) Reset()                    { *m = WriteRequest{} }
+func (m *WriteRequest) String() string            { return proto.CompactTextString(m) }
+func (*WriteRequest) ProtoMessage()               {}
+func (*WriteRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 type LookupRequest struct {
 	KeyA      uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
@@ -68,9 +74,10 @@ type LookupRequest struct {
 	ChildKeyB uint64 `protobuf:"varint,4,opt,name=childKeyB" json:"childKeyB,omitempty"`
 }
 
-func (m *LookupRequest) Reset()         { *m = LookupRequest{} }
-func (m *LookupRequest) String() string { return proto.CompactTextString(m) }
-func (*LookupRequest) ProtoMessage()    {}
+func (m *LookupRequest) Reset()                    { *m = LookupRequest{} }
+func (m *LookupRequest) String() string            { return proto.CompactTextString(m) }
+func (*LookupRequest) ProtoMessage()               {}
+func (*LookupRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type ReadRequest struct {
 	KeyA      uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
@@ -79,9 +86,10 @@ type ReadRequest struct {
 	ChildKeyB uint64 `protobuf:"varint,4,opt,name=childKeyB" json:"childKeyB,omitempty"`
 }
 
-func (m *ReadRequest) Reset()         { *m = ReadRequest{} }
-func (m *ReadRequest) String() string { return proto.CompactTextString(m) }
-func (*ReadRequest) ProtoMessage()    {}
+func (m *ReadRequest) Reset()                    { *m = ReadRequest{} }
+func (m *ReadRequest) String() string            { return proto.CompactTextString(m) }
+func (*ReadRequest) ProtoMessage()               {}
+func (*ReadRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 type DeleteRequest struct {
 	KeyA           uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
@@ -91,36 +99,40 @@ type DeleteRequest struct {
 	TimestampMicro int64  `protobuf:"varint,5,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
 }
 
-func (m *DeleteRequest) Reset()         { *m = DeleteRequest{} }
-func (m *DeleteRequest) String() string { return proto.CompactTextString(m) }
-func (*DeleteRequest) ProtoMessage()    {}
+func (m *DeleteRequest) Reset()                    { *m = DeleteRequest{} }
+func (m *DeleteRequest) String() string            { return proto.CompactTextString(m) }
+func (*DeleteRequest) ProtoMessage()               {}
+func (*DeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 type LookupGroupRequest struct {
 	KeyA uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
 	KeyB uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 }
 
-func (m *LookupGroupRequest) Reset()         { *m = LookupGroupRequest{} }
-func (m *LookupGroupRequest) String() string { return proto.CompactTextString(m) }
-func (*LookupGroupRequest) ProtoMessage()    {}
+func (m *LookupGroupRequest) Reset()                    { *m = LookupGroupRequest{} }
+func (m *LookupGroupRequest) String() string            { return proto.CompactTextString(m) }
+func (*LookupGroupRequest) ProtoMessage()               {}
+func (*LookupGroupRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 type ReadGroupRequest struct {
 	KeyA uint64 `protobuf:"varint,1,opt,name=keyA" json:"keyA,omitempty"`
 	KeyB uint64 `protobuf:"varint,2,opt,name=keyB" json:"keyB,omitempty"`
 }
 
-func (m *ReadGroupRequest) Reset()         { *m = ReadGroupRequest{} }
-func (m *ReadGroupRequest) String() string { return proto.CompactTextString(m) }
-func (*ReadGroupRequest) ProtoMessage()    {}
+func (m *ReadGroupRequest) Reset()                    { *m = ReadGroupRequest{} }
+func (m *ReadGroupRequest) String() string            { return proto.CompactTextString(m) }
+func (*ReadGroupRequest) ProtoMessage()               {}
+func (*ReadGroupRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 type WriteResponse struct {
 	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
 	Err            string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *WriteResponse) Reset()         { *m = WriteResponse{} }
-func (m *WriteResponse) String() string { return proto.CompactTextString(m) }
-func (*WriteResponse) ProtoMessage()    {}
+func (m *WriteResponse) Reset()                    { *m = WriteResponse{} }
+func (m *WriteResponse) String() string            { return proto.CompactTextString(m) }
+func (*WriteResponse) ProtoMessage()               {}
+func (*WriteResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 type LookupResponse struct {
 	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
@@ -128,17 +140,20 @@ type LookupResponse struct {
 	Err            string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *LookupResponse) Reset()         { *m = LookupResponse{} }
-func (m *LookupResponse) String() string { return proto.CompactTextString(m) }
-func (*LookupResponse) ProtoMessage()    {}
+func (m *LookupResponse) Reset()                    { *m = LookupResponse{} }
+func (m *LookupResponse) String() string            { return proto.CompactTextString(m) }
+func (*LookupResponse) ProtoMessage()               {}
+func (*LookupResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 type LookupGroupResponse struct {
 	Items []*LookupGroupItem `protobuf:"bytes,1,rep,name=items" json:"items,omitempty"`
+	Err   string             `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *LookupGroupResponse) Reset()         { *m = LookupGroupResponse{} }
-func (m *LookupGroupResponse) String() string { return proto.CompactTextString(m) }
-func (*LookupGroupResponse) ProtoMessage()    {}
+func (m *LookupGroupResponse) Reset()                    { *m = LookupGroupResponse{} }
+func (m *LookupGroupResponse) String() string            { return proto.CompactTextString(m) }
+func (*LookupGroupResponse) ProtoMessage()               {}
+func (*LookupGroupResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 func (m *LookupGroupResponse) GetItems() []*LookupGroupItem {
 	if m != nil {
@@ -154,17 +169,20 @@ type LookupGroupItem struct {
 	Length         uint32 `protobuf:"varint,4,opt,name=length" json:"length,omitempty"`
 }
 
-func (m *LookupGroupItem) Reset()         { *m = LookupGroupItem{} }
-func (m *LookupGroupItem) String() string { return proto.CompactTextString(m) }
-func (*LookupGroupItem) ProtoMessage()    {}
+func (m *LookupGroupItem) Reset()                    { *m = LookupGroupItem{} }
+func (m *LookupGroupItem) String() string            { return proto.CompactTextString(m) }
+func (*LookupGroupItem) ProtoMessage()               {}
+func (*LookupGroupItem) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 type ReadGroupResponse struct {
 	Items []*ReadGroupItem `protobuf:"bytes,1,rep,name=items" json:"items,omitempty"`
+	Err   string           `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *ReadGroupResponse) Reset()         { *m = ReadGroupResponse{} }
-func (m *ReadGroupResponse) String() string { return proto.CompactTextString(m) }
-func (*ReadGroupResponse) ProtoMessage()    {}
+func (m *ReadGroupResponse) Reset()                    { *m = ReadGroupResponse{} }
+func (m *ReadGroupResponse) String() string            { return proto.CompactTextString(m) }
+func (*ReadGroupResponse) ProtoMessage()               {}
+func (*ReadGroupResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 func (m *ReadGroupResponse) GetItems() []*ReadGroupItem {
 	if m != nil {
@@ -180,9 +198,10 @@ type ReadGroupItem struct {
 	Value          []byte `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
 }
 
-func (m *ReadGroupItem) Reset()         { *m = ReadGroupItem{} }
-func (m *ReadGroupItem) String() string { return proto.CompactTextString(m) }
-func (*ReadGroupItem) ProtoMessage()    {}
+func (m *ReadGroupItem) Reset()                    { *m = ReadGroupItem{} }
+func (m *ReadGroupItem) String() string            { return proto.CompactTextString(m) }
+func (*ReadGroupItem) ProtoMessage()               {}
+func (*ReadGroupItem) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
 type ReadResponse struct {
 	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
@@ -190,18 +209,38 @@ type ReadResponse struct {
 	Err            string `protobuf:"bytes,3,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *ReadResponse) Reset()         { *m = ReadResponse{} }
-func (m *ReadResponse) String() string { return proto.CompactTextString(m) }
-func (*ReadResponse) ProtoMessage()    {}
+func (m *ReadResponse) Reset()                    { *m = ReadResponse{} }
+func (m *ReadResponse) String() string            { return proto.CompactTextString(m) }
+func (*ReadResponse) ProtoMessage()               {}
+func (*ReadResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
 type DeleteResponse struct {
 	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro" json:"timestampMicro,omitempty"`
 	Err            string `protobuf:"bytes,2,opt,name=err" json:"err,omitempty"`
 }
 
-func (m *DeleteResponse) Reset()         { *m = DeleteResponse{} }
-func (m *DeleteResponse) String() string { return proto.CompactTextString(m) }
-func (*DeleteResponse) ProtoMessage()    {}
+func (m *DeleteResponse) Reset()                    { *m = DeleteResponse{} }
+func (m *DeleteResponse) String() string            { return proto.CompactTextString(m) }
+func (*DeleteResponse) ProtoMessage()               {}
+func (*DeleteResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
+
+func init() {
+	proto.RegisterType((*EmptyMsg)(nil), "groupproto.EmptyMsg")
+	proto.RegisterType((*WriteRequest)(nil), "groupproto.WriteRequest")
+	proto.RegisterType((*LookupRequest)(nil), "groupproto.LookupRequest")
+	proto.RegisterType((*ReadRequest)(nil), "groupproto.ReadRequest")
+	proto.RegisterType((*DeleteRequest)(nil), "groupproto.DeleteRequest")
+	proto.RegisterType((*LookupGroupRequest)(nil), "groupproto.LookupGroupRequest")
+	proto.RegisterType((*ReadGroupRequest)(nil), "groupproto.ReadGroupRequest")
+	proto.RegisterType((*WriteResponse)(nil), "groupproto.WriteResponse")
+	proto.RegisterType((*LookupResponse)(nil), "groupproto.LookupResponse")
+	proto.RegisterType((*LookupGroupResponse)(nil), "groupproto.LookupGroupResponse")
+	proto.RegisterType((*LookupGroupItem)(nil), "groupproto.LookupGroupItem")
+	proto.RegisterType((*ReadGroupResponse)(nil), "groupproto.ReadGroupResponse")
+	proto.RegisterType((*ReadGroupItem)(nil), "groupproto.ReadGroupItem")
+	proto.RegisterType((*ReadResponse)(nil), "groupproto.ReadResponse")
+	proto.RegisterType((*DeleteResponse)(nil), "groupproto.DeleteResponse")
+}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
@@ -788,4 +827,42 @@ var _GroupStore_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
+}
+
+var fileDescriptor0 = []byte{
+	// 533 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x95, 0x5f, 0x6f, 0xd3, 0x30,
+	0x14, 0xc5, 0x49, 0xd3, 0x14, 0x7a, 0x92, 0xb4, 0xd4, 0x48, 0x90, 0x8e, 0xbf, 0xf2, 0x53, 0xc5,
+	0x43, 0x35, 0x0d, 0x78, 0x42, 0x42, 0x5a, 0x45, 0x05, 0x6c, 0x8c, 0x3f, 0x1b, 0x12, 0x12, 0x42,
+	0x9a, 0xc2, 0x66, 0x75, 0xd1, 0x9a, 0x25, 0x24, 0x29, 0x68, 0x5f, 0x81, 0x4f, 0x4d, 0xe2, 0xd4,
+	0x9e, 0xdd, 0xb4, 0x5a, 0xa1, 0x79, 0xab, 0x7d, 0xef, 0x3d, 0xfe, 0xf9, 0xde, 0xe3, 0x06, 0xdd,
+	0x49, 0x12, 0xcd, 0xe2, 0x63, 0x3f, 0x0e, 0x86, 0x71, 0x12, 0x65, 0x11, 0x01, 0xdf, 0xe0, 0xbf,
+	0x29, 0x70, 0x6b, 0x1c, 0xc6, 0xd9, 0xe5, 0x41, 0x3a, 0xa1, 0xbf, 0xe1, 0x7c, 0x4d, 0x82, 0x8c,
+	0x1d, 0xb2, 0x9f, 0x33, 0x96, 0x66, 0xc4, 0x41, 0xf3, 0x9c, 0x5d, 0xee, 0x7a, 0xc6, 0x13, 0x63,
+	0xd0, 0x9c, 0xaf, 0x46, 0x5e, 0x83, 0xaf, 0x7a, 0x68, 0x9f, 0x9c, 0x05, 0xd3, 0xd3, 0xfd, 0x22,
+	0xc1, 0x5c, 0xdc, 0x1a, 0x79, 0x4d, 0xbe, 0xe5, 0xc2, 0xfa, 0xe5, 0x4f, 0x67, 0xcc, 0xb3, 0xf2,
+	0xa5, 0x43, 0xee, 0xa2, 0x93, 0x05, 0x61, 0x2e, 0xed, 0x87, 0xf1, 0x41, 0x70, 0x92, 0x44, 0x5e,
+	0x2b, 0xdf, 0x37, 0xe9, 0x67, 0xb8, 0xef, 0xa3, 0xe8, 0x7c, 0x16, 0xd7, 0x76, 0x32, 0xfd, 0x08,
+	0xfb, 0x90, 0xf9, 0xa7, 0xf5, 0x09, 0x06, 0x70, 0x5f, 0xb3, 0x29, 0xab, 0xb3, 0x3b, 0xd5, 0x76,
+	0x58, 0xbc, 0x1d, 0xdb, 0x20, 0x65, 0x3b, 0xde, 0x14, 0x73, 0x5a, 0xe3, 0x3c, 0x3a, 0xc4, 0xed,
+	0xe2, 0xb6, 0x6b, 0xe7, 0x3f, 0x87, 0x3b, 0x9f, 0x74, 0x1a, 0x47, 0x17, 0x29, 0x5b, 0x82, 0x52,
+	0x94, 0x99, 0xc4, 0x86, 0xc9, 0x92, 0x84, 0x57, 0xb5, 0xe9, 0x18, 0x1d, 0x31, 0xa6, 0x6b, 0xca,
+	0x3a, 0x68, 0x4d, 0xd9, 0xc5, 0x24, 0x3b, 0xe3, 0x95, 0xae, 0x90, 0x31, 0xb9, 0xcc, 0x07, 0xdc,
+	0xd1, 0xae, 0x37, 0xd7, 0x7a, 0x0a, 0x2b, 0x27, 0x0a, 0xd3, 0x5c, 0xc2, 0x1c, 0xd8, 0x3b, 0xf7,
+	0x87, 0x57, 0x2e, 0x1d, 0x2a, 0xf9, 0xef, 0xf2, 0x1c, 0x1d, 0xeb, 0x18, 0xdd, 0xc5, 0xb8, 0xd6,
+	0x7f, 0xa3, 0xda, 0xff, 0xc6, 0x8a, 0xfe, 0x9b, 0x0b, 0xf4, 0xc5, 0x9c, 0x5c, 0xba, 0x87, 0x9e,
+	0xd2, 0xdd, 0x39, 0xee, 0x40, 0xc7, 0xed, 0xab, 0xb8, 0x32, 0xbb, 0x0a, 0xfb, 0x1d, 0xae, 0x1e,
+	0xdd, 0x0c, 0x55, 0x3e, 0xb0, 0x82, 0xd4, 0xa1, 0x23, 0x38, 0xa5, 0xeb, 0xaf, 0x99, 0x8f, 0x2c,
+	0x6b, 0xf0, 0x77, 0xa9, 0x8d, 0xe7, 0x05, 0x3a, 0xc2, 0xe8, 0xff, 0x60, 0x8e, 0x9d, 0x3f, 0x37,
+	0x01, 0x7e, 0xab, 0xa3, 0x2c, 0x4a, 0x18, 0x79, 0x05, 0x8b, 0x3b, 0x8c, 0x78, 0x6a, 0x63, 0xd4,
+	0xbf, 0x97, 0xad, 0xfe, 0x92, 0x48, 0x79, 0x22, 0xbd, 0x41, 0xde, 0xc2, 0x3e, 0xca, 0x12, 0xe6,
+	0x87, 0x9b, 0xa8, 0x0c, 0x8c, 0x6d, 0x83, 0xec, 0xa2, 0x55, 0xda, 0x83, 0xf4, 0xab, 0x96, 0x12,
+	0x2a, 0x5b, 0xcb, 0x42, 0x12, 0x66, 0x1f, 0x4e, 0x09, 0xb3, 0xa1, 0x10, 0xe7, 0xf9, 0x04, 0x5b,
+	0xb1, 0x2b, 0x79, 0xb4, 0xc2, 0xe7, 0x42, 0xf0, 0xf1, 0xca, 0xb8, 0xc4, 0xfb, 0x86, 0x9e, 0x8a,
+	0x57, 0x97, 0x2e, 0xa7, 0xdd, 0x43, 0x5b, 0xfa, 0x95, 0x3c, 0x58, 0x6a, 0x72, 0xa1, 0xf8, 0x70,
+	0x45, 0x54, 0x72, 0x7e, 0x41, 0xb7, 0xe4, 0xac, 0x4b, 0x91, 0x13, 0xbe, 0x44, 0xb3, 0x08, 0x91,
+	0x7b, 0x8b, 0xc9, 0x42, 0xc5, 0xab, 0x06, 0x24, 0xd2, 0x18, 0xb8, 0x42, 0xfa, 0x2f, 0x09, 0xe1,
+	0xb1, 0xf2, 0xcd, 0xe8, 0xd6, 0xd0, 0x3e, 0x18, 0xba, 0x35, 0xf4, 0x27, 0xa6, 0x7a, 0x6c, 0x43,
+	0xa1, 0x82, 0xe7, 0x47, 0x8b, 0xc7, 0x9e, 0xfd, 0x0d, 0x00, 0x00, 0xff, 0xff, 0xd7, 0x72, 0x5e,
+	0x55, 0xfb, 0x07, 0x00, 0x00,
 }

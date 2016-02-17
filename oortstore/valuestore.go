@@ -104,7 +104,12 @@ func (s *OortValueStore) start() {
 			time.Sleep(time.Minute)
 			tcpMsgRingStats = t.Stats(false)
 			log.Printf("%v\n", tcpMsgRingStats)
-			log.Printf("%s\n", s.vs.Stats(false))
+			stats, err := s.vs.Stats(false)
+			if err != nil {
+				log.Printf("stats error: %s\n", err)
+			} else {
+				log.Printf("%s\n", stats)
+			}
 		}
 	}(s.t)
 }
@@ -274,7 +279,12 @@ func (s *OortValueStore) Stop() {
 }
 
 func (s *OortValueStore) Stats() []byte {
-	return []byte(s.vs.Stats(true).String())
+	stats, err := s.vs.Stats(true)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	return []byte(stats.String())
 }
 
 func (s *OortValueStore) ListenAndServe() {
