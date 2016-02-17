@@ -8,6 +8,7 @@ import (
 
 	"github.com/gholt/store"
 	"github.com/pandemicsyn/oort/api/groupproto"
+	"github.com/pandemicsyn/oort/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -154,7 +155,7 @@ func (g *group) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (tim
 		return 0, 0, err
 	}
 	if res.Err != "" {
-		err = errors.New(res.Err)
+		err = proto.TranslateErrorString(res.Err)
 	}
 	return res.TimestampMicro, res.Length, err
 }
@@ -195,7 +196,7 @@ func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]*store.LookupGroup
 		}
 	}
 	if res.Err != "" {
-		err = errors.New(res.Err)
+		err = proto.TranslateErrorString(res.Err)
 	}
 	return rv, err
 }
@@ -230,9 +231,7 @@ func (g *group) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value 
 	}
 	rvalue = append(rvalue, res.Value...)
 	if res.Err != "" {
-		// TODO: I want to translate the errors into the "proper" error types,
-		// as defined by the store package.
-		err = errors.New(res.Err)
+		err = proto.TranslateErrorString(res.Err)
 	}
 	return res.TimestampMicro, rvalue, err
 }
@@ -267,7 +266,7 @@ func (g *group) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, times
 		return 0, err
 	}
 	if res.Err != "" {
-		err = errors.New(res.Err)
+		err = proto.TranslateErrorString(res.Err)
 	}
 	return res.TimestampMicro, err
 }
@@ -301,7 +300,7 @@ func (g *group) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, time
 		return 0, err
 	}
 	if res.Err != "" {
-		err = errors.New(res.Err)
+		err = proto.TranslateErrorString(res.Err)
 	}
 	return res.TimestampMicro, err
 }

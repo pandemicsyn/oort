@@ -12,6 +12,7 @@ import (
 
 	"github.com/gholt/ring"
 	"github.com/gholt/store"
+	"github.com/pandemicsyn/oort/api/proto"
 	"github.com/pandemicsyn/oort/api/valueproto"
 	"github.com/pandemicsyn/oort/oort"
 	"golang.org/x/net/context"
@@ -127,7 +128,7 @@ func (s *OortValueStore) Write(ctx context.Context, req *valueproto.WriteRequest
 	resp.TimestampMicro, err = s.vs.Write(req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 	if err != nil {
 		log.Println(err)
-		resp.Err = err.Error()
+		resp.Err = proto.TranslateError(err)
 	}
 	return &resp, nil
 }
@@ -146,7 +147,7 @@ func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteSer
 		resp.TimestampMicro, err = s.vs.Write(req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 		if err != nil {
 			log.Println(err)
-			resp.Err = err.Error()
+			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
 			return err
@@ -159,7 +160,7 @@ func (s *OortValueStore) Read(ctx context.Context, req *valueproto.ReadRequest) 
 	var err error
 	resp.TimestampMicro, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, resp.Value)
 	if err != nil {
-		resp.Err = err.Error()
+		resp.Err = proto.TranslateError(err)
 	}
 	return &resp, nil
 }
@@ -179,7 +180,7 @@ func (s *OortValueStore) StreamRead(stream valueproto.ValueStore_StreamReadServe
 		resp.TimestampMicro, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, resp.Value)
 		if err != nil {
 			log.Println(err)
-			resp.Err = err.Error()
+			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
 			return err
@@ -192,7 +193,7 @@ func (s *OortValueStore) Lookup(ctx context.Context, req *valueproto.LookupReque
 	var err error
 	resp.TimestampMicro, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB)
 	if err != nil {
-		resp.Err = err.Error()
+		resp.Err = proto.TranslateError(err)
 	}
 	return &resp, nil
 }
@@ -211,7 +212,7 @@ func (s *OortValueStore) StreamLookup(stream valueproto.ValueStore_StreamLookupS
 		resp.TimestampMicro, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB)
 		if err != nil {
 			log.Println(err)
-			resp.Err = err.Error()
+			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
 			return err
@@ -224,7 +225,7 @@ func (s *OortValueStore) Delete(ctx context.Context, req *valueproto.DeleteReque
 	var err error
 	resp.TimestampMicro, err = s.vs.Delete(req.KeyA, req.KeyB, req.TimestampMicro)
 	if err != nil {
-		resp.Err = err.Error()
+		resp.Err = proto.TranslateError(err)
 	}
 	return &resp, nil
 }
@@ -243,7 +244,7 @@ func (s *OortValueStore) StreamDelete(stream valueproto.ValueStore_StreamDeleteS
 		resp.TimestampMicro, err = s.vs.Delete(req.KeyA, req.KeyB, req.TimestampMicro)
 		if err != nil {
 			log.Println(err)
-			resp.Err = err.Error()
+			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
 			return err
