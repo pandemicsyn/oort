@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// TODO: Rename this thing GroupStore.
 type Group interface {
 	store.GroupStore
 	ReadGroup(parentKeyA, parentKeyB uint64) ([]*ReadGroupItem, error)
@@ -37,9 +38,9 @@ type group struct {
 	streamLookup       groupproto.GroupStore_StreamLookupClient
 	streamLookupGroup  groupproto.GroupStore_StreamLookupGroupClient
 	streamRead         groupproto.GroupStore_StreamReadClient
-	streamWrite        groupproto.GroupStore_StreamWriteClient
 	streamDelete       groupproto.GroupStore_StreamDeleteClient
 	streamReadGroup    groupproto.GroupStore_StreamReadGroupClient
+	writeStreams       chan groupproto.GroupStore_StreamWriteClient
 }
 
 func NewGroup(addr string, insecureSkipVerify bool, opts ...grpc.DialOption) (Group, error) {
@@ -50,6 +51,7 @@ func NewGroup(addr string, insecureSkipVerify bool, opts ...grpc.DialOption) (Gr
 		creds:              credentials.NewTLS(&tls.Config{InsecureSkipVerify: insecureSkipVerify}),
 	}
 	g.opts = append(g.opts, grpc.WithTransportCredentials(g.creds))
+	g.writeStreams = make(chan groupproto.GroupStore_StreamWriteClient, 8*8)
 	return g, nil
 }
 
@@ -66,6 +68,9 @@ func (g *group) Startup() error {
 		return err
 	}
 	g.client = groupproto.NewGroupStoreClient(g.conn)
+	for i := cap(g.writeStreams); i > 0; i-- {
+		g.writeStreams <- nil
+	}
 	return nil
 }
 
@@ -87,9 +92,11 @@ func (g *group) Shutdown() error {
 	g.streamLookup = nil
 	g.streamLookupGroup = nil
 	g.streamRead = nil
-	g.streamWrite = nil
 	g.streamDelete = nil
 	g.streamReadGroup = nil
+	for i := cap(g.writeStreams); i > 0; i-- {
+		<-g.writeStreams
+	}
 	return nil
 }
 
@@ -237,19 +244,16 @@ func (g *group) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value 
 }
 
 func (g *group) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
-	g.lock.RLock()
-	if g.streamWrite == nil {
-		// TODO: Background should probably be replaced with a "real" context
-		// with deadlines, etc.
-		g.streamWrite, err = g.client.StreamWrite(context.Background())
+	s := <-g.writeStreams
+	if s == nil {
+		// TODO: Background should probably be replaced with a "real"
+		// context with deadlines, etc.
+		s, err = g.client.StreamWrite(context.Background())
 		if err != nil {
-			g.streamWrite = nil
-			g.lock.RUnlock()
+			g.writeStreams <- nil
 			return 0, err
 		}
 	}
-	s := g.streamWrite
-	g.lock.RUnlock()
 	req := &groupproto.WriteRequest{
 		KeyA:           parentKeyA,
 		KeyB:           parentKeyB,
@@ -259,15 +263,18 @@ func (g *group) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, times
 		Value:          value,
 	}
 	if err = s.Send(req); err != nil {
+		g.writeStreams <- nil
 		return 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
+		g.writeStreams <- nil
 		return 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
+	g.writeStreams <- s
 	return res.TimestampMicro, err
 }
 

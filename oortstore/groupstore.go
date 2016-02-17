@@ -53,6 +53,14 @@ func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 	if err != nil {
 		return s, err
 	}
+	// v GLH This stuff shouldn't get be part of the final pull request
+	s.C.Debug = false
+	s.C.Profile = false
+	s.C.ListenAddr = "127.0.0.1:6789"
+	s.C.InsecureSkipVerify = true
+	s.C.CertFile = "server.crt"
+	s.C.KeyFile = "server.key"
+	// ^ GLH This stuff shouldn't get checked in
 	if s.C.Debug {
 		log.Println("Ring entries:")
 		ring := s.o.Ring()
