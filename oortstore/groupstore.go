@@ -53,14 +53,6 @@ func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 	if err != nil {
 		return s, err
 	}
-	// v GLH This stuff shouldn't get be part of the final pull request
-	s.C.Debug = false
-	s.C.Profile = false
-	s.C.ListenAddr = "127.0.0.1:6789"
-	s.C.InsecureSkipVerify = true
-	s.C.CertFile = "server.crt"
-	s.C.KeyFile = "server.key"
-	// ^ GLH This stuff shouldn't get checked in
 	if s.C.Debug {
 		log.Println("Ring entries:")
 		ring := s.o.Ring()
@@ -317,7 +309,7 @@ func (s *OortGroupStore) StreamReadGroup(stream groupproto.GroupStore_StreamRead
 		} else {
 			resp.Items = make([]*groupproto.ReadGroupItem, len(lgis))
 			itemCount := 0
-			for _, lgi := range lgis {
+			for i, lgi := range lgis {
 				g := groupproto.ReadGroupItem{}
 				g.TimestampMicro, g.Value, err = s.vs.Read(req.KeyA, req.KeyB, lgi.ChildKeyA, lgi.ChildKeyB, nil)
 				if err != nil {
@@ -325,6 +317,7 @@ func (s *OortGroupStore) StreamReadGroup(stream groupproto.GroupStore_StreamRead
 				}
 				g.ChildKeyA = lgi.ChildKeyA
 				g.ChildKeyB = lgi.ChildKeyB
+				resp.Items[i] = &g
 				itemCount++
 			}
 			resp.Items = resp.Items[:itemCount]
