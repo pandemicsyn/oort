@@ -284,14 +284,15 @@ func (s *OortGroupStore) ReadGroup(ctx context.Context, req *groupproto.ReadGrou
 		resp.Items = make([]*groupproto.ReadGroupItem, len(lgis))
 		itemCount := 0
 		var err error
-		for _, lgi := range lgis {
-			g := groupproto.ReadGroupItem{}
+		for i, lgi := range lgis {
+			g := &groupproto.ReadGroupItem{}
 			g.TimestampMicro, g.Value, err = s.vs.Read(req.KeyA, req.KeyB, lgi.ChildKeyA, lgi.ChildKeyB, nil)
 			if err != nil {
 				continue
 			}
 			g.ChildKeyA = lgi.ChildKeyA
 			g.ChildKeyB = lgi.ChildKeyB
+			resp.Items[i] = g
 			itemCount++
 		}
 		resp.Items = resp.Items[:itemCount]

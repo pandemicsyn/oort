@@ -28,7 +28,7 @@ import (
 
 type GroupStore interface {
 	store.GroupStore
-	ReadGroup(parentKeyA, parentKeyB uint64) ([]*ReadGroupItem, error)
+	ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, error)
 }
 
 type ReadGroupItem struct {
@@ -206,7 +206,7 @@ func (g *group) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (tim
 	return res.TimestampMicro, res.Length, err
 }
 
-func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]*store.LookupGroupItem, error) {
+func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
 	var err error
 	s := <-g.lookupGroupStreams
 	if s == nil {
@@ -231,14 +231,12 @@ func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]*store.LookupGroup
 		g.lookupGroupStreams <- nil
 		return nil, err
 	}
-	rv := make([]*store.LookupGroupItem, len(res.Items))
+	rv := make([]store.LookupGroupItem, len(res.Items))
 	for i, v := range res.Items {
-		rv[i] = &store.LookupGroupItem{
-			ChildKeyA:      v.ChildKeyA,
-			ChildKeyB:      v.ChildKeyB,
-			TimestampMicro: v.TimestampMicro,
-			Length:         v.Length,
-		}
+		rv[i].ChildKeyA = v.ChildKeyA
+		rv[i].ChildKeyB = v.ChildKeyB
+		rv[i].TimestampMicro = v.TimestampMicro
+		rv[i].Length = v.Length
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
@@ -351,7 +349,7 @@ func (g *group) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, time
 	return res.TimestampMicro, err
 }
 
-func (g *group) ReadGroup(parentKeyA, parentKeyB uint64) ([]*ReadGroupItem, error) {
+func (g *group) ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, error) {
 	var err error
 	s := <-g.readGroupStreams
 	if s == nil {
@@ -376,14 +374,12 @@ func (g *group) ReadGroup(parentKeyA, parentKeyB uint64) ([]*ReadGroupItem, erro
 		g.readGroupStreams <- nil
 		return nil, err
 	}
-	rv := make([]*ReadGroupItem, len(res.Items))
+	rv := make([]ReadGroupItem, len(res.Items))
 	for i, v := range res.Items {
-		rv[i] = &ReadGroupItem{
-			ChildKeyA:      v.ChildKeyA,
-			ChildKeyB:      v.ChildKeyB,
-			TimestampMicro: v.TimestampMicro,
-			Value:          v.Value,
-		}
+		rv[i].ChildKeyA = v.ChildKeyA
+		rv[i].ChildKeyB = v.ChildKeyB
+		rv[i].TimestampMicro = v.TimestampMicro
+		rv[i].Value = v.Value
 	}
 	g.readGroupStreams <- s
 	return rv, nil
