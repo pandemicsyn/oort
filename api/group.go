@@ -14,8 +14,19 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// TODO: Rename this thing GroupStore.
-type Group interface {
+// TODO: I'm unsure on the handling of grpc errors; the ones grpc has, not that
+// it passes along. Should we disconnect everything on any grpc error, assuming
+// the transit is corrupted and therefore a reconnect required? Or can grpc
+// recover on its own? Also, should we retry requests that are idempotent?
+// Probably better to let the caller decide on the retry logic.
+
+// TODO: Background() calls should be replaced with a "real" contexts with
+// deadlines, etc.
+
+// TODO: I lock while asking the grpc client to make any stream. I'm not sure
+// if this is required. Needs testing.
+
+type GroupStore interface {
 	store.GroupStore
 	ReadGroup(parentKeyA, parentKeyB uint64) ([]*ReadGroupItem, error)
 }
@@ -28,22 +39,22 @@ type ReadGroupItem struct {
 }
 
 type group struct {
-	lock               sync.RWMutex
+	lock               sync.Mutex
 	addr               string
 	insecureSkipVerify bool
 	opts               []grpc.DialOption
 	creds              credentials.TransportAuthenticator
 	conn               *grpc.ClientConn
 	client             groupproto.GroupStoreClient
-	streamLookup       groupproto.GroupStore_StreamLookupClient
-	streamLookupGroup  groupproto.GroupStore_StreamLookupGroupClient
-	streamRead         groupproto.GroupStore_StreamReadClient
-	streamDelete       groupproto.GroupStore_StreamDeleteClient
-	streamReadGroup    groupproto.GroupStore_StreamReadGroupClient
+	lookupStreams      chan groupproto.GroupStore_StreamLookupClient
+	lookupGroupStreams chan groupproto.GroupStore_StreamLookupGroupClient
+	readStreams        chan groupproto.GroupStore_StreamReadClient
 	writeStreams       chan groupproto.GroupStore_StreamWriteClient
+	deleteStreams      chan groupproto.GroupStore_StreamDeleteClient
+	readGroupStreams   chan groupproto.GroupStore_StreamReadGroupClient
 }
 
-func NewGroup(addr string, insecureSkipVerify bool, opts ...grpc.DialOption) (Group, error) {
+func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (GroupStore, error) {
 	g := &group{
 		addr:               addr,
 		insecureSkipVerify: insecureSkipVerify,
@@ -51,7 +62,12 @@ func NewGroup(addr string, insecureSkipVerify bool, opts ...grpc.DialOption) (Gr
 		creds:              credentials.NewTLS(&tls.Config{InsecureSkipVerify: insecureSkipVerify}),
 	}
 	g.opts = append(g.opts, grpc.WithTransportCredentials(g.creds))
-	g.writeStreams = make(chan groupproto.GroupStore_StreamWriteClient, 8*8)
+	g.lookupStreams = make(chan groupproto.GroupStore_StreamLookupClient, streams)
+	g.lookupGroupStreams = make(chan groupproto.GroupStore_StreamLookupGroupClient, streams)
+	g.readStreams = make(chan groupproto.GroupStore_StreamReadClient, streams)
+	g.writeStreams = make(chan groupproto.GroupStore_StreamWriteClient, streams)
+	g.deleteStreams = make(chan groupproto.GroupStore_StreamDeleteClient, streams)
+	g.readGroupStreams = make(chan groupproto.GroupStore_StreamReadGroupClient, streams)
 	return g, nil
 }
 
@@ -68,8 +84,23 @@ func (g *group) Startup() error {
 		return err
 	}
 	g.client = groupproto.NewGroupStoreClient(g.conn)
+	for i := cap(g.lookupStreams); i > 0; i-- {
+		g.lookupStreams <- nil
+	}
+	for i := cap(g.lookupGroupStreams); i > 0; i-- {
+		g.lookupGroupStreams <- nil
+	}
+	for i := cap(g.readStreams); i > 0; i-- {
+		g.readStreams <- nil
+	}
 	for i := cap(g.writeStreams); i > 0; i-- {
 		g.writeStreams <- nil
+	}
+	for i := cap(g.deleteStreams); i > 0; i-- {
+		g.deleteStreams <- nil
+	}
+	for i := cap(g.readGroupStreams); i > 0; i-- {
+		g.readGroupStreams <- nil
 	}
 	return nil
 }
@@ -80,22 +111,26 @@ func (g *group) Shutdown() error {
 	if g.conn == nil {
 		return nil
 	}
-	// I don't know that we need to close the streams really; but if we do it'd
-	// look something like this:
-	// if g.streamLookup != nil {
-	//     g.streamLookup.CloseSend()
-	//     g.streamLookup = nil
-	// }
 	g.conn.Close()
 	g.conn = nil
 	g.client = nil
-	g.streamLookup = nil
-	g.streamLookupGroup = nil
-	g.streamRead = nil
-	g.streamDelete = nil
-	g.streamReadGroup = nil
+	for i := cap(g.lookupStreams); i > 0; i-- {
+		<-g.lookupStreams
+	}
+	for i := cap(g.lookupGroupStreams); i > 0; i-- {
+		<-g.lookupGroupStreams
+	}
+	for i := cap(g.readStreams); i > 0; i-- {
+		<-g.readStreams
+	}
 	for i := cap(g.writeStreams); i > 0; i-- {
 		<-g.writeStreams
+	}
+	for i := cap(g.deleteStreams); i > 0; i-- {
+		<-g.deleteStreams
+	}
+	for i := cap(g.readGroupStreams); i > 0; i-- {
+		<-g.readGroupStreams
 	}
 	return nil
 }
@@ -121,10 +156,14 @@ func (g *group) AuditPass() error {
 
 type s struct{}
 
-func (*s) String() string { return "" }
+func (*s) String() string {
+	return "stats not available with this client at this time"
+}
+
+var noStats = &s{}
 
 func (g *group) Stats(debug bool) (fmt.Stringer, error) {
-	return nil, errors.New("stats not available with this client at this time")
+	return noStats, nil
 }
 
 func (g *group) ValueCap() (uint32, error) {
@@ -135,19 +174,16 @@ func (g *group) ValueCap() (uint32, error) {
 }
 
 func (g *group) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
-	g.lock.RLock()
-	if g.streamLookup == nil {
-		// TODO: Background should probably be replaced with a "real" context
-		// with deadlines, etc.
-		g.streamLookup, err = g.client.StreamLookup(context.Background())
+	s := <-g.lookupStreams
+	if s == nil {
+		g.lock.Lock()
+		s, err = g.client.StreamLookup(context.Background())
+		g.lock.Unlock()
 		if err != nil {
-			g.streamLookup = nil
-			g.lock.RUnlock()
+			g.lookupStreams <- nil
 			return 0, 0, err
 		}
 	}
-	s := g.streamLookup
-	g.lock.RUnlock()
 	req := &groupproto.LookupRequest{
 		KeyA:      parentKeyA,
 		KeyB:      parentKeyB,
@@ -155,42 +191,44 @@ func (g *group) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (tim
 		ChildKeyB: childKeyB,
 	}
 	if err = s.Send(req); err != nil {
+		g.lookupStreams <- nil
 		return 0, 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
+		g.lookupStreams <- nil
 		return 0, 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
+	g.lookupStreams <- s
 	return res.TimestampMicro, res.Length, err
 }
 
 func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]*store.LookupGroupItem, error) {
 	var err error
-	g.lock.RLock()
-	if g.streamLookupGroup == nil {
-		// TODO: Background should probably be replaced with a "real" context
-		// with deadlines, etc.
-		g.streamLookupGroup, err = g.client.StreamLookupGroup(context.Background())
+	s := <-g.lookupGroupStreams
+	if s == nil {
+		g.lock.Lock()
+		s, err = g.client.StreamLookupGroup(context.Background())
+		g.lock.Unlock()
 		if err != nil {
-			g.streamLookupGroup = nil
-			g.lock.RUnlock()
+			g.lookupGroupStreams <- nil
 			return nil, err
 		}
 	}
-	s := g.streamLookupGroup
-	g.lock.RUnlock()
 	req := &groupproto.LookupGroupRequest{
 		KeyA: parentKeyA,
 		KeyB: parentKeyB,
 	}
 	if err = s.Send(req); err != nil {
+		g.lookupGroupStreams <- nil
 		return nil, err
 	}
 	res, err := s.Recv()
 	if err != nil {
+		g.lookupGroupStreams <- nil
 		return nil, err
 	}
 	rv := make([]*store.LookupGroupItem, len(res.Items))
@@ -205,24 +243,22 @@ func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]*store.LookupGroup
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
+	g.lookupGroupStreams <- s
 	return rv, err
 }
 
 func (g *group) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
 	rvalue = value
-	g.lock.RLock()
-	if g.streamRead == nil {
-		// TODO: Background should probably be replaced with a "real" context
-		// with deadlines, etc.
-		g.streamRead, err = g.client.StreamRead(context.Background())
+	s := <-g.readStreams
+	if s == nil {
+		g.lock.Lock()
+		s, err = g.client.StreamRead(context.Background())
+		g.lock.Unlock()
 		if err != nil {
-			g.streamRead = nil
-			g.lock.RUnlock()
+			g.readStreams <- nil
 			return 0, rvalue, err
 		}
 	}
-	s := g.streamRead
-	g.lock.RUnlock()
 	req := &groupproto.ReadRequest{
 		KeyA:      parentKeyA,
 		KeyB:      parentKeyB,
@@ -230,25 +266,28 @@ func (g *group) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value 
 		ChildKeyB: childKeyB,
 	}
 	if err = s.Send(req); err != nil {
+		g.readStreams <- nil
 		return 0, rvalue, err
 	}
 	res, err := s.Recv()
 	if err != nil {
+		g.readStreams <- nil
 		return 0, rvalue, err
 	}
 	rvalue = append(rvalue, res.Value...)
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
+	g.readStreams <- s
 	return res.TimestampMicro, rvalue, err
 }
 
 func (g *group) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
 	s := <-g.writeStreams
 	if s == nil {
-		// TODO: Background should probably be replaced with a "real"
-		// context with deadlines, etc.
+		g.lock.Lock()
 		s, err = g.client.StreamWrite(context.Background())
+		g.lock.Unlock()
 		if err != nil {
 			g.writeStreams <- nil
 			return 0, err
@@ -279,19 +318,16 @@ func (g *group) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, times
 }
 
 func (g *group) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
-	g.lock.RLock()
-	if g.streamDelete == nil {
-		// TODO: Background should probably be replaced with a "real" context
-		// with deadlines, etc.
-		g.streamDelete, err = g.client.StreamDelete(context.Background())
+	s := <-g.deleteStreams
+	if s == nil {
+		g.lock.Lock()
+		s, err = g.client.StreamDelete(context.Background())
+		g.lock.Unlock()
 		if err != nil {
-			g.streamDelete = nil
-			g.lock.RUnlock()
+			g.deleteStreams <- nil
 			return 0, err
 		}
 	}
-	s := g.streamDelete
-	g.lock.RUnlock()
 	req := &groupproto.DeleteRequest{
 		KeyA:           parentKeyA,
 		KeyB:           parentKeyB,
@@ -300,42 +336,44 @@ func (g *group) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, time
 		TimestampMicro: timestampmicro,
 	}
 	if err = s.Send(req); err != nil {
+		g.deleteStreams <- nil
 		return 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
+		g.deleteStreams <- nil
 		return 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
+	g.deleteStreams <- s
 	return res.TimestampMicro, err
 }
 
 func (g *group) ReadGroup(parentKeyA, parentKeyB uint64) ([]*ReadGroupItem, error) {
 	var err error
-	g.lock.RLock()
-	if g.streamReadGroup == nil {
-		// TODO: Background should probably be replaced with a "real" context
-		// with deadlines, etc.
-		g.streamReadGroup, err = g.client.StreamReadGroup(context.Background())
+	s := <-g.readGroupStreams
+	if s == nil {
+		g.lock.Lock()
+		s, err = g.client.StreamReadGroup(context.Background())
+		g.lock.Unlock()
 		if err != nil {
-			g.streamReadGroup = nil
-			g.lock.RUnlock()
+			g.readGroupStreams <- nil
 			return nil, err
 		}
 	}
-	s := g.streamReadGroup
-	g.lock.RUnlock()
 	req := &groupproto.ReadGroupRequest{
 		KeyA: parentKeyA,
 		KeyB: parentKeyB,
 	}
 	if err = s.Send(req); err != nil {
+		g.readGroupStreams <- nil
 		return nil, err
 	}
 	res, err := s.Recv()
 	if err != nil {
+		g.readGroupStreams <- nil
 		return nil, err
 	}
 	rv := make([]*ReadGroupItem, len(res.Items))
@@ -347,5 +385,6 @@ func (g *group) ReadGroup(parentKeyA, parentKeyB uint64) ([]*ReadGroupItem, erro
 			Value:          v.Value,
 		}
 	}
+	g.readGroupStreams <- s
 	return rv, nil
 }
