@@ -124,6 +124,7 @@ func (o *Server) Serve() {
 	defer o.waitGroup.Done()
 	o.waitGroup.Add(1)
 	if o.CmdCtrlConfig.Enabled {
+		o.CmdCtrlConfig.ListenAddress = o.ring.Node(o.localID).Address(0)
 		o.runCmdCtrlLoop()
 	} else {
 		log.Println("Command and Control functionality disabled via config")

@@ -65,6 +65,10 @@ func NewValueStore(oort *oort.Server) (*OortValueStore, error) {
 	if s.TCPMsgRingConfig.UseTLS {
 		log.Println("TCPMsgRing using TLS")
 	}
+	if s.TCPMsgRingConfig.AddressIndex == 0 {
+		s.TCPMsgRingConfig.AddressIndex = 1
+		log.Println("TCPMsgRing using address index 1")
+	}
 	cert, err := tls.LoadX509KeyPair(s.C.CertFile, s.C.KeyFile)
 	if err != nil {
 		return s, err
