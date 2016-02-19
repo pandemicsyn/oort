@@ -26,6 +26,8 @@ import (
 // TODO: I lock while asking the grpc client to make any stream. I'm not sure
 // if this is required. Needs testing.
 
+// TODO: We should consider using templatized code for this and valuestore.go
+
 type GroupStore interface {
 	store.GroupStore
 	ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, error)
@@ -38,7 +40,7 @@ type ReadGroupItem struct {
 	Value          []byte
 }
 
-type group struct {
+type groupStore struct {
 	lock               sync.Mutex
 	addr               string
 	insecureSkipVerify bool
@@ -55,7 +57,7 @@ type group struct {
 }
 
 func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (GroupStore, error) {
-	g := &group{
+	g := &groupStore{
 		addr:               addr,
 		insecureSkipVerify: insecureSkipVerify,
 		opts:               opts,
@@ -71,7 +73,7 @@ func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...gr
 	return g, nil
 }
 
-func (g *group) Startup() error {
+func (g *groupStore) Startup() error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if g.conn != nil {
@@ -105,7 +107,7 @@ func (g *group) Startup() error {
 	return nil
 }
 
-func (g *group) Shutdown() error {
+func (g *groupStore) Shutdown() error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if g.conn == nil {
@@ -135,22 +137,22 @@ func (g *group) Shutdown() error {
 	return nil
 }
 
-func (g *group) EnableWrites() error {
+func (g *groupStore) EnableWrites() error {
 	return nil
 }
 
-func (g *group) DisableWrites() error {
+func (g *groupStore) DisableWrites() error {
 	// TODO: I suppose we could implement toggling writes from this client;
 	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (g *group) Flush() error {
+func (g *groupStore) Flush() error {
 	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (g *group) AuditPass() error {
+func (g *groupStore) AuditPass() error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
@@ -162,18 +164,18 @@ func (*s) String() string {
 
 var noStats = &s{}
 
-func (g *group) Stats(debug bool) (fmt.Stringer, error) {
+func (g *groupStore) Stats(debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (g *group) ValueCap() (uint32, error) {
+func (g *groupStore) ValueCap() (uint32, error) {
 	// TODO: This should be a (cached) value from the server. Servers don't
 	// change their value caps on the fly, so the cache can be kept until
 	// disconnect.
 	return 0xffffffff, nil
 }
 
-func (g *group) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
+func (g *groupStore) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
 	s := <-g.lookupStreams
 	if s == nil {
 		g.lock.Lock()
@@ -206,7 +208,7 @@ func (g *group) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (tim
 	return res.TimestampMicro, res.Length, err
 }
 
-func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
+func (g *groupStore) LookupGroup(parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
 	var err error
 	s := <-g.lookupGroupStreams
 	if s == nil {
@@ -245,7 +247,7 @@ func (g *group) LookupGroup(parentKeyA, parentKeyB uint64) ([]store.LookupGroupI
 	return rv, err
 }
 
-func (g *group) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+func (g *groupStore) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
 	rvalue = value
 	s := <-g.readStreams
 	if s == nil {
@@ -280,7 +282,7 @@ func (g *group) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value 
 	return res.TimestampMicro, rvalue, err
 }
 
-func (g *group) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+func (g *groupStore) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
 	s := <-g.writeStreams
 	if s == nil {
 		g.lock.Lock()
@@ -315,7 +317,7 @@ func (g *group) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, times
 	return res.TimestampMicro, err
 }
 
-func (g *group) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+func (g *groupStore) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
 	s := <-g.deleteStreams
 	if s == nil {
 		g.lock.Lock()
@@ -349,7 +351,7 @@ func (g *group) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, time
 	return res.TimestampMicro, err
 }
 
-func (g *group) ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, error) {
+func (g *groupStore) ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, error) {
 	var err error
 	s := <-g.readGroupStreams
 	if s == nil {
