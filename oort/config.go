@@ -36,6 +36,14 @@ func (o *Server) loadCmdCtrlConfig() error {
 func (o *Server) LoadRingConfig(config interface{}) (err error) {
 	o.Lock()
 	defer o.Unlock()
+	e := NewEnvGetter(fmt.Sprintf("OORT_%s", strings.ToUpper(o.serviceName)), "_")
+	localConfig := e.Get("LOCAL_CONFIG")
+	if localConfig != "" {
+		_, err = toml.DecodeFile(localConfig, config)
+		if err != nil {
+			return err
+		}
+	}
 	log.Println("Using ring version:", o.ring.Version())
 	b := bytes.NewReader(o.ring.Config())
 	if b.Len() > 0 {
