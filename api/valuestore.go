@@ -40,111 +40,114 @@ type valueStore struct {
 	deleteStreams      chan valueproto.ValueStore_StreamDeleteClient
 }
 
+// NewValueStore creates a ValueStore connection via grpc to the given address;
+// note that Startup() will have been called in the returned store, so calling
+// Startup() yourself is optional.
 func NewValueStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (store.ValueStore, error) {
-	g := &valueStore{
+	v := &valueStore{
 		addr:               addr,
 		insecureSkipVerify: insecureSkipVerify,
 		opts:               opts,
 		creds:              credentials.NewTLS(&tls.Config{InsecureSkipVerify: insecureSkipVerify}),
 	}
-	g.opts = append(g.opts, grpc.WithTransportCredentials(g.creds))
-	g.lookupStreams = make(chan valueproto.ValueStore_StreamLookupClient, streams)
-	g.readStreams = make(chan valueproto.ValueStore_StreamReadClient, streams)
-	g.writeStreams = make(chan valueproto.ValueStore_StreamWriteClient, streams)
-	g.deleteStreams = make(chan valueproto.ValueStore_StreamDeleteClient, streams)
-	return g, nil
+	v.opts = append(v.opts, grpc.WithTransportCredentials(v.creds))
+	v.lookupStreams = make(chan valueproto.ValueStore_StreamLookupClient, streams)
+	v.readStreams = make(chan valueproto.ValueStore_StreamReadClient, streams)
+	v.writeStreams = make(chan valueproto.ValueStore_StreamWriteClient, streams)
+	v.deleteStreams = make(chan valueproto.ValueStore_StreamDeleteClient, streams)
+	return v, v.Startup()
 }
 
-func (g *valueStore) Startup() error {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	if g.conn != nil {
+func (v *valueStore) Startup() error {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	if v.conn != nil {
 		return nil
 	}
 	var err error
-	g.conn, err = grpc.Dial(g.addr, g.opts...)
+	v.conn, err = grpc.Dial(v.addr, v.opts...)
 	if err != nil {
-		g.conn = nil
+		v.conn = nil
 		return err
 	}
-	g.client = valueproto.NewValueStoreClient(g.conn)
-	for i := cap(g.lookupStreams); i > 0; i-- {
-		g.lookupStreams <- nil
+	v.client = valueproto.NewValueStoreClient(v.conn)
+	for i := cap(v.lookupStreams); i > 0; i-- {
+		v.lookupStreams <- nil
 	}
-	for i := cap(g.readStreams); i > 0; i-- {
-		g.readStreams <- nil
+	for i := cap(v.readStreams); i > 0; i-- {
+		v.readStreams <- nil
 	}
-	for i := cap(g.writeStreams); i > 0; i-- {
-		g.writeStreams <- nil
+	for i := cap(v.writeStreams); i > 0; i-- {
+		v.writeStreams <- nil
 	}
-	for i := cap(g.deleteStreams); i > 0; i-- {
-		g.deleteStreams <- nil
+	for i := cap(v.deleteStreams); i > 0; i-- {
+		v.deleteStreams <- nil
 	}
 	return nil
 }
 
-func (g *valueStore) Shutdown() error {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-	if g.conn == nil {
+func (v *valueStore) Shutdown() error {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	if v.conn == nil {
 		return nil
 	}
-	g.conn.Close()
-	g.conn = nil
-	g.client = nil
-	for i := cap(g.lookupStreams); i > 0; i-- {
-		<-g.lookupStreams
+	v.conn.Close()
+	v.conn = nil
+	v.client = nil
+	for i := cap(v.lookupStreams); i > 0; i-- {
+		<-v.lookupStreams
 	}
-	for i := cap(g.readStreams); i > 0; i-- {
-		<-g.readStreams
+	for i := cap(v.readStreams); i > 0; i-- {
+		<-v.readStreams
 	}
-	for i := cap(g.writeStreams); i > 0; i-- {
-		<-g.writeStreams
+	for i := cap(v.writeStreams); i > 0; i-- {
+		<-v.writeStreams
 	}
-	for i := cap(g.deleteStreams); i > 0; i-- {
-		<-g.deleteStreams
+	for i := cap(v.deleteStreams); i > 0; i-- {
+		<-v.deleteStreams
 	}
 	return nil
 }
 
-func (g *valueStore) EnableWrites() error {
+func (v *valueStore) EnableWrites() error {
 	return nil
 }
 
-func (g *valueStore) DisableWrites() error {
+func (v *valueStore) DisableWrites() error {
 	// TODO: I suppose we could implement toggling writes from this client;
 	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (g *valueStore) Flush() error {
+func (v *valueStore) Flush() error {
 	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (g *valueStore) AuditPass() error {
+func (v *valueStore) AuditPass() error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
-func (g *valueStore) Stats(debug bool) (fmt.Stringer, error) {
+func (v *valueStore) Stats(debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (g *valueStore) ValueCap() (uint32, error) {
+func (v *valueStore) ValueCap() (uint32, error) {
 	// TODO: This should be a (cached) value from the server. Servers don't
 	// change their value caps on the fly, so the cache can be kept until
 	// disconnect.
 	return 0xffffffff, nil
 }
 
-func (g *valueStore) Lookup(keyA, keyB uint64) (timestampmicro int64, length uint32, err error) {
-	s := <-g.lookupStreams
+func (v *valueStore) Lookup(keyA, keyB uint64) (timestampmicro int64, length uint32, err error) {
+	s := <-v.lookupStreams
 	if s == nil {
-		g.lock.Lock()
-		s, err = g.client.StreamLookup(context.Background())
-		g.lock.Unlock()
+		v.lock.Lock()
+		s, err = v.client.StreamLookup(context.Background())
+		v.lock.Unlock()
 		if err != nil {
-			g.lookupStreams <- nil
+			v.lookupStreams <- nil
 			return 0, 0, err
 		}
 	}
@@ -153,30 +156,30 @@ func (g *valueStore) Lookup(keyA, keyB uint64) (timestampmicro int64, length uin
 		KeyB: keyB,
 	}
 	if err = s.Send(req); err != nil {
-		g.lookupStreams <- nil
+		v.lookupStreams <- nil
 		return 0, 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		g.lookupStreams <- nil
+		v.lookupStreams <- nil
 		return 0, 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	g.lookupStreams <- s
+	v.lookupStreams <- s
 	return res.TimestampMicro, res.Length, err
 }
 
-func (g *valueStore) Read(keyA, keyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+func (v *valueStore) Read(keyA, keyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
 	rvalue = value
-	s := <-g.readStreams
+	s := <-v.readStreams
 	if s == nil {
-		g.lock.Lock()
-		s, err = g.client.StreamRead(context.Background())
-		g.lock.Unlock()
+		v.lock.Lock()
+		s, err = v.client.StreamRead(context.Background())
+		v.lock.Unlock()
 		if err != nil {
-			g.readStreams <- nil
+			v.readStreams <- nil
 			return 0, rvalue, err
 		}
 	}
@@ -185,30 +188,30 @@ func (g *valueStore) Read(keyA, keyB uint64, value []byte) (timestampmicro int64
 		KeyB: keyB,
 	}
 	if err = s.Send(req); err != nil {
-		g.readStreams <- nil
+		v.readStreams <- nil
 		return 0, rvalue, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		g.readStreams <- nil
+		v.readStreams <- nil
 		return 0, rvalue, err
 	}
 	rvalue = append(rvalue, res.Value...)
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	g.readStreams <- s
+	v.readStreams <- s
 	return res.TimestampMicro, rvalue, err
 }
 
-func (g *valueStore) Write(keyA, keyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
-	s := <-g.writeStreams
+func (v *valueStore) Write(keyA, keyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+	s := <-v.writeStreams
 	if s == nil {
-		g.lock.Lock()
-		s, err = g.client.StreamWrite(context.Background())
-		g.lock.Unlock()
+		v.lock.Lock()
+		s, err = v.client.StreamWrite(context.Background())
+		v.lock.Unlock()
 		if err != nil {
-			g.writeStreams <- nil
+			v.writeStreams <- nil
 			return 0, err
 		}
 	}
@@ -219,29 +222,29 @@ func (g *valueStore) Write(keyA, keyB uint64, timestampmicro int64, value []byte
 		Value:          value,
 	}
 	if err = s.Send(req); err != nil {
-		g.writeStreams <- nil
+		v.writeStreams <- nil
 		return 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		g.writeStreams <- nil
+		v.writeStreams <- nil
 		return 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	g.writeStreams <- s
+	v.writeStreams <- s
 	return res.TimestampMicro, err
 }
 
-func (g *valueStore) Delete(keyA, keyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
-	s := <-g.deleteStreams
+func (v *valueStore) Delete(keyA, keyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+	s := <-v.deleteStreams
 	if s == nil {
-		g.lock.Lock()
-		s, err = g.client.StreamDelete(context.Background())
-		g.lock.Unlock()
+		v.lock.Lock()
+		s, err = v.client.StreamDelete(context.Background())
+		v.lock.Unlock()
 		if err != nil {
-			g.deleteStreams <- nil
+			v.deleteStreams <- nil
 			return 0, err
 		}
 	}
@@ -251,17 +254,17 @@ func (g *valueStore) Delete(keyA, keyB uint64, timestampmicro int64) (oldtimesta
 		TimestampMicro: timestampmicro,
 	}
 	if err = s.Send(req); err != nil {
-		g.deleteStreams <- nil
+		v.deleteStreams <- nil
 		return 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		g.deleteStreams <- nil
+		v.deleteStreams <- nil
 		return 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	g.deleteStreams <- s
+	v.deleteStreams <- s
 	return res.TimestampMicro, err
 }
