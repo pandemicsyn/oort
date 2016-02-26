@@ -83,7 +83,11 @@ func (s *OortValueStore) start() {
 	s.vs = nil
 	runtime.GC()
 	log.Println("LocalID appears to be:", s.o.GetLocalID())
-	s.t = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
+	var err error
+	s.t, err = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
+	if err != nil {
+		panic(err)
+	}
 	s.ValueStoreConfig.MsgRing = s.t
 	s.t.SetRing(s.o.Ring())
 	var restartChan chan error
@@ -294,8 +298,11 @@ func (s *OortValueStore) Stats() []byte {
 
 func (s *OortValueStore) ListenAndServe() {
 	go func(s *OortValueStore) {
+		s.Lock()
 		s.grpcStopping = false
+		s.Unlock()
 		for {
+			s.Lock()
 			var err error
 			l, err := net.Listen("tcp", s.C.ListenAddr)
 			if err != nil {
@@ -305,28 +312,36 @@ func (s *OortValueStore) ListenAndServe() {
 			var opts []grpc.ServerOption
 			creds := credentials.NewTLS(s.serverTLSConfig)
 			opts = []grpc.ServerOption{grpc.Creds(creds)}
-			s.grpc = grpc.NewServer(opts...)
+			srvr := grpc.NewServer(opts...)
+			s.grpc = srvr
 			valueproto.RegisterValueStoreServer(s.grpc, s)
-			err = s.grpc.Serve(l)
+			s.Unlock()
+			err = srvr.Serve(l)
+			s.Lock()
 			if err != nil && !s.grpcStopping {
 				log.Println("ValueStore Serve encountered error:", err, "will attempt to restart")
 			} else if err != nil && s.grpcStopping {
 				log.Println("ValueStore got error but halt is in progress:", err)
 				l.Close()
+				s.Unlock()
 				break
 			} else {
 				log.Println("ValueStore Serve exited without error, quiting")
 				l.Close()
+				s.Unlock()
 				break
 			}
+			s.Unlock()
 		}
 	}(s)
 }
 
 func (s *OortValueStore) StopListenAndServe() {
+	s.Lock()
 	log.Println("ValueStore shutting down grpc")
 	s.grpcStopping = true
 	s.grpc.Stop()
+	s.Unlock()
 }
 
 // Wait isn't implemented yet, need graceful shutdowns in grpc
