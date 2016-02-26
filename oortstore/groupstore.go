@@ -83,7 +83,11 @@ func (s *OortGroupStore) start() {
 	s.vs = nil
 	runtime.GC()
 	log.Println("LocalID appears to be:", s.o.GetLocalID())
-	s.t = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
+	var err error
+	s.t, err = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
+	if err != nil {
+		panic(err)
+	}
 	s.GroupStoreConfig.MsgRing = s.t
 	s.t.SetRing(s.o.Ring())
 	var restartChan chan error
