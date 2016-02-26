@@ -286,10 +286,6 @@ func (c *Client) getValueClient() {
 	if err != nil {
 		log.Fatalln("Cannot create value store:", err)
 	}
-	err = c.vstore.Startup()
-	if err != nil {
-		log.Fatalln("Cannot startup value store:", err)
-	}
 }
 
 func (c *Client) getGroupClient() {
@@ -297,10 +293,6 @@ func (c *Client) getGroupClient() {
 	c.gstore, err = api.NewGroupStore(c.gaddr, 10, true)
 	if err != nil {
 		log.Fatalln("Cannot create group store:", err)
-	}
-	err = c.gstore.Startup()
-	if err != nil {
-		log.Fatalln("Cannot startup group store:", err)
 	}
 }
 

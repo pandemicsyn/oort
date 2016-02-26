@@ -56,6 +56,9 @@ type groupStore struct {
 	readGroupStreams   chan groupproto.GroupStore_StreamReadGroupClient
 }
 
+// NewGroupStore creates a GroupStore connection via grpc to the given address;
+// note that Startup() will have been called in the returned store, so calling
+// Startup() yourself is optional.
 func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (GroupStore, error) {
 	g := &groupStore{
 		addr:               addr,
@@ -70,7 +73,7 @@ func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...gr
 	g.writeStreams = make(chan groupproto.GroupStore_StreamWriteClient, streams)
 	g.deleteStreams = make(chan groupproto.GroupStore_StreamDeleteClient, streams)
 	g.readGroupStreams = make(chan groupproto.GroupStore_StreamReadGroupClient, streams)
-	return g, nil
+	return g, g.Startup()
 }
 
 func (g *groupStore) Startup() error {
