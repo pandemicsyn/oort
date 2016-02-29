@@ -302,7 +302,7 @@ type Client struct {
 	gmode  bool
 	vconn  *grpc.ClientConn
 	vstore store.ValueStore
-	gstore api.GroupStore
+	gstore store.GroupStore
 }
 
 func main() {
