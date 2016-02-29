@@ -28,18 +28,6 @@ import (
 
 // TODO: We should consider using templatized code for this and valuestore.go
 
-type GroupStore interface {
-	store.GroupStore
-	ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, error)
-}
-
-type ReadGroupItem struct {
-	ChildKeyA      uint64
-	ChildKeyB      uint64
-	TimestampMicro int64
-	Value          []byte
-}
-
 type groupStore struct {
 	lock               sync.Mutex
 	addr               string
@@ -59,7 +47,7 @@ type groupStore struct {
 // NewGroupStore creates a GroupStore connection via grpc to the given address;
 // note that Startup() will have been called in the returned store, so calling
 // Startup() yourself is optional.
-func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (GroupStore, error) {
+func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (store.GroupStore, error) {
 	g := &groupStore{
 		addr:               addr,
 		insecureSkipVerify: insecureSkipVerify,
@@ -354,7 +342,7 @@ func (g *groupStore) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64,
 	return res.TimestampMicro, err
 }
 
-func (g *groupStore) ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, error) {
+func (g *groupStore) ReadGroup(parentKeyA, parentKeyB uint64) ([]store.ReadGroupItem, error) {
 	var err error
 	s := <-g.readGroupStreams
 	if s == nil {
@@ -379,7 +367,7 @@ func (g *groupStore) ReadGroup(parentKeyA, parentKeyB uint64) ([]ReadGroupItem, 
 		g.readGroupStreams <- nil
 		return nil, err
 	}
-	rv := make([]ReadGroupItem, len(res.Items))
+	rv := make([]store.ReadGroupItem, len(res.Items))
 	for i, v := range res.Items {
 		rv[i].ChildKeyA = v.ChildKeyA
 		rv[i].ChildKeyB = v.ChildKeyB
