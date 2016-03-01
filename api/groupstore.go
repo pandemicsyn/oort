@@ -1,7 +1,6 @@
 package api
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/pandemicsyn/oort/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 // TODO: I'm unsure on the handling of grpc errors; the ones grpc has, not that
@@ -31,9 +29,7 @@ import (
 type groupStore struct {
 	lock               sync.Mutex
 	addr               string
-	insecureSkipVerify bool
 	opts               []grpc.DialOption
-	creds              credentials.TransportAuthenticator
 	conn               *grpc.ClientConn
 	client             groupproto.GroupStoreClient
 	lookupStreams      chan groupproto.GroupStore_StreamLookupClient
@@ -47,14 +43,11 @@ type groupStore struct {
 // NewGroupStore creates a GroupStore connection via grpc to the given address;
 // note that Startup() will have been called in the returned store, so calling
 // Startup() yourself is optional.
-func NewGroupStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (store.GroupStore, error) {
+func NewGroupStore(addr string, streams int, opts ...grpc.DialOption) (store.GroupStore, error) {
 	g := &groupStore{
-		addr:               addr,
-		insecureSkipVerify: insecureSkipVerify,
-		opts:               opts,
-		creds:              credentials.NewTLS(&tls.Config{InsecureSkipVerify: insecureSkipVerify}),
+		addr: addr,
+		opts: opts,
 	}
-	g.opts = append(g.opts, grpc.WithTransportCredentials(g.creds))
 	g.lookupStreams = make(chan groupproto.GroupStore_StreamLookupClient, streams)
 	g.lookupGroupStreams = make(chan groupproto.GroupStore_StreamLookupGroupClient, streams)
 	g.readStreams = make(chan groupproto.GroupStore_StreamReadClient, streams)

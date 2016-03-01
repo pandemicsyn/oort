@@ -26,9 +26,9 @@ type OortValueStore struct {
 	vs               store.ValueStore
 	grpc             *grpc.Server
 	grpcStopping     bool
-	t                *ring.TCPMsgRing
-	o                *oort.Server
-	C                *OortValueConfig `toml:"OortValueStoreConfig"` // load config using an explicit/different config header
+	msgRing          *ring.TCPMsgRing
+	oort             *oort.Server
+	Config           *OortValueConfig `toml:"OortValueStoreConfig"` // load config using an explicit/different config header
 	stopped          bool
 	ValueStoreConfig store.ValueStoreConfig
 	TCPMsgRingConfig ring.TCPMsgRingConfig
@@ -46,16 +46,16 @@ type OortValueConfig struct {
 
 func NewValueStore(oort *oort.Server) (*OortValueStore, error) {
 	s := &OortValueStore{}
-	s.C = &OortValueConfig{}
+	s.Config = &OortValueConfig{}
 	s.waitGroup = &sync.WaitGroup{}
-	s.o = oort
-	err := s.o.LoadRingConfig(s)
+	s.oort = oort
+	err := s.oort.LoadRingConfig(s)
 	if err != nil {
 		return s, err
 	}
-	if s.C.Debug {
+	if s.Config.Debug {
 		log.Println("Ring entries:")
-		ring := s.o.Ring()
+		ring := s.oort.Ring()
 		for k, _ := range ring.Nodes() {
 			log.Println(ring.Nodes()[k].ID(), ring.Nodes()[k].Addresses())
 		}
@@ -69,11 +69,11 @@ func NewValueStore(oort *oort.Server) (*OortValueStore, error) {
 		s.TCPMsgRingConfig.AddressIndex = 1
 		log.Println("TCPMsgRing using address index 1")
 	}
-	cert, err := tls.LoadX509KeyPair(s.C.CertFile, s.C.KeyFile)
+	cert, err := tls.LoadX509KeyPair(s.Config.CertFile, s.Config.KeyFile)
 	if err != nil {
 		return s, err
 	}
-	s.serverTLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: s.C.InsecureSkipVerify}
+	s.serverTLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: s.Config.InsecureSkipVerify}
 	s.start()
 	s.stopped = false
 	return s, nil
@@ -82,14 +82,14 @@ func NewValueStore(oort *oort.Server) (*OortValueStore, error) {
 func (s *OortValueStore) start() {
 	s.vs = nil
 	runtime.GC()
-	log.Println("LocalID appears to be:", s.o.GetLocalID())
+	log.Println("LocalID appears to be:", s.oort.GetLocalID())
 	var err error
-	s.t, err = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
+	s.msgRing, err = ring.NewTCPMsgRing(&s.TCPMsgRingConfig)
 	if err != nil {
 		panic(err)
 	}
-	s.ValueStoreConfig.MsgRing = s.t
-	s.t.SetRing(s.o.Ring())
+	s.ValueStoreConfig.MsgRing = s.msgRing
+	s.msgRing.SetRing(s.oort.Ring())
 	var restartChan chan error
 	s.vs, restartChan = store.NewValueStore(&s.ValueStoreConfig)
 	// TODO: I'm guessing we'll want to do something more graceful here; but
@@ -106,7 +106,7 @@ func (s *OortValueStore) start() {
 	go func(t *ring.TCPMsgRing) {
 		t.Listen()
 		log.Println("TCPMsgRing Listen() returned, shutdown?")
-	}(s.t)
+	}(s.msgRing)
 	go func(t *ring.TCPMsgRing) {
 		tcpMsgRingStats := t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
@@ -120,12 +120,12 @@ func (s *OortValueStore) start() {
 				log.Printf("%s\n", stats)
 			}
 		}
-	}(s.t)
+	}(s.msgRing)
 }
 
 func (s *OortValueStore) UpdateRing(ring ring.Ring) {
 	s.Lock()
-	s.t.SetRing(ring)
+	s.msgRing.SetRing(ring)
 	s.Unlock()
 	log.Println("Oortstore updated tcp msg ring.")
 }
@@ -280,7 +280,7 @@ func (s *OortValueStore) Stop() {
 		return
 	}
 	s.vs.Shutdown()
-	s.t.Shutdown()
+	s.msgRing.Shutdown()
 	s.stopped = true
 	s.Unlock()
 	log.Println(s.vs.Stats(true))
@@ -304,11 +304,11 @@ func (s *OortValueStore) ListenAndServe() {
 		for {
 			s.Lock()
 			var err error
-			l, err := net.Listen("tcp", s.C.ListenAddr)
+			l, err := net.Listen("tcp", s.Config.ListenAddr)
 			if err != nil {
 				log.Fatalln("Unable to bind to address:", err)
 			}
-			log.Println("ValueStore bound to:", s.C.ListenAddr)
+			log.Println("ValueStore bound to:", s.Config.ListenAddr)
 			var opts []grpc.ServerOption
 			creds := credentials.NewTLS(s.serverTLSConfig)
 			opts = []grpc.ServerOption{grpc.Creds(creds)}

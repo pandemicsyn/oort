@@ -282,7 +282,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 
 func (c *Client) getValueClient() {
 	var err error
-	c.vstore, err = api.NewValueStore(c.vaddr, 10, true)
+	c.vstore, err = api.NewValueStore(c.vaddr, 10)
 	if err != nil {
 		log.Fatalln("Cannot create value store:", err)
 	}
@@ -290,7 +290,7 @@ func (c *Client) getValueClient() {
 
 func (c *Client) getGroupClient() {
 	var err error
-	c.gstore, err = api.NewGroupStore(c.gaddr, 10, true)
+	c.gstore, err = api.NewGroupStore(c.gaddr, 10)
 	if err != nil {
 		log.Fatalln("Cannot create group store:", err)
 	}
