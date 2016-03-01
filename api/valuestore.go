@@ -1,7 +1,6 @@
 package api
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/pandemicsyn/oort/api/valueproto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 // TODO: I'm unsure on the handling of grpc errors; the ones grpc has, not that
@@ -27,30 +25,25 @@ import (
 // if this is required. Needs testing.
 
 type valueStore struct {
-	lock               sync.Mutex
-	addr               string
-	insecureSkipVerify bool
-	opts               []grpc.DialOption
-	creds              credentials.TransportAuthenticator
-	conn               *grpc.ClientConn
-	client             valueproto.ValueStoreClient
-	lookupStreams      chan valueproto.ValueStore_StreamLookupClient
-	readStreams        chan valueproto.ValueStore_StreamReadClient
-	writeStreams       chan valueproto.ValueStore_StreamWriteClient
-	deleteStreams      chan valueproto.ValueStore_StreamDeleteClient
+	lock          sync.Mutex
+	addr          string
+	opts          []grpc.DialOption
+	conn          *grpc.ClientConn
+	client        valueproto.ValueStoreClient
+	lookupStreams chan valueproto.ValueStore_StreamLookupClient
+	readStreams   chan valueproto.ValueStore_StreamReadClient
+	writeStreams  chan valueproto.ValueStore_StreamWriteClient
+	deleteStreams chan valueproto.ValueStore_StreamDeleteClient
 }
 
 // NewValueStore creates a ValueStore connection via grpc to the given address;
 // note that Startup() will have been called in the returned store, so calling
 // Startup() yourself is optional.
-func NewValueStore(addr string, streams int, insecureSkipVerify bool, opts ...grpc.DialOption) (store.ValueStore, error) {
+func NewValueStore(addr string, streams int, opts ...grpc.DialOption) (store.ValueStore, error) {
 	v := &valueStore{
-		addr:               addr,
-		insecureSkipVerify: insecureSkipVerify,
-		opts:               opts,
-		creds:              credentials.NewTLS(&tls.Config{InsecureSkipVerify: insecureSkipVerify}),
+		addr: addr,
+		opts: opts,
 	}
-	v.opts = append(v.opts, grpc.WithTransportCredentials(v.creds))
 	v.lookupStreams = make(chan valueproto.ValueStore_StreamLookupClient, streams)
 	v.readStreams = make(chan valueproto.ValueStore_StreamReadClient, streams)
 	v.writeStreams = make(chan valueproto.ValueStore_StreamWriteClient, streams)
