@@ -2,6 +2,7 @@ package oortstore
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gholt/ring"
 	"github.com/gholt/store"
+	"github.com/pandemicsyn/ftls"
 	"github.com/pandemicsyn/oort/api/groupproto"
 	"github.com/pandemicsyn/oort/api/proto"
 	"github.com/pandemicsyn/oort/oort"
@@ -39,9 +41,11 @@ type OortGroupConfig struct {
 	Debug              bool
 	Profile            bool
 	ListenAddr         string `toml:"ListenAddress"` //another example
+	MutualTLS          bool
 	InsecureSkipVerify bool
 	CertFile           string
 	KeyFile            string
+	CAFile             string
 }
 
 func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
@@ -69,11 +73,19 @@ func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
 		s.TCPMsgRingConfig.AddressIndex = 1
 		log.Println("TCPMsgRing using address index 1")
 	}
-	cert, err := tls.LoadX509KeyPair(s.Config.CertFile, s.Config.KeyFile)
+	if s.Config.MutualTLS && s.Config.InsecureSkipVerify {
+		return s, fmt.Errorf("Option MutualTLS=true, and InsecureSkipVerify=true conflict")
+	}
+	s.serverTLSConfig, err = ftls.NewServerTLSConfig(&ftls.Config{
+		MutualTLS:          s.Config.MutualTLS,
+		InsecureSkipVerify: s.Config.InsecureSkipVerify,
+		CertFile:           s.Config.CertFile,
+		KeyFile:            s.Config.KeyFile,
+		CAFile:             s.Config.CAFile,
+	})
 	if err != nil {
 		return s, err
 	}
-	s.serverTLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: s.Config.InsecureSkipVerify}
 	s.start()
 	s.stopped = false
 	return s, nil
