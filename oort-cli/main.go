@@ -107,7 +107,7 @@ func (c *Client) parseValueCmd(line string) (string, error) {
 	case "read":
 		keyA, keyB := murmur3.Sum128([]byte(args))
 		timestampMicro, value, err := c.vstore.Read(keyA, keyB, nil)
-		if err == store.ErrNotFound {
+		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
 			return "", err
@@ -124,7 +124,7 @@ func (c *Client) parseValueCmd(line string) (string, error) {
 	case "lookup":
 		keyA, keyB := murmur3.Sum128([]byte(args))
 		timestampMicro, length, err := c.vstore.Lookup(keyA, keyB)
-		if err == store.ErrNotFound {
+		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
 			return "", err
@@ -204,7 +204,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		keyA, keyB := murmur3.Sum128([]byte(sarg[0]))
 		childKeyA, childKeyB := murmur3.Sum128([]byte(sarg[1]))
 		timestampMicro, value, err := c.gstore.Read(keyA, keyB, childKeyA, childKeyB, nil)
-		if err == store.ErrNotFound {
+		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
 			return "", err
@@ -225,7 +225,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 			return "", err
 		}
 		timestampMicro, value, err := c.gstore.Read(keyA, keyB, childKeyA, childKeyB, nil)
-		if err == store.ErrNotFound {
+		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
 			return "", err
@@ -252,7 +252,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		keyA, keyB := murmur3.Sum128([]byte(sarg[0]))
 		childKeyA, childKeyB := murmur3.Sum128([]byte(sarg[1]))
 		timestampMicro, length, err := c.gstore.Lookup(keyA, keyB, childKeyA, childKeyB)
-		if err == store.ErrNotFound {
+		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
 			return "", err
@@ -261,7 +261,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 	case "lookup-group":
 		keyA, keyB := murmur3.Sum128([]byte(args))
 		items, err := c.gstore.LookupGroup(keyA, keyB)
-		if err == store.ErrNotFound {
+		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
 			return "", err

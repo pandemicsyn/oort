@@ -7,10 +7,9 @@ import (
 )
 
 func TranslateError(err error) string {
-	switch err {
-	case store.ErrDisabled:
+	if store.IsDisabled(err) {
 		return "::github.com/gholt/store/ErrDisabled::"
-	case store.ErrNotFound:
+	} else if store.IsNotFound(err) {
 		return "::github.com/gholt/store/ErrNotFound::"
 	}
 	return err.Error()
@@ -19,9 +18,25 @@ func TranslateError(err error) string {
 func TranslateErrorString(errstr string) error {
 	switch errstr {
 	case "::github.com/gholt/store/ErrDisabled::":
-		return store.ErrDisabled
+		return errDisabled
 	case "::github.com/gholt/store/ErrNotFound::":
-		return store.ErrNotFound
+		return errNotFound
 	}
 	return errors.New(errstr)
 }
+
+var errDisabled error = _errDisabled{}
+
+type _errDisabled struct{}
+
+func (e _errDisabled) Error() string { return "remote store disabled" }
+
+func (e _errDisabled) ErrDisabled() string { return "remote store disabled" }
+
+var errNotFound error = _errNotFound{}
+
+type _errNotFound struct{}
+
+func (e _errNotFound) Error() string { return "not found by remote store" }
+
+func (e _errNotFound) ErrNotFound() string { return "not found by remote store" }
