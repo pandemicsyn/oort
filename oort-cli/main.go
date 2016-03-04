@@ -16,6 +16,7 @@ import (
 	"github.com/pandemicsyn/oort/api"
 	"github.com/peterh/liner"
 	"github.com/spaolacci/murmur3"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -99,14 +100,14 @@ func (c *Client) parseValueCmd(line string) (string, error) {
 		keyA, keyB := murmur3.Sum128([]byte(sarg[0]))
 		value := []byte(sarg[1])
 		timestampMicro := brimtime.TimeToUnixMicro(time.Now())
-		oldTimestampMicro, err := c.vstore.Write(keyA, keyB, timestampMicro, value)
+		oldTimestampMicro, err := c.vstore.Write(context.Background(), keyA, keyB, timestampMicro, value)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("WRITE TIMESTAMPMICRO: %d\nPREVIOUS TIMESTAMPMICRO: %d", timestampMicro, oldTimestampMicro), nil
 	case "read":
 		keyA, keyB := murmur3.Sum128([]byte(args))
-		timestampMicro, value, err := c.vstore.Read(keyA, keyB, nil)
+		timestampMicro, value, err := c.vstore.Read(context.Background(), keyA, keyB, nil)
 		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
@@ -116,14 +117,14 @@ func (c *Client) parseValueCmd(line string) (string, error) {
 	case "delete":
 		keyA, keyB := murmur3.Sum128([]byte(args))
 		timestampMicro := brimtime.TimeToUnixMicro(time.Now())
-		oldTimestampMicro, err := c.vstore.Delete(keyA, keyB, timestampMicro)
+		oldTimestampMicro, err := c.vstore.Delete(context.Background(), keyA, keyB, timestampMicro)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("TIMESTAMPMICRO: %d\nOLD TIMESTAMPMICRO: %d", timestampMicro, oldTimestampMicro), nil
 	case "lookup":
 		keyA, keyB := murmur3.Sum128([]byte(args))
-		timestampMicro, length, err := c.vstore.Lookup(keyA, keyB)
+		timestampMicro, length, err := c.vstore.Lookup(context.Background(), keyA, keyB)
 		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
@@ -171,7 +172,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		keyA, keyB := murmur3.Sum128([]byte(sarg[0]))
 		childKeyA, childKeyB := murmur3.Sum128([]byte(sarg[1]))
 		timestampMicro := brimtime.TimeToUnixMicro(time.Now())
-		oldTimestampMicro, err := c.gstore.Write(keyA, keyB, childKeyA, childKeyB, timestampMicro, []byte(sarg[2]))
+		oldTimestampMicro, err := c.gstore.Write(context.Background(), keyA, keyB, childKeyA, childKeyB, timestampMicro, []byte(sarg[2]))
 		if err != nil {
 			return "", err
 		}
@@ -191,7 +192,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 			return "", err
 		}
 		timestampMicro := brimtime.TimeToUnixMicro(time.Now())
-		oldTimestampMicro, err := c.gstore.Write(keyA, keyB, childKeyA, childKeyB, timestampMicro, []byte(sarg[3]))
+		oldTimestampMicro, err := c.gstore.Write(context.Background(), keyA, keyB, childKeyA, childKeyB, timestampMicro, []byte(sarg[3]))
 		if err != nil {
 			return "", err
 		}
@@ -203,7 +204,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		keyA, keyB := murmur3.Sum128([]byte(sarg[0]))
 		childKeyA, childKeyB := murmur3.Sum128([]byte(sarg[1]))
-		timestampMicro, value, err := c.gstore.Read(keyA, keyB, childKeyA, childKeyB, nil)
+		timestampMicro, value, err := c.gstore.Read(context.Background(), keyA, keyB, childKeyA, childKeyB, nil)
 		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
@@ -224,7 +225,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		timestampMicro, value, err := c.gstore.Read(keyA, keyB, childKeyA, childKeyB, nil)
+		timestampMicro, value, err := c.gstore.Read(context.Background(), keyA, keyB, childKeyA, childKeyB, nil)
 		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
@@ -239,7 +240,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		keyA, keyB := murmur3.Sum128([]byte(sarg[0]))
 		childKeyA, childKeyB := murmur3.Sum128([]byte(sarg[1]))
 		timestampMicro := brimtime.TimeToUnixMicro(time.Now())
-		oldTimestampMicro, err := c.gstore.Delete(keyA, keyB, childKeyA, childKeyB, timestampMicro)
+		oldTimestampMicro, err := c.gstore.Delete(context.Background(), keyA, keyB, childKeyA, childKeyB, timestampMicro)
 		if err != nil {
 			return "", err
 		}
@@ -251,7 +252,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		}
 		keyA, keyB := murmur3.Sum128([]byte(sarg[0]))
 		childKeyA, childKeyB := murmur3.Sum128([]byte(sarg[1]))
-		timestampMicro, length, err := c.gstore.Lookup(keyA, keyB, childKeyA, childKeyB)
+		timestampMicro, length, err := c.gstore.Lookup(context.Background(), keyA, keyB, childKeyA, childKeyB)
 		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
@@ -260,7 +261,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 		return fmt.Sprintf("TIMESTAMPMICRO: %d\nLENGTH: %d", timestampMicro, length), nil
 	case "lookup-group":
 		keyA, keyB := murmur3.Sum128([]byte(args))
-		items, err := c.gstore.LookupGroup(keyA, keyB)
+		items, err := c.gstore.LookupGroup(context.Background(), keyA, keyB)
 		if store.IsNotFound(err) {
 			return fmt.Sprintf("not found"), nil
 		} else if err != nil {
@@ -303,7 +304,7 @@ func (c *Client) getValueClient() {
 		}
 		opts = append(opts, opt)
 	}
-	c.vstore, err = api.NewValueStore(c.vaddr, 10, opts...)
+	c.vstore, err = api.NewValueStore(context.Background(), c.vaddr, 10, opts...)
 	if err != nil {
 		log.Fatalln("Cannot create value store:", err)
 	}
@@ -325,7 +326,7 @@ func (c *Client) getGroupClient() {
 		}
 		opts = append(opts, opt)
 	}
-	c.gstore, err = api.NewGroupStore(c.gaddr, 10, opts...)
+	c.gstore, err = api.NewGroupStore(context.Background(), c.gaddr, 10, opts...)
 	if err != nil {
 		log.Fatalln("Cannot create group store:", err)
 	}

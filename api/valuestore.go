@@ -37,9 +37,9 @@ type valueStore struct {
 }
 
 // NewValueStore creates a ValueStore connection via grpc to the given address;
-// note that Startup() will have been called in the returned store, so calling
-// Startup() yourself is optional.
-func NewValueStore(addr string, streams int, opts ...grpc.DialOption) (store.ValueStore, error) {
+// note that Startup(ctx) will have been called in the returned store, so
+// calling Startup(ctx) yourself is optional.
+func NewValueStore(ctx context.Context, addr string, streams int, opts ...grpc.DialOption) (store.ValueStore, error) {
 	v := &valueStore{
 		addr: addr,
 		opts: opts,
@@ -48,10 +48,10 @@ func NewValueStore(addr string, streams int, opts ...grpc.DialOption) (store.Val
 	v.readStreams = make(chan valueproto.ValueStore_StreamReadClient, streams)
 	v.writeStreams = make(chan valueproto.ValueStore_StreamWriteClient, streams)
 	v.deleteStreams = make(chan valueproto.ValueStore_StreamDeleteClient, streams)
-	return v, v.Startup()
+	return v, v.Startup(ctx)
 }
 
-func (v *valueStore) Startup() error {
+func (v *valueStore) Startup(ctx context.Context) error {
 	v.lock.Lock()
 	defer v.lock.Unlock()
 	if v.conn != nil {
@@ -79,7 +79,7 @@ func (v *valueStore) Startup() error {
 	return nil
 }
 
-func (v *valueStore) Shutdown() error {
+func (v *valueStore) Shutdown(ctx context.Context) error {
 	v.lock.Lock()
 	defer v.lock.Unlock()
 	if v.conn == nil {
@@ -103,37 +103,38 @@ func (v *valueStore) Shutdown() error {
 	return nil
 }
 
-func (v *valueStore) EnableWrites() error {
+func (v *valueStore) EnableWrites(ctx context.Context) error {
 	return nil
 }
 
-func (v *valueStore) DisableWrites() error {
+func (v *valueStore) DisableWrites(ctx context.Context) error {
 	// TODO: I suppose we could implement toggling writes from this client;
 	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (v *valueStore) Flush() error {
+func (v *valueStore) Flush(ctx context.Context) error {
 	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (v *valueStore) AuditPass() error {
+func (v *valueStore) AuditPass(ctx context.Context) error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
-func (v *valueStore) Stats(debug bool) (fmt.Stringer, error) {
+func (v *valueStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (v *valueStore) ValueCap() (uint32, error) {
+func (v *valueStore) ValueCap(ctx context.Context) (uint32, error) {
 	// TODO: This should be a (cached) value from the server. Servers don't
 	// change their value caps on the fly, so the cache can be kept until
 	// disconnect.
 	return 0xffffffff, nil
 }
 
-func (v *valueStore) Lookup(keyA, keyB uint64) (timestampmicro int64, length uint32, err error) {
+func (v *valueStore) Lookup(ctx context.Context, keyA, keyB uint64) (timestampmicro int64, length uint32, err error) {
+	// TODO: Pay attention to ctx.
 	s := <-v.lookupStreams
 	if s == nil {
 		v.lock.Lock()
@@ -164,7 +165,8 @@ func (v *valueStore) Lookup(keyA, keyB uint64) (timestampmicro int64, length uin
 	return res.TimestampMicro, res.Length, err
 }
 
-func (v *valueStore) Read(keyA, keyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+func (v *valueStore) Read(ctx context.Context, keyA, keyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+	// TODO: Pay attention to ctx.
 	rvalue = value
 	s := <-v.readStreams
 	if s == nil {
@@ -197,7 +199,8 @@ func (v *valueStore) Read(keyA, keyB uint64, value []byte) (timestampmicro int64
 	return res.TimestampMicro, rvalue, err
 }
 
-func (v *valueStore) Write(keyA, keyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+func (v *valueStore) Write(ctx context.Context, keyA, keyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+	// TODO: Pay attention to ctx.
 	s := <-v.writeStreams
 	if s == nil {
 		v.lock.Lock()
@@ -230,7 +233,8 @@ func (v *valueStore) Write(keyA, keyB uint64, timestampmicro int64, value []byte
 	return res.TimestampMicro, err
 }
 
-func (v *valueStore) Delete(keyA, keyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+func (v *valueStore) Delete(ctx context.Context, keyA, keyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+	// TODO: Pay attention to ctx.
 	s := <-v.deleteStreams
 	if s == nil {
 		v.lock.Lock()
