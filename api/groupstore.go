@@ -41,9 +41,9 @@ type groupStore struct {
 }
 
 // NewGroupStore creates a GroupStore connection via grpc to the given address;
-// note that Startup() will have been called in the returned store, so calling
-// Startup() yourself is optional.
-func NewGroupStore(addr string, streams int, opts ...grpc.DialOption) (store.GroupStore, error) {
+// note that Startup(ctx) will have been called in the returned store, so
+// calling Startup(ctx) yourself is optional.
+func NewGroupStore(ctx context.Context, addr string, streams int, opts ...grpc.DialOption) (store.GroupStore, error) {
 	g := &groupStore{
 		addr: addr,
 		opts: opts,
@@ -54,10 +54,10 @@ func NewGroupStore(addr string, streams int, opts ...grpc.DialOption) (store.Gro
 	g.writeStreams = make(chan groupproto.GroupStore_StreamWriteClient, streams)
 	g.deleteStreams = make(chan groupproto.GroupStore_StreamDeleteClient, streams)
 	g.readGroupStreams = make(chan groupproto.GroupStore_StreamReadGroupClient, streams)
-	return g, g.Startup()
+	return g, g.Startup(ctx)
 }
 
-func (g *groupStore) Startup() error {
+func (g *groupStore) Startup(ctx context.Context) error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if g.conn != nil {
@@ -91,7 +91,7 @@ func (g *groupStore) Startup() error {
 	return nil
 }
 
-func (g *groupStore) Shutdown() error {
+func (g *groupStore) Shutdown(ctx context.Context) error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if g.conn == nil {
@@ -121,22 +121,22 @@ func (g *groupStore) Shutdown() error {
 	return nil
 }
 
-func (g *groupStore) EnableWrites() error {
+func (g *groupStore) EnableWrites(ctx context.Context) error {
 	return nil
 }
 
-func (g *groupStore) DisableWrites() error {
+func (g *groupStore) DisableWrites(ctx context.Context) error {
 	// TODO: I suppose we could implement toggling writes from this client;
 	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (g *groupStore) Flush() error {
+func (g *groupStore) Flush(ctx context.Context) error {
 	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (g *groupStore) AuditPass() error {
+func (g *groupStore) AuditPass(ctx context.Context) error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
@@ -148,19 +148,25 @@ func (*s) String() string {
 
 var noStats = &s{}
 
-func (g *groupStore) Stats(debug bool) (fmt.Stringer, error) {
+func (g *groupStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (g *groupStore) ValueCap() (uint32, error) {
+func (g *groupStore) ValueCap(ctx context.Context) (uint32, error) {
 	// TODO: This should be a (cached) value from the server. Servers don't
 	// change their value caps on the fly, so the cache can be kept until
 	// disconnect.
 	return 0xffffffff, nil
 }
 
-func (g *groupStore) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
-	s := <-g.lookupStreams
+func (g *groupStore) Lookup(ctx context.Context, parentKeyA, parentKeyB, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
+	var s groupproto.GroupStore_StreamLookupClient
+	select {
+	case s = <-g.lookupStreams:
+	case <-ctx.Done():
+		return 0, 0, ctx.Err()
+	}
+	// TODO: More wrt ctx.
 	if s == nil {
 		g.lock.Lock()
 		s, err = g.client.StreamLookup(context.Background())
@@ -192,7 +198,8 @@ func (g *groupStore) Lookup(parentKeyA, parentKeyB, childKeyA, childKeyB uint64)
 	return res.TimestampMicro, res.Length, err
 }
 
-func (g *groupStore) LookupGroup(parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
+func (g *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
+	// TODO: Pay attention to ctx.
 	var err error
 	s := <-g.lookupGroupStreams
 	if s == nil {
@@ -231,7 +238,8 @@ func (g *groupStore) LookupGroup(parentKeyA, parentKeyB uint64) ([]store.LookupG
 	return rv, err
 }
 
-func (g *groupStore) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+func (g *groupStore) Read(ctx context.Context, parentKeyA, parentKeyB, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+	// TODO: Pay attention to ctx.
 	rvalue = value
 	s := <-g.readStreams
 	if s == nil {
@@ -266,7 +274,8 @@ func (g *groupStore) Read(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, v
 	return res.TimestampMicro, rvalue, err
 }
 
-func (g *groupStore) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+func (g *groupStore) Write(ctx context.Context, parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+	// TODO: Pay attention to ctx.
 	s := <-g.writeStreams
 	if s == nil {
 		g.lock.Lock()
@@ -301,7 +310,8 @@ func (g *groupStore) Write(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, 
 	return res.TimestampMicro, err
 }
 
-func (g *groupStore) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+func (g *groupStore) Delete(ctx context.Context, parentKeyA, parentKeyB, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+	// TODO: Pay attention to ctx.
 	s := <-g.deleteStreams
 	if s == nil {
 		g.lock.Lock()
@@ -335,7 +345,8 @@ func (g *groupStore) Delete(parentKeyA, parentKeyB, childKeyA, childKeyB uint64,
 	return res.TimestampMicro, err
 }
 
-func (g *groupStore) ReadGroup(parentKeyA, parentKeyB uint64) ([]store.ReadGroupItem, error) {
+func (g *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.ReadGroupItem, error) {
+	// TODO: Pay attention to ctx.
 	var err error
 	s := <-g.readGroupStreams
 	if s == nil {

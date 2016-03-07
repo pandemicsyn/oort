@@ -112,7 +112,7 @@ func (s *OortValueStore) start() {
 			panic(err)
 		}
 	}(restartChan)
-	if err := s.vs.Startup(); err != nil {
+	if err := s.vs.Startup(context.Background()); err != nil {
 		panic(err)
 	}
 	go func(t *ring.TCPMsgRing) {
@@ -125,7 +125,7 @@ func (s *OortValueStore) start() {
 			time.Sleep(time.Minute)
 			tcpMsgRingStats = t.Stats(false)
 			log.Printf("%v\n", tcpMsgRingStats)
-			stats, err := s.vs.Stats(false)
+			stats, err := s.vs.Stats(context.Background(), false)
 			if err != nil {
 				log.Printf("stats error: %s\n", err)
 			} else {
@@ -145,7 +145,7 @@ func (s *OortValueStore) UpdateRing(ring ring.Ring) {
 func (s *OortValueStore) Write(ctx context.Context, req *valueproto.WriteRequest) (*valueproto.WriteResponse, error) {
 	resp := valueproto.WriteResponse{}
 	var err error
-	resp.TimestampMicro, err = s.vs.Write(req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
+	resp.TimestampMicro, err = s.vs.Write(ctx, req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 	if err != nil {
 		log.Println(err)
 		resp.Err = proto.TranslateError(err)
@@ -164,7 +164,7 @@ func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteSer
 			return err
 		}
 		resp.Reset()
-		resp.TimestampMicro, err = s.vs.Write(req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
+		resp.TimestampMicro, err = s.vs.Write(stream.Context(), req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 		if err != nil {
 			log.Println(err)
 			resp.Err = proto.TranslateError(err)
@@ -178,7 +178,7 @@ func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteSer
 func (s *OortValueStore) Read(ctx context.Context, req *valueproto.ReadRequest) (*valueproto.ReadResponse, error) {
 	resp := valueproto.ReadResponse{}
 	var err error
-	resp.TimestampMicro, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, resp.Value)
+	resp.TimestampMicro, resp.Value, err = s.vs.Read(ctx, req.KeyA, req.KeyB, resp.Value)
 	if err != nil {
 		resp.Err = proto.TranslateError(err)
 	}
@@ -197,7 +197,7 @@ func (s *OortValueStore) StreamRead(stream valueproto.ValueStore_StreamReadServe
 			return err
 		}
 		resp.Reset()
-		resp.TimestampMicro, resp.Value, err = s.vs.Read(req.KeyA, req.KeyB, resp.Value)
+		resp.TimestampMicro, resp.Value, err = s.vs.Read(stream.Context(), req.KeyA, req.KeyB, resp.Value)
 		if err != nil {
 			log.Println(err)
 			resp.Err = proto.TranslateError(err)
@@ -211,7 +211,7 @@ func (s *OortValueStore) StreamRead(stream valueproto.ValueStore_StreamReadServe
 func (s *OortValueStore) Lookup(ctx context.Context, req *valueproto.LookupRequest) (*valueproto.LookupResponse, error) {
 	resp := valueproto.LookupResponse{}
 	var err error
-	resp.TimestampMicro, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB)
+	resp.TimestampMicro, resp.Length, err = s.vs.Lookup(ctx, req.KeyA, req.KeyB)
 	if err != nil {
 		resp.Err = proto.TranslateError(err)
 	}
@@ -229,7 +229,7 @@ func (s *OortValueStore) StreamLookup(stream valueproto.ValueStore_StreamLookupS
 			return err
 		}
 		resp.Reset()
-		resp.TimestampMicro, resp.Length, err = s.vs.Lookup(req.KeyA, req.KeyB)
+		resp.TimestampMicro, resp.Length, err = s.vs.Lookup(stream.Context(), req.KeyA, req.KeyB)
 		if err != nil {
 			log.Println(err)
 			resp.Err = proto.TranslateError(err)
@@ -243,7 +243,7 @@ func (s *OortValueStore) StreamLookup(stream valueproto.ValueStore_StreamLookupS
 func (s *OortValueStore) Delete(ctx context.Context, req *valueproto.DeleteRequest) (*valueproto.DeleteResponse, error) {
 	resp := valueproto.DeleteResponse{}
 	var err error
-	resp.TimestampMicro, err = s.vs.Delete(req.KeyA, req.KeyB, req.TimestampMicro)
+	resp.TimestampMicro, err = s.vs.Delete(ctx, req.KeyA, req.KeyB, req.TimestampMicro)
 	if err != nil {
 		resp.Err = proto.TranslateError(err)
 	}
@@ -261,7 +261,7 @@ func (s *OortValueStore) StreamDelete(stream valueproto.ValueStore_StreamDeleteS
 			return err
 		}
 		resp.Reset()
-		resp.TimestampMicro, err = s.vs.Delete(req.KeyA, req.KeyB, req.TimestampMicro)
+		resp.TimestampMicro, err = s.vs.Delete(stream.Context(), req.KeyA, req.KeyB, req.TimestampMicro)
 		if err != nil {
 			log.Println(err)
 			resp.Err = proto.TranslateError(err)
@@ -281,7 +281,7 @@ func (s *OortValueStore) Start() {
 	s.start()
 	s.stopped = false
 	s.Unlock()
-	log.Println(s.vs.Stats(true))
+	log.Println(s.vs.Stats(context.Background(), true))
 	log.Println("ValueStore start complete")
 }
 
@@ -291,16 +291,16 @@ func (s *OortValueStore) Stop() {
 		s.Unlock()
 		return
 	}
-	s.vs.Shutdown()
+	s.vs.Shutdown(context.Background())
 	s.msgRing.Shutdown()
 	s.stopped = true
 	s.Unlock()
-	log.Println(s.vs.Stats(true))
+	log.Println(s.vs.Stats(context.Background(), true))
 	log.Println("ValueStore stop complete")
 }
 
 func (s *OortValueStore) Stats() []byte {
-	stats, err := s.vs.Stats(true)
+	stats, err := s.vs.Stats(context.Background(), true)
 	if err != nil {
 		log.Println(err)
 		return nil
