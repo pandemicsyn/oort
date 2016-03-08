@@ -4,476 +4,266 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
-	"github.com/gholt/ring"
 	"github.com/gholt/store"
+	"github.com/pandemicsyn/oort/api/proto"
+	pb "github.com/pandemicsyn/oort/api/valueproto"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
-type ReplValueStore struct {
-	logDebug                   func(string, ...interface{})
-	logDebugOn                 bool
-	addressIndex               int
-	valueCap                   int
-	concurrentRequestsPerStore int
-	streamsPerStore            int
-	failedConnectRetryDelay    int
+// TODO: I'm unsure on the handling of grpc errors; the ones grpc has, not that
+// it passes along. Should we disconnect everything on any grpc error, assuming
+// the transit is corrupted and therefore a reconnect required? Or can grpc
+// recover on its own? Also, should we retry requests that are idempotent?
+// Probably better to let the caller decide on the retry logic.
 
-	ringLock sync.RWMutex
-	ring     ring.Ring
+// TODO: Background() calls should be replaced with a "real" contexts with
+// deadlines, etc.
 
-	storesLock sync.RWMutex
-	stores     map[string]*replValueStoreAndTicketChan
+// TODO: I lock while asking the grpc client to make any stream. I'm not sure
+// if this is required. Needs testing.
+
+type valueStore struct {
+	lock          sync.Mutex
+	addr          string
+	opts          []grpc.DialOption
+	conn          *grpc.ClientConn
+	client        pb.ValueStoreClient
+	lookupStreams chan pb.ValueStore_StreamLookupClient
+	readStreams   chan pb.ValueStore_StreamReadClient
+	writeStreams  chan pb.ValueStore_StreamWriteClient
+	deleteStreams chan pb.ValueStore_StreamDeleteClient
 }
 
-type replValueStoreAndTicketChan struct {
-	store      store.ValueStore
-	ticketChan chan struct{}
+// NewValueStore creates a ValueStore connection via grpc to the given address;
+// note that Startup(ctx) will have been called in the returned store, so
+// calling Startup(ctx) yourself is optional.
+func NewValueStore(ctx context.Context, addr string, streams int, opts ...grpc.DialOption) (store.ValueStore, error) {
+	v := &valueStore{
+		addr: addr,
+		opts: opts,
+	}
+	v.lookupStreams = make(chan pb.ValueStore_StreamLookupClient, streams)
+	v.readStreams = make(chan pb.ValueStore_StreamReadClient, streams)
+	v.writeStreams = make(chan pb.ValueStore_StreamWriteClient, streams)
+	v.deleteStreams = make(chan pb.ValueStore_StreamDeleteClient, streams)
+	return v, v.Startup(ctx)
 }
 
-func NewReplValueStore(c *ReplValueStoreConfig) *ReplValueStore {
-	cfg := resolveReplValueStoreConfig(c)
-	rs := &ReplValueStore{
-		logDebug:                   cfg.LogDebug,
-		logDebugOn:                 cfg.LogDebug != nil,
-		addressIndex:               cfg.AddressIndex,
-		valueCap:                   int(cfg.ValueCap),
-		concurrentRequestsPerStore: cfg.ConcurrentRequestsPerStore,
-		streamsPerStore:            cfg.StreamsPerStore,
-		failedConnectRetryDelay:    cfg.FailedConnectRetryDelay,
+func (v *valueStore) Startup(ctx context.Context) error {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	if v.conn != nil {
+		return nil
 	}
-	if rs.logDebug == nil {
-		rs.logDebug = func(string, ...interface{}) {}
+	var err error
+	v.conn, err = grpc.Dial(v.addr, v.opts...)
+	if err != nil {
+		v.conn = nil
+		return err
 	}
-	return rs
-}
-
-func (rs *ReplValueStore) Ring() ring.Ring {
-	rs.ringLock.RLock()
-	r := rs.ring
-	rs.ringLock.RUnlock()
-	return r
-}
-
-func (rs *ReplValueStore) SetRing(r ring.Ring) {
-	rs.ringLock.Lock()
-	rs.ring = r
-	rs.ringLock.Unlock()
-	var currentAddrs map[string]struct{}
-	if r != nil {
-		nodes := r.Nodes()
-		currentAddrs = make(map[string]struct{}, len(nodes))
-		for _, n := range nodes {
-			currentAddrs[n.Address(rs.addressIndex)] = struct{}{}
-		}
+	v.client = pb.NewValueStoreClient(v.conn)
+	for i := cap(v.lookupStreams); i > 0; i-- {
+		v.lookupStreams <- nil
 	}
-	var shutdownAddrs []string
-	rs.storesLock.RLock()
-	for a := range rs.stores {
-		if _, ok := currentAddrs[a]; !ok {
-			shutdownAddrs = append(shutdownAddrs, a)
-		}
+	for i := cap(v.readStreams); i > 0; i-- {
+		v.readStreams <- nil
 	}
-	rs.storesLock.RUnlock()
-	if len(shutdownAddrs) > 0 {
-		shutdownStores := make([]*replValueStoreAndTicketChan, len(shutdownAddrs))
-		rs.storesLock.Lock()
-		for i, a := range shutdownAddrs {
-			shutdownStores[i] = rs.stores[a]
-			rs.stores[a] = nil
-		}
-		rs.storesLock.Unlock()
-		for i, s := range shutdownStores {
-			if err := s.store.Shutdown(context.Background()); err != nil {
-				rs.logDebug("replValueStore: error during shutdown of store %s: %s", shutdownAddrs[i], err)
-			}
-		}
+	for i := cap(v.writeStreams); i > 0; i-- {
+		v.writeStreams <- nil
 	}
-}
-
-func (rs *ReplValueStore) storesFor(ctx context.Context, keyA uint64) ([]*replValueStoreAndTicketChan, error) {
-	rs.ringLock.RLock()
-	r := rs.ring
-	rs.ringLock.RUnlock()
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
+	for i := cap(v.deleteStreams); i > 0; i-- {
+		v.deleteStreams <- nil
 	}
-	if r == nil {
-		return nil, noRingErr
-	}
-	ns := r.ResponsibleNodes(uint32(keyA >> (64 - r.PartitionBitCount())))
-	as := make([]string, len(ns))
-	for i, n := range ns {
-		as[i] = n.Address(rs.addressIndex)
-	}
-	ss := make([]*replValueStoreAndTicketChan, len(ns))
-	var someNil bool
-	rs.storesLock.RLock()
-	for i := len(ss) - 1; i >= 0; i-- {
-		ss[i] = rs.stores[as[i]]
-		if ss[i] == nil {
-			someNil = true
-		}
-	}
-	rs.storesLock.RUnlock()
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-	if someNil {
-		rs.storesLock.Lock()
-		select {
-		case <-ctx.Done():
-			rs.storesLock.Unlock()
-			return nil, ctx.Err()
-		default:
-		}
-		for i := len(ss) - 1; i >= 0; i-- {
-			if ss[i] == nil {
-				ss[i] = rs.stores[as[i]]
-				if ss[i] == nil {
-					var err error
-					tc := make(chan struct{}, rs.concurrentRequestsPerStore)
-					for i := cap(tc); i > 0; i-- {
-						tc <- struct{}{}
-					}
-					ss[i] = &replValueStoreAndTicketChan{ticketChan: tc}
-					// TODO: Right now, the following NewValueStore calls its
-					// Startup for you; but we'd like to undo that extra bit
-					// and make Startup a separate call; otherwise the ctx
-					// passed here is a little confusing.
-					ss[i].store, err = NewValueStore(ctx, as[i], rs.streamsPerStore)
-					if err != nil {
-						ss[i].store = errorValueStore(fmt.Sprintf("could not create store for %s: %s", as[i], err))
-						// Launch goroutine to clear out the error store after
-						// some time so a retry will occur.
-						go func(addr string) {
-							time.Sleep(time.Duration(rs.failedConnectRetryDelay) * time.Second)
-							rs.storesLock.Lock()
-							s := rs.stores[addr]
-							if s != nil {
-								if _, ok := s.store.(errorValueStore); ok {
-									rs.stores[addr] = nil
-								}
-							}
-							rs.storesLock.Unlock()
-						}(as[i])
-					}
-					rs.stores[as[i]] = ss[i]
-					select {
-					case <-ctx.Done():
-						rs.storesLock.Unlock()
-						return nil, ctx.Err()
-					default:
-					}
-				}
-			}
-		}
-		rs.storesLock.Unlock()
-	}
-	return ss, nil
-}
-
-func (rs *ReplValueStore) Startup(ctx context.Context) error {
 	return nil
 }
 
-func (rs *ReplValueStore) Shutdown(ctx context.Context) error {
+func (v *valueStore) Shutdown(ctx context.Context) error {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	if v.conn == nil {
+		return nil
+	}
+	v.conn.Close()
+	v.conn = nil
+	v.client = nil
+	for i := cap(v.lookupStreams); i > 0; i-- {
+		<-v.lookupStreams
+	}
+	for i := cap(v.readStreams); i > 0; i-- {
+		<-v.readStreams
+	}
+	for i := cap(v.writeStreams); i > 0; i-- {
+		<-v.writeStreams
+	}
+	for i := cap(v.deleteStreams); i > 0; i-- {
+		<-v.deleteStreams
+	}
 	return nil
 }
 
-func (rs *ReplValueStore) EnableWrites(ctx context.Context) error {
+func (v *valueStore) EnableWrites(ctx context.Context) error {
 	return nil
 }
 
-func (rs *ReplValueStore) DisableWrites(ctx context.Context) error {
+func (v *valueStore) DisableWrites(ctx context.Context) error {
+	// TODO: I suppose we could implement toggling writes from this client;
+	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (rs *ReplValueStore) Flush(ctx context.Context) error {
+func (v *valueStore) Flush(ctx context.Context) error {
+	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (rs *ReplValueStore) AuditPass(ctx context.Context) error {
+func (v *valueStore) AuditPass(ctx context.Context) error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
-func (rs *ReplValueStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
+func (v *valueStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (rs *ReplValueStore) ValueCap(ctx context.Context) (uint32, error) {
-	return uint32(rs.valueCap), nil
+func (v *valueStore) ValueCap(ctx context.Context) (uint32, error) {
+	// TODO: This should be a (cached) value from the server. Servers don't
+	// change their value caps on the fly, so the cache can be kept until
+	// disconnect.
+	return 0xffffffff, nil
 }
 
-func (rs *ReplValueStore) Lookup(ctx context.Context, keyA, keyB uint64) (int64, uint32, error) {
-	type rettype struct {
-		timestampMicro int64
-		length         uint32
-		err            ReplValueStoreError
+func (v *valueStore) Lookup(ctx context.Context, keyA, keyB uint64) (timestampmicro int64, length uint32, err error) {
+	// TODO: Pay attention to ctx.
+	s := <-v.lookupStreams
+	if s == nil {
+		v.lock.Lock()
+		s, err = v.client.StreamLookup(context.Background())
+		v.lock.Unlock()
+		if err != nil {
+			v.lookupStreams <- nil
+			return 0, 0, err
+		}
 	}
-	ec := make(chan *rettype)
-	stores, err := rs.storesFor(ctx, keyA)
-	if err != nil {
+	req := &pb.LookupRequest{
+		KeyA: keyA,
+		KeyB: keyB,
+	}
+	if err = s.Send(req); err != nil {
+		v.lookupStreams <- nil
 		return 0, 0, err
 	}
-	for _, s := range stores {
-		go func(s *replValueStoreAndTicketChan) {
-			ret := &rettype{}
-			var err error
-			select {
-			case <-s.ticketChan:
-				ret.timestampMicro, ret.length, err = s.store.Lookup(ctx, keyA, keyB)
-				s.ticketChan <- struct{}{}
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
-			if err != nil {
-				ret.err = &replValueStoreError{store: s.store, err: err}
-			}
-			ec <- ret
-		}(s)
+	res, err := s.Recv()
+	if err != nil {
+		v.lookupStreams <- nil
+		return 0, 0, err
 	}
-	var timestampMicro int64
-	var length uint32
-	var notFound bool
-	var errs ReplValueStoreErrorSlice
-	for _ = range stores {
-		ret := <-ec
-		if ret.timestampMicro > timestampMicro {
-			timestampMicro = ret.timestampMicro
-			length = ret.length
-			notFound = store.IsNotFound(ret.err)
-		}
-		if ret.err != nil {
-			errs = append(errs, ret.err)
-		}
+	if res.Err != "" {
+		err = proto.TranslateErrorString(res.Err)
 	}
-	if notFound {
-		nferrs := make(ReplValueStoreErrorNotFound, len(errs))
-		for i, v := range errs {
-			nferrs[i] = v
-		}
-		return timestampMicro, length, nferrs
-	}
-	if len(errs) < len(stores) {
-		for _, err := range errs {
-			rs.logDebug("replValueStore: error during lookup: %s", err)
-		}
-		errs = nil
-	}
-	return timestampMicro, length, errs
+	v.lookupStreams <- s
+	return res.TimestampMicro, res.Length, err
 }
 
-func (rs *ReplValueStore) Read(ctx context.Context, keyA uint64, keyB uint64, value []byte) (int64, []byte, error) {
-	type rettype struct {
-		timestampMicro int64
-		value          []byte
-		err            ReplValueStoreError
+func (v *valueStore) Read(ctx context.Context, keyA, keyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+	// TODO: Pay attention to ctx.
+	rvalue = value
+	s := <-v.readStreams
+	if s == nil {
+		v.lock.Lock()
+		s, err = v.client.StreamRead(context.Background())
+		v.lock.Unlock()
+		if err != nil {
+			v.readStreams <- nil
+			return 0, rvalue, err
+		}
 	}
-	ec := make(chan *rettype)
-	stores, err := rs.storesFor(ctx, keyA)
+	req := &pb.ReadRequest{
+		KeyA: keyA,
+		KeyB: keyB,
+	}
+	if err = s.Send(req); err != nil {
+		v.readStreams <- nil
+		return 0, rvalue, err
+	}
+	res, err := s.Recv()
 	if err != nil {
-		return 0, nil, err
+		v.readStreams <- nil
+		return 0, rvalue, err
 	}
-	for _, s := range stores {
-		go func(s *replValueStoreAndTicketChan) {
-			ret := &rettype{}
-			var err error
-			select {
-			case <-s.ticketChan:
-				ret.timestampMicro, ret.value, err = s.store.Read(ctx, keyA, keyB, nil)
-				s.ticketChan <- struct{}{}
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
-			if err != nil {
-				ret.err = &replValueStoreError{store: s.store, err: err}
-			}
-			ec <- ret
-		}(s)
+	rvalue = append(rvalue, res.Value...)
+	if res.Err != "" {
+		err = proto.TranslateErrorString(res.Err)
 	}
-	var timestampMicro int64
-	var rvalue []byte
-	var notFound bool
-	var errs ReplValueStoreErrorSlice
-	for _ = range stores {
-		ret := <-ec
-		if ret.timestampMicro > timestampMicro {
-			timestampMicro = ret.timestampMicro
-			rvalue = ret.value
-			notFound = store.IsNotFound(ret.err)
-		}
-		if ret.err != nil {
-			errs = append(errs, ret.err)
-		}
-	}
-	if value != nil && rvalue != nil {
-		rvalue = append(value, rvalue...)
-	}
-	if notFound {
-		nferrs := make(ReplValueStoreErrorNotFound, len(errs))
-		for i, v := range errs {
-			nferrs[i] = v
-		}
-		return timestampMicro, rvalue, nferrs
-	}
-	if len(errs) < len(stores) {
-		for _, err := range errs {
-			rs.logDebug("replValueStore: error during read: %s", err)
-		}
-		errs = nil
-	}
-	return timestampMicro, rvalue, errs
+	v.readStreams <- s
+	return res.TimestampMicro, rvalue, err
 }
 
-func (rs *ReplValueStore) Write(ctx context.Context, keyA uint64, keyB uint64, timestampMicro int64, value []byte) (int64, error) {
-	if len(value) > rs.valueCap {
-		return 0, fmt.Errorf("value length of %d > %d", len(value), rs.valueCap)
+func (v *valueStore) Write(ctx context.Context, keyA, keyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+	// TODO: Pay attention to ctx.
+	s := <-v.writeStreams
+	if s == nil {
+		v.lock.Lock()
+		s, err = v.client.StreamWrite(context.Background())
+		v.lock.Unlock()
+		if err != nil {
+			v.writeStreams <- nil
+			return 0, err
+		}
 	}
-	type rettype struct {
-		oldTimestampMicro int64
-		err               ReplValueStoreError
+	req := &pb.WriteRequest{
+		KeyA: keyA,
+		KeyB: keyB,
+
+		TimestampMicro: timestampmicro,
+		Value:          value,
 	}
-	ec := make(chan *rettype)
-	stores, err := rs.storesFor(ctx, keyA)
-	if err != nil {
+	if err = s.Send(req); err != nil {
+		v.writeStreams <- nil
 		return 0, err
 	}
-	for _, s := range stores {
-		go func(s *replValueStoreAndTicketChan) {
-			ret := &rettype{}
-			var err error
-			select {
-			case <-s.ticketChan:
-				ret.oldTimestampMicro, err = s.store.Write(ctx, keyA, keyB, timestampMicro, value)
-				s.ticketChan <- struct{}{}
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
-			if err != nil {
-				ret.err = &replValueStoreError{store: s.store, err: err}
-			}
-			ec <- ret
-		}(s)
-	}
-	var oldTimestampMicro int64
-	var errs ReplValueStoreErrorSlice
-	for _ = range stores {
-		ret := <-ec
-		if ret.err != nil {
-			errs = append(errs, ret.err)
-		} else if ret.oldTimestampMicro > oldTimestampMicro {
-			oldTimestampMicro = ret.oldTimestampMicro
-		}
-	}
-	if len(errs) < (len(stores)+1)/2 {
-		for _, err := range errs {
-			rs.logDebug("replValueStore: error during write: %s", err)
-		}
-		errs = nil
-	}
-	return oldTimestampMicro, errs
-}
-
-func (rs *ReplValueStore) Delete(ctx context.Context, keyA uint64, keyB uint64, timestampMicro int64) (int64, error) {
-	type rettype struct {
-		oldTimestampMicro int64
-		err               ReplValueStoreError
-	}
-	ec := make(chan *rettype)
-	stores, err := rs.storesFor(ctx, keyA)
+	res, err := s.Recv()
 	if err != nil {
+		v.writeStreams <- nil
 		return 0, err
 	}
-	for _, s := range stores {
-		go func(s *replValueStoreAndTicketChan) {
-			ret := &rettype{}
-			var err error
-			select {
-			case <-s.ticketChan:
-				ret.oldTimestampMicro, err = s.store.Delete(ctx, keyA, keyB, timestampMicro)
-				s.ticketChan <- struct{}{}
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
-			if err != nil {
-				ret.err = &replValueStoreError{store: s.store, err: err}
-			}
-			ec <- ret
-		}(s)
+	if res.Err != "" {
+		err = proto.TranslateErrorString(res.Err)
 	}
-	var oldTimestampMicro int64
-	var errs ReplValueStoreErrorSlice
-	for _ = range stores {
-		ret := <-ec
-		if ret.err != nil {
-			errs = append(errs, ret.err)
-		} else if ret.oldTimestampMicro > oldTimestampMicro {
-			oldTimestampMicro = ret.oldTimestampMicro
+	v.writeStreams <- s
+	return res.TimestampMicro, err
+}
+
+func (v *valueStore) Delete(ctx context.Context, keyA, keyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+	// TODO: Pay attention to ctx.
+	s := <-v.deleteStreams
+	if s == nil {
+		v.lock.Lock()
+		s, err = v.client.StreamDelete(context.Background())
+		v.lock.Unlock()
+		if err != nil {
+			v.deleteStreams <- nil
+			return 0, err
 		}
 	}
-	if len(errs) < (len(stores)+1)/2 {
-		for _, err := range errs {
-			rs.logDebug("replValueStore: error during delete: %s", err)
-		}
-		errs = nil
+	req := &pb.DeleteRequest{
+		KeyA: keyA,
+		KeyB: keyB,
+
+		TimestampMicro: timestampmicro,
 	}
-	return oldTimestampMicro, errs
-}
-
-type ReplValueStoreError interface {
-	error
-	Store() store.ValueStore
-	Err() error
-}
-
-type ReplValueStoreErrorSlice []ReplValueStoreError
-
-func (es ReplValueStoreErrorSlice) Error() string {
-	if len(es) <= 0 {
-		return "unknown error"
-	} else if len(es) == 1 {
-		return es[0].Error()
+	if err = s.Send(req); err != nil {
+		v.deleteStreams <- nil
+		return 0, err
 	}
-	return fmt.Sprintf("%d errors, first is: %s", len(es), es[0])
-}
-
-type ReplValueStoreErrorNotFound ReplValueStoreErrorSlice
-
-func (e ReplValueStoreErrorNotFound) Error() string {
-	if len(e) <= 0 {
-		return "unknown error"
-	} else if len(e) == 1 {
-		return e[0].Error()
+	res, err := s.Recv()
+	if err != nil {
+		v.deleteStreams <- nil
+		return 0, err
 	}
-	return fmt.Sprintf("%d errors, first is: %s", len(e), e[0])
-}
-
-func (e ReplValueStoreErrorNotFound) ErrorNotFound() string {
-	return e.Error()
-}
-
-type replValueStoreError struct {
-	store store.ValueStore
-	err   error
-}
-
-func (e *replValueStoreError) Error() string {
-	if e.err == nil {
-		return "unknown error"
+	if res.Err != "" {
+		err = proto.TranslateErrorString(res.Err)
 	}
-	return e.err.Error()
-}
-
-func (e *replValueStoreError) Store() store.ValueStore {
-	return e.store
-}
-
-func (e *replValueStoreError) Err() error {
-	return e.err
+	v.deleteStreams <- s
+	return res.TimestampMicro, err
 }
