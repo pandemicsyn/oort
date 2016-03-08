@@ -140,14 +140,6 @@ func (g *groupStore) AuditPass(ctx context.Context) error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
-type s struct{}
-
-func (*s) String() string {
-	return "stats not available with this client at this time"
-}
-
-var noStats = &s{}
-
 func (g *groupStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
