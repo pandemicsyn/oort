@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/gholt/store"
+	pb "github.com/pandemicsyn/oort/api/groupproto"
 	"github.com/pandemicsyn/oort/api/proto"
-	"github.com/pandemicsyn/oort/api/valueproto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -24,34 +24,37 @@ import (
 // TODO: I lock while asking the grpc client to make any stream. I'm not sure
 // if this is required. Needs testing.
 
-type valueStore struct {
+type groupStore struct {
 	lock          sync.Mutex
 	addr          string
 	opts          []grpc.DialOption
 	conn          *grpc.ClientConn
-	client        valueproto.ValueStoreClient
-	lookupStreams chan valueproto.ValueStore_StreamLookupClient
-	readStreams   chan valueproto.ValueStore_StreamReadClient
-	writeStreams  chan valueproto.ValueStore_StreamWriteClient
-	deleteStreams chan valueproto.ValueStore_StreamDeleteClient
+	client        pb.GroupStoreClient
+	lookupStreams chan pb.GroupStore_StreamLookupClient
+	readStreams   chan pb.GroupStore_StreamReadClient
+	writeStreams  chan pb.GroupStore_StreamWriteClient
+	deleteStreams chan pb.GroupStore_StreamDeleteClient
+
+	lookupGroupStreams chan pb.GroupStore_StreamLookupGroupClient
+	readGroupStreams   chan pb.GroupStore_StreamReadGroupClient
 }
 
-// NewValueStore creates a ValueStore connection via grpc to the given address;
+// NewGroupStore creates a GroupStore connection via grpc to the given address;
 // note that Startup(ctx) will have been called in the returned store, so
 // calling Startup(ctx) yourself is optional.
-func NewValueStore(ctx context.Context, addr string, streams int, opts ...grpc.DialOption) (store.ValueStore, error) {
-	v := &valueStore{
+func NewGroupStore(ctx context.Context, addr string, streams int, opts ...grpc.DialOption) (store.GroupStore, error) {
+	v := &groupStore{
 		addr: addr,
 		opts: opts,
 	}
-	v.lookupStreams = make(chan valueproto.ValueStore_StreamLookupClient, streams)
-	v.readStreams = make(chan valueproto.ValueStore_StreamReadClient, streams)
-	v.writeStreams = make(chan valueproto.ValueStore_StreamWriteClient, streams)
-	v.deleteStreams = make(chan valueproto.ValueStore_StreamDeleteClient, streams)
+	v.lookupStreams = make(chan pb.GroupStore_StreamLookupClient, streams)
+	v.readStreams = make(chan pb.GroupStore_StreamReadClient, streams)
+	v.writeStreams = make(chan pb.GroupStore_StreamWriteClient, streams)
+	v.deleteStreams = make(chan pb.GroupStore_StreamDeleteClient, streams)
 	return v, v.Startup(ctx)
 }
 
-func (v *valueStore) Startup(ctx context.Context) error {
+func (v *groupStore) Startup(ctx context.Context) error {
 	v.lock.Lock()
 	defer v.lock.Unlock()
 	if v.conn != nil {
@@ -63,7 +66,7 @@ func (v *valueStore) Startup(ctx context.Context) error {
 		v.conn = nil
 		return err
 	}
-	v.client = valueproto.NewValueStoreClient(v.conn)
+	v.client = pb.NewGroupStoreClient(v.conn)
 	for i := cap(v.lookupStreams); i > 0; i-- {
 		v.lookupStreams <- nil
 	}
@@ -79,7 +82,7 @@ func (v *valueStore) Startup(ctx context.Context) error {
 	return nil
 }
 
-func (v *valueStore) Shutdown(ctx context.Context) error {
+func (v *groupStore) Shutdown(ctx context.Context) error {
 	v.lock.Lock()
 	defer v.lock.Unlock()
 	if v.conn == nil {
@@ -103,37 +106,37 @@ func (v *valueStore) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (v *valueStore) EnableWrites(ctx context.Context) error {
+func (v *groupStore) EnableWrites(ctx context.Context) error {
 	return nil
 }
 
-func (v *valueStore) DisableWrites(ctx context.Context) error {
+func (v *groupStore) DisableWrites(ctx context.Context) error {
 	// TODO: I suppose we could implement toggling writes from this client;
 	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (v *valueStore) Flush(ctx context.Context) error {
+func (v *groupStore) Flush(ctx context.Context) error {
 	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (v *valueStore) AuditPass(ctx context.Context) error {
+func (v *groupStore) AuditPass(ctx context.Context) error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
-func (v *valueStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
+func (v *groupStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (v *valueStore) ValueCap(ctx context.Context) (uint32, error) {
+func (v *groupStore) ValueCap(ctx context.Context) (uint32, error) {
 	// TODO: This should be a (cached) value from the server. Servers don't
 	// change their value caps on the fly, so the cache can be kept until
 	// disconnect.
 	return 0xffffffff, nil
 }
 
-func (v *valueStore) Lookup(ctx context.Context, keyA, keyB uint64) (timestampmicro int64, length uint32, err error) {
+func (v *groupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
 	// TODO: Pay attention to ctx.
 	s := <-v.lookupStreams
 	if s == nil {
@@ -145,9 +148,12 @@ func (v *valueStore) Lookup(ctx context.Context, keyA, keyB uint64) (timestampmi
 			return 0, 0, err
 		}
 	}
-	req := &valueproto.LookupRequest{
+	req := &pb.LookupRequest{
 		KeyA: keyA,
 		KeyB: keyB,
+
+		ChildKeyA: childKeyA,
+		ChildKeyB: childKeyB,
 	}
 	if err = s.Send(req); err != nil {
 		v.lookupStreams <- nil
@@ -165,7 +171,7 @@ func (v *valueStore) Lookup(ctx context.Context, keyA, keyB uint64) (timestampmi
 	return res.TimestampMicro, res.Length, err
 }
 
-func (v *valueStore) Read(ctx context.Context, keyA, keyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+func (v *groupStore) Read(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
 	// TODO: Pay attention to ctx.
 	rvalue = value
 	s := <-v.readStreams
@@ -178,9 +184,12 @@ func (v *valueStore) Read(ctx context.Context, keyA, keyB uint64, value []byte) 
 			return 0, rvalue, err
 		}
 	}
-	req := &valueproto.ReadRequest{
+	req := &pb.ReadRequest{
 		KeyA: keyA,
 		KeyB: keyB,
+
+		ChildKeyA: childKeyA,
+		ChildKeyB: childKeyB,
 	}
 	if err = s.Send(req); err != nil {
 		v.readStreams <- nil
@@ -199,7 +208,7 @@ func (v *valueStore) Read(ctx context.Context, keyA, keyB uint64, value []byte) 
 	return res.TimestampMicro, rvalue, err
 }
 
-func (v *valueStore) Write(ctx context.Context, keyA, keyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+func (v *groupStore) Write(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
 	// TODO: Pay attention to ctx.
 	s := <-v.writeStreams
 	if s == nil {
@@ -211,9 +220,13 @@ func (v *valueStore) Write(ctx context.Context, keyA, keyB uint64, timestampmicr
 			return 0, err
 		}
 	}
-	req := &valueproto.WriteRequest{
-		KeyA:           keyA,
-		KeyB:           keyB,
+	req := &pb.WriteRequest{
+		KeyA: keyA,
+		KeyB: keyB,
+
+		ChildKeyA: childKeyA,
+		ChildKeyB: childKeyB,
+
 		TimestampMicro: timestampmicro,
 		Value:          value,
 	}
@@ -233,7 +246,7 @@ func (v *valueStore) Write(ctx context.Context, keyA, keyB uint64, timestampmicr
 	return res.TimestampMicro, err
 }
 
-func (v *valueStore) Delete(ctx context.Context, keyA, keyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+func (v *groupStore) Delete(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
 	// TODO: Pay attention to ctx.
 	s := <-v.deleteStreams
 	if s == nil {
@@ -245,9 +258,13 @@ func (v *valueStore) Delete(ctx context.Context, keyA, keyB uint64, timestampmic
 			return 0, err
 		}
 	}
-	req := &valueproto.DeleteRequest{
-		KeyA:           keyA,
-		KeyB:           keyB,
+	req := &pb.DeleteRequest{
+		KeyA: keyA,
+		KeyB: keyB,
+
+		ChildKeyA: childKeyA,
+		ChildKeyB: childKeyB,
+
 		TimestampMicro: timestampmicro,
 	}
 	if err = s.Send(req); err != nil {
@@ -264,4 +281,81 @@ func (v *valueStore) Delete(ctx context.Context, keyA, keyB uint64, timestampmic
 	}
 	v.deleteStreams <- s
 	return res.TimestampMicro, err
+}
+
+func (g *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
+	// TODO: Pay attention to ctx.
+	var err error
+	s := <-g.lookupGroupStreams
+	if s == nil {
+		g.lock.Lock()
+		s, err = g.client.StreamLookupGroup(context.Background())
+		g.lock.Unlock()
+		if err != nil {
+			g.lookupGroupStreams <- nil
+			return nil, err
+		}
+	}
+	req := &pb.LookupGroupRequest{
+		KeyA: parentKeyA,
+		KeyB: parentKeyB,
+	}
+	if err = s.Send(req); err != nil {
+		g.lookupGroupStreams <- nil
+		return nil, err
+	}
+	res, err := s.Recv()
+	if err != nil {
+		g.lookupGroupStreams <- nil
+		return nil, err
+	}
+	rv := make([]store.LookupGroupItem, len(res.Items))
+	for i, v := range res.Items {
+		rv[i].ChildKeyA = v.ChildKeyA
+		rv[i].ChildKeyB = v.ChildKeyB
+		rv[i].TimestampMicro = v.TimestampMicro
+		rv[i].Length = v.Length
+	}
+	if res.Err != "" {
+		err = proto.TranslateErrorString(res.Err)
+	}
+	g.lookupGroupStreams <- s
+	return rv, err
+}
+
+func (g *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.ReadGroupItem, error) {
+	// TODO: Pay attention to ctx.
+	var err error
+	s := <-g.readGroupStreams
+	if s == nil {
+		g.lock.Lock()
+		s, err = g.client.StreamReadGroup(context.Background())
+		g.lock.Unlock()
+		if err != nil {
+			g.readGroupStreams <- nil
+			return nil, err
+		}
+	}
+	req := &pb.ReadGroupRequest{
+		KeyA: parentKeyA,
+		KeyB: parentKeyB,
+	}
+	if err = s.Send(req); err != nil {
+		g.readGroupStreams <- nil
+		return nil, err
+	}
+	res, err := s.Recv()
+	if err != nil {
+		g.readGroupStreams <- nil
+		return nil, err
+	}
+	rv := make([]store.ReadGroupItem, len(res.Items))
+	for i, v := range res.Items {
+		rv[i].ChildKeyA = v.ChildKeyA
+		rv[i].ChildKeyB = v.ChildKeyB
+		rv[i].TimestampMicro = v.TimestampMicro
+		rv[i].Value = v.Value
+	}
+	g.readGroupStreams <- s
+	return rv, nil
 }
