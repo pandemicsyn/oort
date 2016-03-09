@@ -77,7 +77,10 @@ func (c *Client) printHelp() string {
 
 func (c *Client) parseValueCmd(line string) (string, error) {
 	if c.vconn == nil {
-		c.getValueClient()
+		err := c.getValueClient()
+		if err != nil {
+			return "", err
+		}
 	}
 	split := strings.SplitN(line, " ", 2)
 	cmd := split[0]
@@ -149,7 +152,10 @@ func (c *Client) parseValueCmd(line string) (string, error) {
 
 func (c *Client) parseGroupCmd(line string) (string, error) {
 	if c.gstore == nil {
-		c.getGroupClient()
+		err := c.getGroupClient()
+		if err != nil {
+			return "", err
+		}
 	}
 	split := strings.SplitN(line, " ", 2)
 	cmd := split[0]
@@ -288,7 +294,7 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 	return c.printHelp(), nil
 }
 
-func (c *Client) getValueClient() {
+func (c *Client) getValueClient() error {
 	var err error
 	var opts []grpc.DialOption
 	if *tls {
@@ -300,17 +306,18 @@ func (c *Client) getValueClient() {
 			CAFile:             *cafile,
 		})
 		if err != nil {
-			log.Fatalln("Cannot setup tls config:", err)
+			return fmt.Errorf("Unable to setup tls: %s", err.Error())
 		}
 		opts = append(opts, opt)
 	}
 	c.vstore, err = api.NewValueStore(context.Background(), c.vaddr, 10, opts...)
 	if err != nil {
-		log.Fatalln("Cannot create value store:", err)
+		return fmt.Errorf("Unable to setup value store: %s", err.Error())
 	}
+	return nil
 }
 
-func (c *Client) getGroupClient() {
+func (c *Client) getGroupClient() error {
 	var err error
 	var opts []grpc.DialOption
 	if *tls {
@@ -322,14 +329,15 @@ func (c *Client) getGroupClient() {
 			CAFile:             *cafile,
 		})
 		if err != nil {
-			log.Fatalln("Cannot setup tls config:", err)
+			return fmt.Errorf("Unable to setup tls: %s", err.Error())
 		}
 		opts = append(opts, opt)
 	}
 	c.gstore, err = api.NewGroupStore(context.Background(), c.gaddr, 10, opts...)
 	if err != nil {
-		log.Fatalln("Cannot create group store:", err)
+		return fmt.Errorf("Unable to setup group store: %s", err.Error())
 	}
+	return nil
 }
 
 type Client struct {
