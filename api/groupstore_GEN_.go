@@ -39,112 +39,151 @@ type groupStore struct {
 	readGroupStreams   chan pb.GroupStore_StreamReadGroupClient
 }
 
-// NewGroupStore creates a GroupStore connection via grpc to the given address;
-// note that Startup(ctx) will have been called in the returned store, so
-// calling Startup(ctx) yourself is optional.
-func NewGroupStore(ctx context.Context, addr string, streams int, opts ...grpc.DialOption) (store.GroupStore, error) {
-	v := &groupStore{
+// NewGroupStore creates a GroupStore connection via grpc to the given
+// address.
+func NewGroupStore(addr string, streams int, opts ...grpc.DialOption) (store.GroupStore, error) {
+	str := &groupStore{
 		addr: addr,
 		opts: opts,
 	}
-	v.lookupStreams = make(chan pb.GroupStore_StreamLookupClient, streams)
-	v.readStreams = make(chan pb.GroupStore_StreamReadClient, streams)
-	v.writeStreams = make(chan pb.GroupStore_StreamWriteClient, streams)
-	v.deleteStreams = make(chan pb.GroupStore_StreamDeleteClient, streams)
-	return v, v.Startup(ctx)
+	str.lookupStreams = make(chan pb.GroupStore_StreamLookupClient, streams)
+	str.readStreams = make(chan pb.GroupStore_StreamReadClient, streams)
+	str.writeStreams = make(chan pb.GroupStore_StreamWriteClient, streams)
+	str.deleteStreams = make(chan pb.GroupStore_StreamDeleteClient, streams)
+
+	str.lookupGroupStreams = make(chan pb.GroupStore_StreamLookupGroupClient, streams)
+	str.readGroupStreams = make(chan pb.GroupStore_StreamReadGroupClient, streams)
+
+	for i := cap(str.lookupStreams); i > 0; i-- {
+		str.lookupStreams <- nil
+	}
+	for i := cap(str.readStreams); i > 0; i-- {
+		str.readStreams <- nil
+	}
+	for i := cap(str.writeStreams); i > 0; i-- {
+		str.writeStreams <- nil
+	}
+	for i := cap(str.deleteStreams); i > 0; i-- {
+		str.deleteStreams <- nil
+	}
+
+	for i := cap(str.lookupGroupStreams); i > 0; i-- {
+		str.lookupGroupStreams <- nil
+	}
+	for i := cap(str.readGroupStreams); i > 0; i-- {
+		str.readGroupStreams <- nil
+	}
+
+	return str, nil
 }
 
-func (v *groupStore) Startup(ctx context.Context) error {
-	v.lock.Lock()
-	defer v.lock.Unlock()
-	if v.conn != nil {
+func (str *groupStore) Startup(ctx context.Context) error {
+	str.lock.Lock()
+	err := str.startup()
+	str.lock.Unlock()
+	return err
+}
+
+func (str *groupStore) startup() error {
+	if str.conn != nil {
 		return nil
 	}
 	var err error
-	v.conn, err = grpc.Dial(v.addr, v.opts...)
+	str.conn, err = grpc.Dial(str.addr, str.opts...)
 	if err != nil {
-		v.conn = nil
+		str.conn = nil
 		return err
 	}
-	v.client = pb.NewGroupStoreClient(v.conn)
-	for i := cap(v.lookupStreams); i > 0; i-- {
-		v.lookupStreams <- nil
-	}
-	for i := cap(v.readStreams); i > 0; i-- {
-		v.readStreams <- nil
-	}
-	for i := cap(v.writeStreams); i > 0; i-- {
-		v.writeStreams <- nil
-	}
-	for i := cap(v.deleteStreams); i > 0; i-- {
-		v.deleteStreams <- nil
-	}
+	str.client = pb.NewGroupStoreClient(str.conn)
 	return nil
 }
 
-func (v *groupStore) Shutdown(ctx context.Context) error {
-	v.lock.Lock()
-	defer v.lock.Unlock()
-	if v.conn == nil {
+func (str *groupStore) Shutdown(ctx context.Context) error {
+	str.lock.Lock()
+	defer str.lock.Unlock()
+	if str.conn == nil {
 		return nil
 	}
-	v.conn.Close()
-	v.conn = nil
-	v.client = nil
-	for i := cap(v.lookupStreams); i > 0; i-- {
-		<-v.lookupStreams
+	str.conn.Close()
+	str.conn = nil
+	str.client = nil
+	for i := cap(str.lookupStreams); i > 0; i-- {
+		<-str.lookupStreams
+		str.lookupStreams <- nil
 	}
-	for i := cap(v.readStreams); i > 0; i-- {
-		<-v.readStreams
+	for i := cap(str.readStreams); i > 0; i-- {
+		<-str.readStreams
+		str.readStreams <- nil
 	}
-	for i := cap(v.writeStreams); i > 0; i-- {
-		<-v.writeStreams
+	for i := cap(str.writeStreams); i > 0; i-- {
+		<-str.writeStreams
+		str.writeStreams <- nil
 	}
-	for i := cap(v.deleteStreams); i > 0; i-- {
-		<-v.deleteStreams
+	for i := cap(str.deleteStreams); i > 0; i-- {
+		<-str.deleteStreams
+		str.deleteStreams <- nil
 	}
 	return nil
 }
 
-func (v *groupStore) EnableWrites(ctx context.Context) error {
+func (str *groupStore) EnableWrites(ctx context.Context) error {
 	return nil
 }
 
-func (v *groupStore) DisableWrites(ctx context.Context) error {
+func (str *groupStore) DisableWrites(ctx context.Context) error {
 	// TODO: I suppose we could implement toggling writes from this client;
 	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (v *groupStore) Flush(ctx context.Context) error {
+func (str *groupStore) Flush(ctx context.Context) error {
 	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (v *groupStore) AuditPass(ctx context.Context) error {
+func (str *groupStore) AuditPass(ctx context.Context) error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
-func (v *groupStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
+func (str *groupStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (v *groupStore) ValueCap(ctx context.Context) (uint32, error) {
+func (str *groupStore) ValueCap(ctx context.Context) (uint32, error) {
 	// TODO: This should be a (cached) value from the server. Servers don't
 	// change their value caps on the fly, so the cache can be kept until
 	// disconnect.
 	return 0xffffffff, nil
 }
 
-func (v *groupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
+func (str *groupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
 	// TODO: Pay attention to ctx.
-	s := <-v.lookupStreams
+	var s pb.GroupStore_StreamLookupClient
+	select {
+	case s = <-str.lookupStreams:
+	case <-ctx.Done():
+		return 0, 0, ctx.Err()
+	}
 	if s == nil {
-		v.lock.Lock()
-		s, err = v.client.StreamLookup(context.Background())
-		v.lock.Unlock()
+		str.lock.Lock()
+		select {
+		case <-ctx.Done():
+			str.lock.Unlock()
+			str.lookupStreams <- nil
+			return 0, 0, ctx.Err()
+		default:
+		}
+		if str.client == nil {
+			if err := str.startup(); err != nil {
+				str.lock.Unlock()
+				str.lookupStreams <- nil
+				return 0, 0, err
+			}
+		}
+		s, err = str.client.StreamLookup(context.Background())
+		str.lock.Unlock()
 		if err != nil {
-			v.lookupStreams <- nil
+			str.lookupStreams <- nil
 			return 0, 0, err
 		}
 	}
@@ -156,31 +195,38 @@ func (v *groupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKeyA, c
 		ChildKeyB: childKeyB,
 	}
 	if err = s.Send(req); err != nil {
-		v.lookupStreams <- nil
+		str.lookupStreams <- nil
 		return 0, 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		v.lookupStreams <- nil
+		str.lookupStreams <- nil
 		return 0, 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	v.lookupStreams <- s
+	str.lookupStreams <- s
 	return res.TimestampMicro, res.Length, err
 }
 
-func (v *groupStore) Read(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
+func (str *groupStore) Read(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
 	// TODO: Pay attention to ctx.
 	rvalue = value
-	s := <-v.readStreams
+	s := <-str.readStreams
 	if s == nil {
-		v.lock.Lock()
-		s, err = v.client.StreamRead(context.Background())
-		v.lock.Unlock()
+		str.lock.Lock()
+		if str.client == nil {
+			if err := str.startup(); err != nil {
+				str.lock.Unlock()
+				str.readStreams <- nil
+				return 0, rvalue, err
+			}
+		}
+		s, err = str.client.StreamRead(context.Background())
+		str.lock.Unlock()
 		if err != nil {
-			v.readStreams <- nil
+			str.readStreams <- nil
 			return 0, rvalue, err
 		}
 	}
@@ -192,31 +238,38 @@ func (v *groupStore) Read(ctx context.Context, keyA, keyB uint64, childKeyA, chi
 		ChildKeyB: childKeyB,
 	}
 	if err = s.Send(req); err != nil {
-		v.readStreams <- nil
+		str.readStreams <- nil
 		return 0, rvalue, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		v.readStreams <- nil
+		str.readStreams <- nil
 		return 0, rvalue, err
 	}
 	rvalue = append(rvalue, res.Value...)
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	v.readStreams <- s
+	str.readStreams <- s
 	return res.TimestampMicro, rvalue, err
 }
 
-func (v *groupStore) Write(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
+func (str *groupStore) Write(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
 	// TODO: Pay attention to ctx.
-	s := <-v.writeStreams
+	s := <-str.writeStreams
 	if s == nil {
-		v.lock.Lock()
-		s, err = v.client.StreamWrite(context.Background())
-		v.lock.Unlock()
+		str.lock.Lock()
+		if str.client == nil {
+			if err := str.startup(); err != nil {
+				str.lock.Unlock()
+				str.writeStreams <- nil
+				return 0, err
+			}
+		}
+		s, err = str.client.StreamWrite(context.Background())
+		str.lock.Unlock()
 		if err != nil {
-			v.writeStreams <- nil
+			str.writeStreams <- nil
 			return 0, err
 		}
 	}
@@ -231,30 +284,37 @@ func (v *groupStore) Write(ctx context.Context, keyA, keyB uint64, childKeyA, ch
 		Value:          value,
 	}
 	if err = s.Send(req); err != nil {
-		v.writeStreams <- nil
+		str.writeStreams <- nil
 		return 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		v.writeStreams <- nil
+		str.writeStreams <- nil
 		return 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	v.writeStreams <- s
+	str.writeStreams <- s
 	return res.TimestampMicro, err
 }
 
-func (v *groupStore) Delete(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
+func (str *groupStore) Delete(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
 	// TODO: Pay attention to ctx.
-	s := <-v.deleteStreams
+	s := <-str.deleteStreams
 	if s == nil {
-		v.lock.Lock()
-		s, err = v.client.StreamDelete(context.Background())
-		v.lock.Unlock()
+		str.lock.Lock()
+		if str.client == nil {
+			if err := str.startup(); err != nil {
+				str.lock.Unlock()
+				str.deleteStreams <- nil
+				return 0, err
+			}
+		}
+		s, err = str.client.StreamDelete(context.Background())
+		str.lock.Unlock()
 		if err != nil {
-			v.deleteStreams <- nil
+			str.deleteStreams <- nil
 			return 0, err
 		}
 	}
@@ -268,31 +328,38 @@ func (v *groupStore) Delete(ctx context.Context, keyA, keyB uint64, childKeyA, c
 		TimestampMicro: timestampmicro,
 	}
 	if err = s.Send(req); err != nil {
-		v.deleteStreams <- nil
+		str.deleteStreams <- nil
 		return 0, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		v.deleteStreams <- nil
+		str.deleteStreams <- nil
 		return 0, err
 	}
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	v.deleteStreams <- s
+	str.deleteStreams <- s
 	return res.TimestampMicro, err
 }
 
-func (g *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
+func (str *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
 	// TODO: Pay attention to ctx.
 	var err error
-	s := <-g.lookupGroupStreams
+	s := <-str.lookupGroupStreams
 	if s == nil {
-		g.lock.Lock()
-		s, err = g.client.StreamLookupGroup(context.Background())
-		g.lock.Unlock()
+		str.lock.Lock()
+		if str.client == nil {
+			if err := str.startup(); err != nil {
+				str.lock.Unlock()
+				str.lookupGroupStreams <- nil
+				return nil, err
+			}
+		}
+		s, err = str.client.StreamLookupGroup(context.Background())
+		str.lock.Unlock()
 		if err != nil {
-			g.lookupGroupStreams <- nil
+			str.lookupGroupStreams <- nil
 			return nil, err
 		}
 	}
@@ -301,12 +368,12 @@ func (g *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uin
 		KeyB: parentKeyB,
 	}
 	if err = s.Send(req); err != nil {
-		g.lookupGroupStreams <- nil
+		str.lookupGroupStreams <- nil
 		return nil, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		g.lookupGroupStreams <- nil
+		str.lookupGroupStreams <- nil
 		return nil, err
 	}
 	rv := make([]store.LookupGroupItem, len(res.Items))
@@ -319,20 +386,27 @@ func (g *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uin
 	if res.Err != "" {
 		err = proto.TranslateErrorString(res.Err)
 	}
-	g.lookupGroupStreams <- s
+	str.lookupGroupStreams <- s
 	return rv, err
 }
 
-func (g *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.ReadGroupItem, error) {
+func (str *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.ReadGroupItem, error) {
 	// TODO: Pay attention to ctx.
 	var err error
-	s := <-g.readGroupStreams
+	s := <-str.readGroupStreams
 	if s == nil {
-		g.lock.Lock()
-		s, err = g.client.StreamReadGroup(context.Background())
-		g.lock.Unlock()
+		str.lock.Lock()
+		if str.client == nil {
+			if err := str.startup(); err != nil {
+				str.lock.Unlock()
+				str.readGroupStreams <- nil
+				return nil, err
+			}
+		}
+		s, err = str.client.StreamReadGroup(context.Background())
+		str.lock.Unlock()
 		if err != nil {
-			g.readGroupStreams <- nil
+			str.readGroupStreams <- nil
 			return nil, err
 		}
 	}
@@ -341,12 +415,12 @@ func (g *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint6
 		KeyB: parentKeyB,
 	}
 	if err = s.Send(req); err != nil {
-		g.readGroupStreams <- nil
+		str.readGroupStreams <- nil
 		return nil, err
 	}
 	res, err := s.Recv()
 	if err != nil {
-		g.readGroupStreams <- nil
+		str.readGroupStreams <- nil
 		return nil, err
 	}
 	rv := make([]store.ReadGroupItem, len(res.Items))
@@ -356,6 +430,6 @@ func (g *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint6
 		rv[i].TimestampMicro = v.TimestampMicro
 		rv[i].Value = v.Value
 	}
-	g.readGroupStreams <- s
+	str.readGroupStreams <- s
 	return rv, nil
 }
