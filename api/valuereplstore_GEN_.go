@@ -142,11 +142,7 @@ func (rs *ReplValueStore) storesFor(ctx context.Context, keyA uint64) ([]*replVa
 						tc <- struct{}{}
 					}
 					ss[i] = &replValueStoreAndTicketChan{ticketChan: tc}
-					// TODO: Right now, the following NewValueStore calls its
-					// Startup for you; but we'd like to undo that extra bit
-					// and make Startup a separate call; otherwise the ctx
-					// passed here is a little confusing.
-					ss[i].store, err = NewValueStore(ctx, as[i], rs.streamsPerStore)
+					ss[i].store, err = NewValueStore(as[i], rs.streamsPerStore)
 					if err != nil {
 						ss[i].store = errorValueStore(fmt.Sprintf("could not create store for %s: %s", as[i], err))
 						// Launch goroutine to clear out the error store after

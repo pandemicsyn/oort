@@ -304,7 +304,7 @@ func (c *Client) getValueClient() {
 		}
 		opts = append(opts, opt)
 	}
-	c.vstore, err = api.NewValueStore(context.Background(), c.vaddr, 10, opts...)
+	c.vstore, err = api.NewValueStore(c.vaddr, 10, opts...)
 	if err != nil {
 		log.Fatalln("Cannot create value store:", err)
 	}
@@ -326,7 +326,7 @@ func (c *Client) getGroupClient() {
 		}
 		opts = append(opts, opt)
 	}
-	c.gstore, err = api.NewGroupStore(context.Background(), c.gaddr, 10, opts...)
+	c.gstore, err = api.NewGroupStore(c.gaddr, 10, opts...)
 	if err != nil {
 		log.Fatalln("Cannot create group store:", err)
 	}
