@@ -310,7 +310,7 @@ func (c *Client) getValueClient() error {
 		}
 		opts = append(opts, opt)
 	}
-	c.vstore, err = api.NewValueStore(context.Background(), c.vaddr, 10, opts...)
+	c.vstore, err = api.NewValueStore(c.vaddr, 10, opts...)
 	if err != nil {
 		return fmt.Errorf("Unable to setup value store: %s", err.Error())
 	}
@@ -333,7 +333,7 @@ func (c *Client) getGroupClient() error {
 		}
 		opts = append(opts, opt)
 	}
-	c.gstore, err = api.NewGroupStore(context.Background(), c.gaddr, 10, opts...)
+	c.gstore, err = api.NewGroupStore(c.gaddr, 10, opts...)
 	if err != nil {
 		return fmt.Errorf("Unable to setup group store: %s", err.Error())
 	}
