@@ -9,6 +9,7 @@ import (
 	"github.com/gholt/ring"
 	"github.com/gholt/store"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type ReplGroupStore struct {
@@ -17,8 +18,8 @@ type ReplGroupStore struct {
 	addressIndex               int
 	valueCap                   int
 	concurrentRequestsPerStore int
-	streamsPerStore            int
 	failedConnectRetryDelay    int
+	grpcOpts                   []grpc.DialOption
 
 	ringLock sync.RWMutex
 	ring     ring.Ring
@@ -40,7 +41,6 @@ func NewReplGroupStore(c *ReplGroupStoreConfig) *ReplGroupStore {
 		addressIndex:               cfg.AddressIndex,
 		valueCap:                   int(cfg.ValueCap),
 		concurrentRequestsPerStore: cfg.ConcurrentRequestsPerStore,
-		streamsPerStore:            cfg.StreamsPerStore,
 		failedConnectRetryDelay:    cfg.FailedConnectRetryDelay,
 	}
 	if rs.logDebug == nil {
@@ -142,7 +142,7 @@ func (rs *ReplGroupStore) storesFor(ctx context.Context, keyA uint64) ([]*replGr
 						tc <- struct{}{}
 					}
 					ss[i] = &replGroupStoreAndTicketChan{ticketChan: tc}
-					ss[i].store, err = NewGroupStore(as[i], rs.streamsPerStore)
+					ss[i].store, err = NewGroupStore(as[i], rs.concurrentRequestsPerStore, rs.grpcOpts...)
 					if err != nil {
 						ss[i].store = errorGroupStore(fmt.Sprintf("could not create store for %s: %s", as[i], err))
 						// Launch goroutine to clear out the error store after
