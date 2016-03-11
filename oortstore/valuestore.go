@@ -143,7 +143,7 @@ func (s *OortValueStore) UpdateRing(ring ring.Ring) {
 }
 
 func (s *OortValueStore) Write(ctx context.Context, req *valueproto.WriteRequest) (*valueproto.WriteResponse, error) {
-	resp := valueproto.WriteResponse{}
+	resp := valueproto.WriteResponse{Rpcid: req.Rpcid}
 	var err error
 	resp.TimestampMicro, err = s.vs.Write(ctx, req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 	if err != nil {
@@ -164,6 +164,7 @@ func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteSer
 			return err
 		}
 		resp.Reset()
+		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, err = s.vs.Write(stream.Context(), req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 		if err != nil {
 			log.Println(err)
@@ -176,7 +177,7 @@ func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteSer
 }
 
 func (s *OortValueStore) Read(ctx context.Context, req *valueproto.ReadRequest) (*valueproto.ReadResponse, error) {
-	resp := valueproto.ReadResponse{}
+	resp := valueproto.ReadResponse{Rpcid: req.Rpcid}
 	var err error
 	resp.TimestampMicro, resp.Value, err = s.vs.Read(ctx, req.KeyA, req.KeyB, resp.Value)
 	if err != nil {
@@ -197,6 +198,7 @@ func (s *OortValueStore) StreamRead(stream valueproto.ValueStore_StreamReadServe
 			return err
 		}
 		resp.Reset()
+		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, resp.Value, err = s.vs.Read(stream.Context(), req.KeyA, req.KeyB, resp.Value)
 		if err != nil {
 			log.Println(err)
@@ -209,7 +211,7 @@ func (s *OortValueStore) StreamRead(stream valueproto.ValueStore_StreamReadServe
 }
 
 func (s *OortValueStore) Lookup(ctx context.Context, req *valueproto.LookupRequest) (*valueproto.LookupResponse, error) {
-	resp := valueproto.LookupResponse{}
+	resp := valueproto.LookupResponse{Rpcid: req.Rpcid}
 	var err error
 	resp.TimestampMicro, resp.Length, err = s.vs.Lookup(ctx, req.KeyA, req.KeyB)
 	if err != nil {
@@ -229,6 +231,7 @@ func (s *OortValueStore) StreamLookup(stream valueproto.ValueStore_StreamLookupS
 			return err
 		}
 		resp.Reset()
+		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, resp.Length, err = s.vs.Lookup(stream.Context(), req.KeyA, req.KeyB)
 		if err != nil {
 			log.Println(err)
@@ -241,7 +244,7 @@ func (s *OortValueStore) StreamLookup(stream valueproto.ValueStore_StreamLookupS
 }
 
 func (s *OortValueStore) Delete(ctx context.Context, req *valueproto.DeleteRequest) (*valueproto.DeleteResponse, error) {
-	resp := valueproto.DeleteResponse{}
+	resp := valueproto.DeleteResponse{Rpcid: req.Rpcid}
 	var err error
 	resp.TimestampMicro, err = s.vs.Delete(ctx, req.KeyA, req.KeyB, req.TimestampMicro)
 	if err != nil {
@@ -261,6 +264,7 @@ func (s *OortValueStore) StreamDelete(stream valueproto.ValueStore_StreamDeleteS
 			return err
 		}
 		resp.Reset()
+		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, err = s.vs.Delete(stream.Context(), req.KeyA, req.KeyB, req.TimestampMicro)
 		if err != nil {
 			log.Println(err)

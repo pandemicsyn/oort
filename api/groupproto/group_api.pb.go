@@ -51,12 +51,13 @@ func (m *EmptyMsg) String() string { return proto.CompactTextString(m) }
 func (*EmptyMsg) ProtoMessage()    {}
 
 type WriteRequest struct {
-	KeyA           uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
-	KeyB           uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
-	ChildKeyA      uint64 `protobuf:"varint,3,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
-	ChildKeyB      uint64 `protobuf:"varint,4,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
-	Value          []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
-	TimestampMicro int64  `protobuf:"varint,6,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	KeyA           uint64 `protobuf:"varint,2,opt,name=keyA,proto3" json:"keyA,omitempty"`
+	KeyB           uint64 `protobuf:"varint,3,opt,name=keyB,proto3" json:"keyB,omitempty"`
+	ChildKeyA      uint64 `protobuf:"varint,4,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
+	ChildKeyB      uint64 `protobuf:"varint,5,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
+	Value          []byte `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,7,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
 }
 
 func (m *WriteRequest) Reset()         { *m = WriteRequest{} }
@@ -64,10 +65,11 @@ func (m *WriteRequest) String() string { return proto.CompactTextString(m) }
 func (*WriteRequest) ProtoMessage()    {}
 
 type LookupRequest struct {
-	KeyA      uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
-	KeyB      uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
-	ChildKeyA uint64 `protobuf:"varint,3,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
-	ChildKeyB uint64 `protobuf:"varint,4,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
+	Rpcid     uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	KeyA      uint64 `protobuf:"varint,2,opt,name=keyA,proto3" json:"keyA,omitempty"`
+	KeyB      uint64 `protobuf:"varint,3,opt,name=keyB,proto3" json:"keyB,omitempty"`
+	ChildKeyA uint64 `protobuf:"varint,4,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
+	ChildKeyB uint64 `protobuf:"varint,5,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
 }
 
 func (m *LookupRequest) Reset()         { *m = LookupRequest{} }
@@ -75,10 +77,11 @@ func (m *LookupRequest) String() string { return proto.CompactTextString(m) }
 func (*LookupRequest) ProtoMessage()    {}
 
 type ReadRequest struct {
-	KeyA      uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
-	KeyB      uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
-	ChildKeyA uint64 `protobuf:"varint,3,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
-	ChildKeyB uint64 `protobuf:"varint,4,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
+	Rpcid     uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	KeyA      uint64 `protobuf:"varint,2,opt,name=keyA,proto3" json:"keyA,omitempty"`
+	KeyB      uint64 `protobuf:"varint,3,opt,name=keyB,proto3" json:"keyB,omitempty"`
+	ChildKeyA uint64 `protobuf:"varint,4,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
+	ChildKeyB uint64 `protobuf:"varint,5,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
 }
 
 func (m *ReadRequest) Reset()         { *m = ReadRequest{} }
@@ -86,11 +89,12 @@ func (m *ReadRequest) String() string { return proto.CompactTextString(m) }
 func (*ReadRequest) ProtoMessage()    {}
 
 type DeleteRequest struct {
-	KeyA           uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
-	KeyB           uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
-	ChildKeyA      uint64 `protobuf:"varint,3,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
-	ChildKeyB      uint64 `protobuf:"varint,4,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
-	TimestampMicro int64  `protobuf:"varint,5,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	KeyA           uint64 `protobuf:"varint,2,opt,name=keyA,proto3" json:"keyA,omitempty"`
+	KeyB           uint64 `protobuf:"varint,3,opt,name=keyB,proto3" json:"keyB,omitempty"`
+	ChildKeyA      uint64 `protobuf:"varint,4,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
+	ChildKeyB      uint64 `protobuf:"varint,5,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,6,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
 }
 
 func (m *DeleteRequest) Reset()         { *m = DeleteRequest{} }
@@ -98,8 +102,9 @@ func (m *DeleteRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteRequest) ProtoMessage()    {}
 
 type LookupGroupRequest struct {
-	KeyA uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
-	KeyB uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
+	Rpcid uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	KeyA  uint64 `protobuf:"varint,2,opt,name=keyA,proto3" json:"keyA,omitempty"`
+	KeyB  uint64 `protobuf:"varint,3,opt,name=keyB,proto3" json:"keyB,omitempty"`
 }
 
 func (m *LookupGroupRequest) Reset()         { *m = LookupGroupRequest{} }
@@ -107,8 +112,9 @@ func (m *LookupGroupRequest) String() string { return proto.CompactTextString(m)
 func (*LookupGroupRequest) ProtoMessage()    {}
 
 type ReadGroupRequest struct {
-	KeyA uint64 `protobuf:"varint,1,opt,name=keyA,proto3" json:"keyA,omitempty"`
-	KeyB uint64 `protobuf:"varint,2,opt,name=keyB,proto3" json:"keyB,omitempty"`
+	Rpcid uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	KeyA  uint64 `protobuf:"varint,2,opt,name=keyA,proto3" json:"keyA,omitempty"`
+	KeyB  uint64 `protobuf:"varint,3,opt,name=keyB,proto3" json:"keyB,omitempty"`
 }
 
 func (m *ReadGroupRequest) Reset()         { *m = ReadGroupRequest{} }
@@ -116,8 +122,9 @@ func (m *ReadGroupRequest) String() string { return proto.CompactTextString(m) }
 func (*ReadGroupRequest) ProtoMessage()    {}
 
 type WriteResponse struct {
-	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
-	Err            string `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,2,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Err            string `protobuf:"bytes,3,opt,name=err,proto3" json:"err,omitempty"`
 }
 
 func (m *WriteResponse) Reset()         { *m = WriteResponse{} }
@@ -125,9 +132,10 @@ func (m *WriteResponse) String() string { return proto.CompactTextString(m) }
 func (*WriteResponse) ProtoMessage()    {}
 
 type LookupResponse struct {
-	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
-	Length         uint32 `protobuf:"varint,2,opt,name=length,proto3" json:"length,omitempty"`
-	Err            string `protobuf:"bytes,3,opt,name=err,proto3" json:"err,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,2,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Length         uint32 `protobuf:"varint,3,opt,name=length,proto3" json:"length,omitempty"`
+	Err            string `protobuf:"bytes,4,opt,name=err,proto3" json:"err,omitempty"`
 }
 
 func (m *LookupResponse) Reset()         { *m = LookupResponse{} }
@@ -135,8 +143,9 @@ func (m *LookupResponse) String() string { return proto.CompactTextString(m) }
 func (*LookupResponse) ProtoMessage()    {}
 
 type LookupGroupResponse struct {
-	Items []*LookupGroupItem `protobuf:"bytes,1,rep,name=items" json:"items,omitempty"`
-	Err   string             `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
+	Rpcid uint32             `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	Items []*LookupGroupItem `protobuf:"bytes,2,rep,name=items" json:"items,omitempty"`
+	Err   string             `protobuf:"bytes,3,opt,name=err,proto3" json:"err,omitempty"`
 }
 
 func (m *LookupGroupResponse) Reset()         { *m = LookupGroupResponse{} }
@@ -151,10 +160,11 @@ func (m *LookupGroupResponse) GetItems() []*LookupGroupItem {
 }
 
 type LookupGroupItem struct {
-	ChildKeyA      uint64 `protobuf:"varint,1,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
-	ChildKeyB      uint64 `protobuf:"varint,2,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
-	TimestampMicro int64  `protobuf:"varint,3,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
-	Length         uint32 `protobuf:"varint,4,opt,name=length,proto3" json:"length,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	ChildKeyA      uint64 `protobuf:"varint,2,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
+	ChildKeyB      uint64 `protobuf:"varint,3,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,4,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Length         uint32 `protobuf:"varint,5,opt,name=length,proto3" json:"length,omitempty"`
 }
 
 func (m *LookupGroupItem) Reset()         { *m = LookupGroupItem{} }
@@ -162,8 +172,9 @@ func (m *LookupGroupItem) String() string { return proto.CompactTextString(m) }
 func (*LookupGroupItem) ProtoMessage()    {}
 
 type ReadGroupResponse struct {
-	Items []*ReadGroupItem `protobuf:"bytes,1,rep,name=items" json:"items,omitempty"`
-	Err   string           `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
+	Rpcid uint32           `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	Items []*ReadGroupItem `protobuf:"bytes,2,rep,name=items" json:"items,omitempty"`
+	Err   string           `protobuf:"bytes,3,opt,name=err,proto3" json:"err,omitempty"`
 }
 
 func (m *ReadGroupResponse) Reset()         { *m = ReadGroupResponse{} }
@@ -178,10 +189,11 @@ func (m *ReadGroupResponse) GetItems() []*ReadGroupItem {
 }
 
 type ReadGroupItem struct {
-	ChildKeyA      uint64 `protobuf:"varint,1,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
-	ChildKeyB      uint64 `protobuf:"varint,2,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
-	TimestampMicro int64  `protobuf:"varint,3,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
-	Value          []byte `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	ChildKeyA      uint64 `protobuf:"varint,2,opt,name=childKeyA,proto3" json:"childKeyA,omitempty"`
+	ChildKeyB      uint64 `protobuf:"varint,3,opt,name=childKeyB,proto3" json:"childKeyB,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,4,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Value          []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
 }
 
 func (m *ReadGroupItem) Reset()         { *m = ReadGroupItem{} }
@@ -189,9 +201,10 @@ func (m *ReadGroupItem) String() string { return proto.CompactTextString(m) }
 func (*ReadGroupItem) ProtoMessage()    {}
 
 type ReadResponse struct {
-	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
-	Value          []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	Err            string `protobuf:"bytes,3,opt,name=err,proto3" json:"err,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,2,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Value          []byte `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	Err            string `protobuf:"bytes,4,opt,name=err,proto3" json:"err,omitempty"`
 }
 
 func (m *ReadResponse) Reset()         { *m = ReadResponse{} }
@@ -199,8 +212,9 @@ func (m *ReadResponse) String() string { return proto.CompactTextString(m) }
 func (*ReadResponse) ProtoMessage()    {}
 
 type DeleteResponse struct {
-	TimestampMicro int64  `protobuf:"varint,1,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
-	Err            string `protobuf:"bytes,2,opt,name=err,proto3" json:"err,omitempty"`
+	Rpcid          uint32 `protobuf:"varint,1,opt,name=rpcid,proto3" json:"rpcid,omitempty"`
+	TimestampMicro int64  `protobuf:"varint,2,opt,name=timestampMicro,proto3" json:"timestampMicro,omitempty"`
+	Err            string `protobuf:"bytes,3,opt,name=err,proto3" json:"err,omitempty"`
 }
 
 func (m *DeleteResponse) Reset()         { *m = DeleteResponse{} }
@@ -845,36 +859,41 @@ func (m *WriteRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.KeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.KeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyA))
 	}
 	if m.KeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyB))
 	}
 	if m.ChildKeyA != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyA))
 	}
 	if m.ChildKeyB != 0 {
-		data[i] = 0x20
+		data[i] = 0x28
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyB))
 	}
 	if m.Value != nil {
 		if len(m.Value) > 0 {
-			data[i] = 0x2a
+			data[i] = 0x32
 			i++
 			i = encodeVarintGroupApi(data, i, uint64(len(m.Value)))
 			i += copy(data[i:], m.Value)
 		}
 	}
 	if m.TimestampMicro != 0 {
-		data[i] = 0x30
+		data[i] = 0x38
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
@@ -896,23 +915,28 @@ func (m *LookupRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.KeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.KeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyA))
 	}
 	if m.KeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyB))
 	}
 	if m.ChildKeyA != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyA))
 	}
 	if m.ChildKeyB != 0 {
-		data[i] = 0x20
+		data[i] = 0x28
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyB))
 	}
@@ -934,23 +958,28 @@ func (m *ReadRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.KeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.KeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyA))
 	}
 	if m.KeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyB))
 	}
 	if m.ChildKeyA != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyA))
 	}
 	if m.ChildKeyB != 0 {
-		data[i] = 0x20
+		data[i] = 0x28
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyB))
 	}
@@ -972,28 +1001,33 @@ func (m *DeleteRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.KeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.KeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyA))
 	}
 	if m.KeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyB))
 	}
 	if m.ChildKeyA != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyA))
 	}
 	if m.ChildKeyB != 0 {
-		data[i] = 0x20
+		data[i] = 0x28
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyB))
 	}
 	if m.TimestampMicro != 0 {
-		data[i] = 0x28
+		data[i] = 0x30
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
@@ -1015,13 +1049,18 @@ func (m *LookupGroupRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.KeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.KeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyA))
 	}
 	if m.KeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyB))
 	}
@@ -1043,13 +1082,18 @@ func (m *ReadGroupRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.KeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.KeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyA))
 	}
 	if m.KeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.KeyB))
 	}
@@ -1071,13 +1115,18 @@ func (m *WriteResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.TimestampMicro != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.TimestampMicro != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
 	if len(m.Err) > 0 {
-		data[i] = 0x12
+		data[i] = 0x1a
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(len(m.Err)))
 		i += copy(data[i:], m.Err)
@@ -1100,18 +1149,23 @@ func (m *LookupResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.TimestampMicro != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.TimestampMicro != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
 	if m.Length != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.Length))
 	}
 	if len(m.Err) > 0 {
-		data[i] = 0x1a
+		data[i] = 0x22
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(len(m.Err)))
 		i += copy(data[i:], m.Err)
@@ -1134,9 +1188,14 @@ func (m *LookupGroupResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
 	if len(m.Items) > 0 {
 		for _, msg := range m.Items {
-			data[i] = 0xa
+			data[i] = 0x12
 			i++
 			i = encodeVarintGroupApi(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -1147,7 +1206,7 @@ func (m *LookupGroupResponse) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if len(m.Err) > 0 {
-		data[i] = 0x12
+		data[i] = 0x1a
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(len(m.Err)))
 		i += copy(data[i:], m.Err)
@@ -1170,23 +1229,28 @@ func (m *LookupGroupItem) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.ChildKeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.ChildKeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyA))
 	}
 	if m.ChildKeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyB))
 	}
 	if m.TimestampMicro != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
 	if m.Length != 0 {
-		data[i] = 0x20
+		data[i] = 0x28
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.Length))
 	}
@@ -1208,9 +1272,14 @@ func (m *ReadGroupResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
 	if len(m.Items) > 0 {
 		for _, msg := range m.Items {
-			data[i] = 0xa
+			data[i] = 0x12
 			i++
 			i = encodeVarintGroupApi(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -1221,7 +1290,7 @@ func (m *ReadGroupResponse) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if len(m.Err) > 0 {
-		data[i] = 0x12
+		data[i] = 0x1a
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(len(m.Err)))
 		i += copy(data[i:], m.Err)
@@ -1244,24 +1313,29 @@ func (m *ReadGroupItem) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.ChildKeyA != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.ChildKeyA != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyA))
 	}
 	if m.ChildKeyB != 0 {
-		data[i] = 0x10
+		data[i] = 0x18
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.ChildKeyB))
 	}
 	if m.TimestampMicro != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
 	if m.Value != nil {
 		if len(m.Value) > 0 {
-			data[i] = 0x22
+			data[i] = 0x2a
 			i++
 			i = encodeVarintGroupApi(data, i, uint64(len(m.Value)))
 			i += copy(data[i:], m.Value)
@@ -1285,21 +1359,26 @@ func (m *ReadResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.TimestampMicro != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.TimestampMicro != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
 	if m.Value != nil {
 		if len(m.Value) > 0 {
-			data[i] = 0x12
+			data[i] = 0x1a
 			i++
 			i = encodeVarintGroupApi(data, i, uint64(len(m.Value)))
 			i += copy(data[i:], m.Value)
 		}
 	}
 	if len(m.Err) > 0 {
-		data[i] = 0x1a
+		data[i] = 0x22
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(len(m.Err)))
 		i += copy(data[i:], m.Err)
@@ -1322,13 +1401,18 @@ func (m *DeleteResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.TimestampMicro != 0 {
+	if m.Rpcid != 0 {
 		data[i] = 0x8
+		i++
+		i = encodeVarintGroupApi(data, i, uint64(m.Rpcid))
+	}
+	if m.TimestampMicro != 0 {
+		data[i] = 0x10
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(m.TimestampMicro))
 	}
 	if len(m.Err) > 0 {
-		data[i] = 0x12
+		data[i] = 0x1a
 		i++
 		i = encodeVarintGroupApi(data, i, uint64(len(m.Err)))
 		i += copy(data[i:], m.Err)
@@ -1372,6 +1456,9 @@ func (m *EmptyMsg) Size() (n int) {
 func (m *WriteRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.KeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.KeyA))
 	}
@@ -1399,6 +1486,9 @@ func (m *WriteRequest) Size() (n int) {
 func (m *LookupRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.KeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.KeyA))
 	}
@@ -1417,6 +1507,9 @@ func (m *LookupRequest) Size() (n int) {
 func (m *ReadRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.KeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.KeyA))
 	}
@@ -1435,6 +1528,9 @@ func (m *ReadRequest) Size() (n int) {
 func (m *DeleteRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.KeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.KeyA))
 	}
@@ -1456,6 +1552,9 @@ func (m *DeleteRequest) Size() (n int) {
 func (m *LookupGroupRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.KeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.KeyA))
 	}
@@ -1468,6 +1567,9 @@ func (m *LookupGroupRequest) Size() (n int) {
 func (m *ReadGroupRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.KeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.KeyA))
 	}
@@ -1480,6 +1582,9 @@ func (m *ReadGroupRequest) Size() (n int) {
 func (m *WriteResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.TimestampMicro != 0 {
 		n += 1 + sovGroupApi(uint64(m.TimestampMicro))
 	}
@@ -1493,6 +1598,9 @@ func (m *WriteResponse) Size() (n int) {
 func (m *LookupResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.TimestampMicro != 0 {
 		n += 1 + sovGroupApi(uint64(m.TimestampMicro))
 	}
@@ -1509,6 +1617,9 @@ func (m *LookupResponse) Size() (n int) {
 func (m *LookupGroupResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if len(m.Items) > 0 {
 		for _, e := range m.Items {
 			l = e.Size()
@@ -1525,6 +1636,9 @@ func (m *LookupGroupResponse) Size() (n int) {
 func (m *LookupGroupItem) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.ChildKeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.ChildKeyA))
 	}
@@ -1543,6 +1657,9 @@ func (m *LookupGroupItem) Size() (n int) {
 func (m *ReadGroupResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if len(m.Items) > 0 {
 		for _, e := range m.Items {
 			l = e.Size()
@@ -1559,6 +1676,9 @@ func (m *ReadGroupResponse) Size() (n int) {
 func (m *ReadGroupItem) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.ChildKeyA != 0 {
 		n += 1 + sovGroupApi(uint64(m.ChildKeyA))
 	}
@@ -1580,6 +1700,9 @@ func (m *ReadGroupItem) Size() (n int) {
 func (m *ReadResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.TimestampMicro != 0 {
 		n += 1 + sovGroupApi(uint64(m.TimestampMicro))
 	}
@@ -1599,6 +1722,9 @@ func (m *ReadResponse) Size() (n int) {
 func (m *DeleteResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Rpcid != 0 {
+		n += 1 + sovGroupApi(uint64(m.Rpcid))
+	}
 	if m.TimestampMicro != 0 {
 		n += 1 + sovGroupApi(uint64(m.TimestampMicro))
 	}
@@ -1703,6 +1829,25 @@ func (m *WriteRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyA", wireType)
 			}
 			m.KeyA = 0
@@ -1720,7 +1865,7 @@ func (m *WriteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyB", wireType)
 			}
@@ -1739,7 +1884,7 @@ func (m *WriteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyA", wireType)
 			}
@@ -1758,7 +1903,7 @@ func (m *WriteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyB", wireType)
 			}
@@ -1777,7 +1922,7 @@ func (m *WriteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
@@ -1808,7 +1953,7 @@ func (m *WriteRequest) Unmarshal(data []byte) error {
 				m.Value = []byte{}
 			}
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
@@ -1879,6 +2024,25 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyA", wireType)
 			}
 			m.KeyA = 0
@@ -1896,7 +2060,7 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyB", wireType)
 			}
@@ -1915,7 +2079,7 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyA", wireType)
 			}
@@ -1934,7 +2098,7 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyB", wireType)
 			}
@@ -2005,6 +2169,25 @@ func (m *ReadRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyA", wireType)
 			}
 			m.KeyA = 0
@@ -2022,7 +2205,7 @@ func (m *ReadRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyB", wireType)
 			}
@@ -2041,7 +2224,7 @@ func (m *ReadRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyA", wireType)
 			}
@@ -2060,7 +2243,7 @@ func (m *ReadRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyB", wireType)
 			}
@@ -2131,6 +2314,25 @@ func (m *DeleteRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyA", wireType)
 			}
 			m.KeyA = 0
@@ -2148,7 +2350,7 @@ func (m *DeleteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyB", wireType)
 			}
@@ -2167,7 +2369,7 @@ func (m *DeleteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyA", wireType)
 			}
@@ -2186,7 +2388,7 @@ func (m *DeleteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyB", wireType)
 			}
@@ -2205,7 +2407,7 @@ func (m *DeleteRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 5:
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
@@ -2276,6 +2478,25 @@ func (m *LookupGroupRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyA", wireType)
 			}
 			m.KeyA = 0
@@ -2293,7 +2514,7 @@ func (m *LookupGroupRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyB", wireType)
 			}
@@ -2364,6 +2585,25 @@ func (m *ReadGroupRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyA", wireType)
 			}
 			m.KeyA = 0
@@ -2381,7 +2621,7 @@ func (m *ReadGroupRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyB", wireType)
 			}
@@ -2452,6 +2692,25 @@ func (m *WriteResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
 			m.TimestampMicro = 0
@@ -2469,7 +2728,7 @@ func (m *WriteResponse) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
 			}
@@ -2550,6 +2809,25 @@ func (m *LookupResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
 			m.TimestampMicro = 0
@@ -2567,7 +2845,7 @@ func (m *LookupResponse) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Length", wireType)
 			}
@@ -2586,7 +2864,7 @@ func (m *LookupResponse) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
 			}
@@ -2666,6 +2944,25 @@ func (m *LookupGroupResponse) Unmarshal(data []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Items", wireType)
 			}
@@ -2696,7 +2993,7 @@ func (m *LookupGroupResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
 			}
@@ -2777,6 +3074,25 @@ func (m *LookupGroupItem) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyA", wireType)
 			}
 			m.ChildKeyA = 0
@@ -2794,7 +3110,7 @@ func (m *LookupGroupItem) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyB", wireType)
 			}
@@ -2813,7 +3129,7 @@ func (m *LookupGroupItem) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
@@ -2832,7 +3148,7 @@ func (m *LookupGroupItem) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Length", wireType)
 			}
@@ -2902,6 +3218,25 @@ func (m *ReadGroupResponse) Unmarshal(data []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Items", wireType)
 			}
@@ -2932,7 +3267,7 @@ func (m *ReadGroupResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
 			}
@@ -3013,6 +3348,25 @@ func (m *ReadGroupItem) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyA", wireType)
 			}
 			m.ChildKeyA = 0
@@ -3030,7 +3384,7 @@ func (m *ReadGroupItem) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ChildKeyB", wireType)
 			}
@@ -3049,7 +3403,7 @@ func (m *ReadGroupItem) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
@@ -3068,7 +3422,7 @@ func (m *ReadGroupItem) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
@@ -3151,6 +3505,25 @@ func (m *ReadResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
 			m.TimestampMicro = 0
@@ -3168,7 +3541,7 @@ func (m *ReadResponse) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
@@ -3199,7 +3572,7 @@ func (m *ReadResponse) Unmarshal(data []byte) error {
 				m.Value = []byte{}
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
 			}
@@ -3280,6 +3653,25 @@ func (m *DeleteResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rpcid", wireType)
+			}
+			m.Rpcid = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGroupApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Rpcid |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimestampMicro", wireType)
 			}
 			m.TimestampMicro = 0
@@ -3297,7 +3689,7 @@ func (m *DeleteResponse) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Err", wireType)
 			}
