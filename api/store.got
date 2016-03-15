@@ -156,6 +156,9 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
                 }
                 res.res, res.err = stream.Recv()
                 err = res.err
+                if err != nil {
+                    res.res = nil
+                }
                 select {
                 case resChan <- res:
                 case <-stor.handlersDoneChan:
@@ -194,6 +197,7 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
                             stor.lock.Unlock()
                             res := <-stor.free{{$R}}ResChan
                             res.err = err
+                            res.res = &pb.{{$R}}Response{Rpcid: req.req.Rpcid}
                             resChan <- res
                             break
                         }
@@ -203,6 +207,7 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
                     if err != nil {
                         res := <-stor.free{{$R}}ResChan
                         res.err = err
+                        res.res = &pb.{{$R}}Response{Rpcid: req.req.Rpcid}
                         resChan <- res
                         break
                     }
@@ -212,9 +217,27 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
                     stream = nil
                     res := <-stor.free{{$R}}ResChan
                     res.err = err
+                    res.res = &pb.{{$R}}Response{Rpcid: req.req.Rpcid}
                     resChan <- res
                 }
             case res := <-resChan:
+                if res.res == nil {
+                    // Receiver got unrecoverable error, so we'll have to
+                    // respond with errors to all waiting requests.
+                    wereWaiting := make([]*async{{$.T}}{{$R}}Request, len(waiting))
+                    for i, v := range waiting {
+                        wereWaiting[i] = v
+                    }
+                    go func(reqs []*async{{$.T}}{{$R}}Request) {
+                        for _, req := range reqs {
+                            res := <-stor.free{{$R}}ResChan
+                            res.err = errors.New("receiver error")
+                            res.res = &pb.{{$R}}Response{Rpcid: req.req.Rpcid}
+                            resChan <- res
+                        }
+                    }(wereWaiting)
+                    break
+                }
                 if res.res.Rpcid < 0 || res.res.Rpcid >= z {
                     // TODO: Debug log error?
                     break

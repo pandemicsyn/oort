@@ -42,6 +42,8 @@ func NewReplGroupStore(c *ReplGroupStoreConfig) *ReplGroupStore {
 		valueCap:                   int(cfg.ValueCap),
 		concurrentRequestsPerStore: cfg.ConcurrentRequestsPerStore,
 		failedConnectRetryDelay:    cfg.FailedConnectRetryDelay,
+		grpcOpts:                   cfg.GRPCOpts,
+		stores:                     make(map[string]*replGroupStoreAndTicketChan),
 	}
 	if rs.logDebug == nil {
 		rs.logDebug = func(string, ...interface{}) {}
@@ -240,10 +242,12 @@ func (rs *ReplGroupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKe
 	var errs ReplGroupStoreErrorSlice
 	for _ = range stores {
 		ret := <-ec
-		if ret.timestampMicro > timestampMicro {
+		if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
 			timestampMicro = ret.timestampMicro
 			length = ret.length
-			notFound = store.IsNotFound(ret.err)
+			if ret.err != nil {
+				notFound = store.IsNotFound(ret.err.Err())
+			}
 		}
 		if ret.err != nil {
 			errs = append(errs, ret.err)
@@ -261,6 +265,9 @@ func (rs *ReplGroupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKe
 			rs.logDebug("replGroupStore: error during lookup: %s", err)
 		}
 		errs = nil
+	}
+	if errs == nil {
+		return timestampMicro, length, nil
 	}
 	return timestampMicro, length, errs
 }
@@ -299,10 +306,12 @@ func (rs *ReplGroupStore) Read(ctx context.Context, keyA uint64, keyB uint64, ch
 	var errs ReplGroupStoreErrorSlice
 	for _ = range stores {
 		ret := <-ec
-		if ret.timestampMicro > timestampMicro {
+		if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
 			timestampMicro = ret.timestampMicro
 			rvalue = ret.value
-			notFound = store.IsNotFound(ret.err)
+			if ret.err != nil {
+				notFound = store.IsNotFound(ret.err.Err())
+			}
 		}
 		if ret.err != nil {
 			errs = append(errs, ret.err)
@@ -323,6 +332,9 @@ func (rs *ReplGroupStore) Read(ctx context.Context, keyA uint64, keyB uint64, ch
 			rs.logDebug("replGroupStore: error during read: %s", err)
 		}
 		errs = nil
+	}
+	if errs == nil {
+		return timestampMicro, rvalue, nil
 	}
 	return timestampMicro, rvalue, errs
 }
@@ -373,6 +385,9 @@ func (rs *ReplGroupStore) Write(ctx context.Context, keyA uint64, keyB uint64, c
 		}
 		errs = nil
 	}
+	if errs == nil {
+		return oldTimestampMicro, nil
+	}
 	return oldTimestampMicro, errs
 }
 
@@ -418,6 +433,9 @@ func (rs *ReplGroupStore) Delete(ctx context.Context, keyA uint64, keyB uint64, 
 			rs.logDebug("replGroupStore: error during delete: %s", err)
 		}
 		errs = nil
+	}
+	if errs == nil {
+		return oldTimestampMicro, nil
 	}
 	return oldTimestampMicro, errs
 }
@@ -537,14 +555,14 @@ type ReplGroupStoreErrorNotFound ReplGroupStoreErrorSlice
 
 func (e ReplGroupStoreErrorNotFound) Error() string {
 	if len(e) <= 0 {
-		return "unknown error"
+		return "not found"
 	} else if len(e) == 1 {
 		return e[0].Error()
 	}
 	return fmt.Sprintf("%d errors, first is: %s", len(e), e[0])
 }
 
-func (e ReplGroupStoreErrorNotFound) ErrorNotFound() string {
+func (e ReplGroupStoreErrorNotFound) ErrNotFound() string {
 	return e.Error()
 }
 

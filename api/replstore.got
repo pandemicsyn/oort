@@ -42,6 +42,8 @@ func NewRepl{{.T}}Store(c *Repl{{.T}}StoreConfig) *Repl{{.T}}Store {
         valueCap:                   int(cfg.ValueCap),
         concurrentRequestsPerStore: cfg.ConcurrentRequestsPerStore,
         failedConnectRetryDelay:    cfg.FailedConnectRetryDelay,
+        grpcOpts:                   cfg.GRPCOpts,
+        stores:                     make(map[string]*repl{{.T}}StoreAndTicketChan),
     }
     if rs.logDebug == nil {
         rs.logDebug = func(string, ...interface{}) { }
@@ -240,10 +242,12 @@ func (rs *Repl{{.T}}Store) Lookup(ctx context.Context, keyA, keyB uint64{{if eq 
     var errs Repl{{.T}}StoreErrorSlice
     for _ = range stores {
         ret := <-ec
-        if ret.timestampMicro > timestampMicro {
+        if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
             timestampMicro = ret.timestampMicro
             length = ret.length
-            notFound = store.IsNotFound(ret.err)
+            if ret.err != nil {
+                notFound = store.IsNotFound(ret.err.Err())
+            }
         }
         if ret.err != nil {
             errs = append(errs, ret.err)
@@ -261,6 +265,9 @@ func (rs *Repl{{.T}}Store) Lookup(ctx context.Context, keyA, keyB uint64{{if eq 
             rs.logDebug("repl{{.T}}Store: error during lookup: %s", err)
         }
         errs = nil
+    }
+    if errs == nil {
+        return timestampMicro, length, nil
     }
     return timestampMicro, length, errs
 }
@@ -299,10 +306,12 @@ func (rs *Repl{{.T}}Store) Read(ctx context.Context, keyA uint64, keyB uint64{{i
     var errs Repl{{.T}}StoreErrorSlice
     for _ = range stores {
         ret := <-ec
-        if ret.timestampMicro > timestampMicro {
+        if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
             timestampMicro = ret.timestampMicro
             rvalue = ret.value
-            notFound = store.IsNotFound(ret.err)
+            if ret.err != nil {
+                notFound = store.IsNotFound(ret.err.Err())
+            }
         }
         if ret.err != nil {
             errs = append(errs, ret.err)
@@ -323,6 +332,9 @@ func (rs *Repl{{.T}}Store) Read(ctx context.Context, keyA uint64, keyB uint64{{i
             rs.logDebug("repl{{.T}}Store: error during read: %s", err)
         }
         errs = nil
+    }
+    if errs == nil {
+        return timestampMicro, rvalue, nil
     }
     return timestampMicro, rvalue, errs
 }
@@ -373,6 +385,9 @@ func (rs *Repl{{.T}}Store) Write(ctx context.Context, keyA uint64, keyB uint64{{
         }
         errs = nil
     }
+    if errs == nil {
+        return oldTimestampMicro, nil
+    }
     return oldTimestampMicro, errs
 }
 
@@ -418,6 +433,9 @@ func (rs *Repl{{.T}}Store) Delete(ctx context.Context, keyA uint64, keyB uint64{
             rs.logDebug("repl{{.T}}Store: error during delete: %s", err)
         }
         errs = nil
+    }
+    if errs == nil {
+        return oldTimestampMicro, nil
     }
     return oldTimestampMicro, errs
 }
@@ -539,14 +557,14 @@ type Repl{{.T}}StoreErrorNotFound Repl{{.T}}StoreErrorSlice
 
 func (e Repl{{.T}}StoreErrorNotFound) Error() string {
     if len(e) <= 0 {
-        return "unknown error"
+        return "not found"
     } else if len(e) == 1 {
         return e[0].Error()
     }
     return fmt.Sprintf("%d errors, first is: %s", len(e), e[0])
 }
 
-func (e Repl{{.T}}StoreErrorNotFound) ErrorNotFound() string {
+func (e Repl{{.T}}StoreErrorNotFound) ErrNotFound() string {
     return e.Error()
 }
 

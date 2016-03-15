@@ -199,6 +199,9 @@ func (stor *valueStore) handleLookupStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -237,6 +240,7 @@ func (stor *valueStore) handleLookupStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeLookupResChan
 						res.err = err
+						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -246,6 +250,7 @@ func (stor *valueStore) handleLookupStream() {
 				if err != nil {
 					res := <-stor.freeLookupResChan
 					res.err = err
+					res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -255,9 +260,27 @@ func (stor *valueStore) handleLookupStream() {
 				stream = nil
 				res := <-stor.freeLookupResChan
 				res.err = err
+				res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncValueLookupRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncValueLookupRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeLookupResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -368,6 +391,9 @@ func (stor *valueStore) handleReadStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -406,6 +432,7 @@ func (stor *valueStore) handleReadStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeReadResChan
 						res.err = err
+						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -415,6 +442,7 @@ func (stor *valueStore) handleReadStream() {
 				if err != nil {
 					res := <-stor.freeReadResChan
 					res.err = err
+					res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -424,9 +452,27 @@ func (stor *valueStore) handleReadStream() {
 				stream = nil
 				res := <-stor.freeReadResChan
 				res.err = err
+				res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncValueReadRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncValueReadRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeReadResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -537,6 +583,9 @@ func (stor *valueStore) handleWriteStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -575,6 +624,7 @@ func (stor *valueStore) handleWriteStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeWriteResChan
 						res.err = err
+						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -584,6 +634,7 @@ func (stor *valueStore) handleWriteStream() {
 				if err != nil {
 					res := <-stor.freeWriteResChan
 					res.err = err
+					res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -593,9 +644,27 @@ func (stor *valueStore) handleWriteStream() {
 				stream = nil
 				res := <-stor.freeWriteResChan
 				res.err = err
+				res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncValueWriteRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncValueWriteRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeWriteResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -708,6 +777,9 @@ func (stor *valueStore) handleDeleteStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -746,6 +818,7 @@ func (stor *valueStore) handleDeleteStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeDeleteResChan
 						res.err = err
+						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -755,6 +828,7 @@ func (stor *valueStore) handleDeleteStream() {
 				if err != nil {
 					res := <-stor.freeDeleteResChan
 					res.err = err
+					res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -764,9 +838,27 @@ func (stor *valueStore) handleDeleteStream() {
 				stream = nil
 				res := <-stor.freeDeleteResChan
 				res.err = err
+				res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncValueDeleteRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncValueDeleteRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeDeleteResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break

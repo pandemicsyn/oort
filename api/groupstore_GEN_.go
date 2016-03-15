@@ -229,6 +229,9 @@ func (stor *groupStore) handleLookupStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -267,6 +270,7 @@ func (stor *groupStore) handleLookupStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeLookupResChan
 						res.err = err
+						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -276,6 +280,7 @@ func (stor *groupStore) handleLookupStream() {
 				if err != nil {
 					res := <-stor.freeLookupResChan
 					res.err = err
+					res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -285,9 +290,27 @@ func (stor *groupStore) handleLookupStream() {
 				stream = nil
 				res := <-stor.freeLookupResChan
 				res.err = err
+				res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupLookupRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupLookupRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeLookupResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -401,6 +424,9 @@ func (stor *groupStore) handleReadStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -439,6 +465,7 @@ func (stor *groupStore) handleReadStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeReadResChan
 						res.err = err
+						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -448,6 +475,7 @@ func (stor *groupStore) handleReadStream() {
 				if err != nil {
 					res := <-stor.freeReadResChan
 					res.err = err
+					res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -457,9 +485,27 @@ func (stor *groupStore) handleReadStream() {
 				stream = nil
 				res := <-stor.freeReadResChan
 				res.err = err
+				res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupReadRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupReadRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeReadResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -573,6 +619,9 @@ func (stor *groupStore) handleWriteStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -611,6 +660,7 @@ func (stor *groupStore) handleWriteStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeWriteResChan
 						res.err = err
+						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -620,6 +670,7 @@ func (stor *groupStore) handleWriteStream() {
 				if err != nil {
 					res := <-stor.freeWriteResChan
 					res.err = err
+					res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -629,9 +680,27 @@ func (stor *groupStore) handleWriteStream() {
 				stream = nil
 				res := <-stor.freeWriteResChan
 				res.err = err
+				res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupWriteRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupWriteRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeWriteResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -747,6 +816,9 @@ func (stor *groupStore) handleDeleteStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -785,6 +857,7 @@ func (stor *groupStore) handleDeleteStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeDeleteResChan
 						res.err = err
+						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -794,6 +867,7 @@ func (stor *groupStore) handleDeleteStream() {
 				if err != nil {
 					res := <-stor.freeDeleteResChan
 					res.err = err
+					res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -803,9 +877,27 @@ func (stor *groupStore) handleDeleteStream() {
 				stream = nil
 				res := <-stor.freeDeleteResChan
 				res.err = err
+				res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupDeleteRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupDeleteRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeDeleteResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -920,6 +1012,9 @@ func (stor *groupStore) handleLookupGroupStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -958,6 +1053,7 @@ func (stor *groupStore) handleLookupGroupStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeLookupGroupResChan
 						res.err = err
+						res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -967,6 +1063,7 @@ func (stor *groupStore) handleLookupGroupStream() {
 				if err != nil {
 					res := <-stor.freeLookupGroupResChan
 					res.err = err
+					res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -976,9 +1073,27 @@ func (stor *groupStore) handleLookupGroupStream() {
 				stream = nil
 				res := <-stor.freeLookupGroupResChan
 				res.err = err
+				res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupLookupGroupRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupLookupGroupRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeLookupGroupResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
@@ -1094,6 +1209,9 @@ func (stor *groupStore) handleReadGroupStream() {
 			}
 			res.res, res.err = stream.Recv()
 			err = res.err
+			if err != nil {
+				res.res = nil
+			}
 			select {
 			case resChan <- res:
 			case <-stor.handlersDoneChan:
@@ -1132,6 +1250,7 @@ func (stor *groupStore) handleReadGroupStream() {
 						stor.lock.Unlock()
 						res := <-stor.freeReadGroupResChan
 						res.err = err
+						res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 						break
 					}
@@ -1141,6 +1260,7 @@ func (stor *groupStore) handleReadGroupStream() {
 				if err != nil {
 					res := <-stor.freeReadGroupResChan
 					res.err = err
+					res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
 					resChan <- res
 					break
 				}
@@ -1150,9 +1270,27 @@ func (stor *groupStore) handleReadGroupStream() {
 				stream = nil
 				res := <-stor.freeReadGroupResChan
 				res.err = err
+				res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
 				resChan <- res
 			}
 		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupReadGroupRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupReadGroupRequest) {
+					for _, req := range reqs {
+						res := <-stor.freeReadGroupResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
 			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
 				// TODO: Debug log error?
 				break
