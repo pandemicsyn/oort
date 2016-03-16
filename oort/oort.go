@@ -89,6 +89,13 @@ func (o *Server) GetLocalID() uint64 {
 	return o.localID
 }
 
+// GetListenAddr returns the current localnode.address2 instance
+func (o *Server) GetListenAddr() string {
+	o.RLock()
+	defer o.RUnlock()
+	return o.ring.LocalNode().Address(2)
+}
+
 func (o *Server) CmdCtrlLoopActive() bool {
 	o.RLock()
 	defer o.RUnlock()
