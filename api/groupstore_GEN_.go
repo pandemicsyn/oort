@@ -244,25 +244,28 @@ func (stor *groupStore) handleLookupStream() {
 	}
 	var err error
 	var stream pb.GroupStore_StreamLookupClient
-	z := uint32(cap(stor.freeLookupReqChan))
-	waiting := make([]*asyncGroupLookupRequest, z)
-	i := uint32(0)
+	waitingMax := uint32(cap(stor.freeLookupReqChan)) - 1
+	waiting := make([]*asyncGroupLookupRequest, waitingMax+1)
+	waitingIndex := uint32(0)
 	for {
 		select {
 		case req := <-stor.pendingLookupReqChan:
-			j := i
-			for waiting[i] != nil {
-				i++
-				if i >= z {
-					i = 0
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
 				}
-				if i == j {
+				if waitingIndex == j {
 					panic("coding error: got more concurrent requests from pendingLookupReqChan than should be available")
 				}
 			}
-			req.req.Rpcid = i
-			waiting[i] = req
-			i++
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
 			if stream == nil {
 				stor.lock.Lock()
 				if stor.client == nil {
@@ -303,6 +306,9 @@ func (stor *groupStore) handleLookupStream() {
 				}
 				go func(reqs []*asyncGroupLookupRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeLookupResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
@@ -311,7 +317,7 @@ func (stor *groupStore) handleLookupStream() {
 				}(wereWaiting)
 				break
 			}
-			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
 				// TODO: Debug log error?
 				break
 			}
@@ -439,25 +445,28 @@ func (stor *groupStore) handleReadStream() {
 	}
 	var err error
 	var stream pb.GroupStore_StreamReadClient
-	z := uint32(cap(stor.freeReadReqChan))
-	waiting := make([]*asyncGroupReadRequest, z)
-	i := uint32(0)
+	waitingMax := uint32(cap(stor.freeReadReqChan)) - 1
+	waiting := make([]*asyncGroupReadRequest, waitingMax+1)
+	waitingIndex := uint32(0)
 	for {
 		select {
 		case req := <-stor.pendingReadReqChan:
-			j := i
-			for waiting[i] != nil {
-				i++
-				if i >= z {
-					i = 0
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
 				}
-				if i == j {
+				if waitingIndex == j {
 					panic("coding error: got more concurrent requests from pendingReadReqChan than should be available")
 				}
 			}
-			req.req.Rpcid = i
-			waiting[i] = req
-			i++
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
 			if stream == nil {
 				stor.lock.Lock()
 				if stor.client == nil {
@@ -498,6 +507,9 @@ func (stor *groupStore) handleReadStream() {
 				}
 				go func(reqs []*asyncGroupReadRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeReadResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
@@ -506,7 +518,7 @@ func (stor *groupStore) handleReadStream() {
 				}(wereWaiting)
 				break
 			}
-			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
 				// TODO: Debug log error?
 				break
 			}
@@ -634,25 +646,28 @@ func (stor *groupStore) handleWriteStream() {
 	}
 	var err error
 	var stream pb.GroupStore_StreamWriteClient
-	z := uint32(cap(stor.freeWriteReqChan))
-	waiting := make([]*asyncGroupWriteRequest, z)
-	i := uint32(0)
+	waitingMax := uint32(cap(stor.freeWriteReqChan)) - 1
+	waiting := make([]*asyncGroupWriteRequest, waitingMax+1)
+	waitingIndex := uint32(0)
 	for {
 		select {
 		case req := <-stor.pendingWriteReqChan:
-			j := i
-			for waiting[i] != nil {
-				i++
-				if i >= z {
-					i = 0
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
 				}
-				if i == j {
+				if waitingIndex == j {
 					panic("coding error: got more concurrent requests from pendingWriteReqChan than should be available")
 				}
 			}
-			req.req.Rpcid = i
-			waiting[i] = req
-			i++
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
 			if stream == nil {
 				stor.lock.Lock()
 				if stor.client == nil {
@@ -693,6 +708,9 @@ func (stor *groupStore) handleWriteStream() {
 				}
 				go func(reqs []*asyncGroupWriteRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeWriteResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
@@ -701,7 +719,7 @@ func (stor *groupStore) handleWriteStream() {
 				}(wereWaiting)
 				break
 			}
-			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
 				// TODO: Debug log error?
 				break
 			}
@@ -831,25 +849,28 @@ func (stor *groupStore) handleDeleteStream() {
 	}
 	var err error
 	var stream pb.GroupStore_StreamDeleteClient
-	z := uint32(cap(stor.freeDeleteReqChan))
-	waiting := make([]*asyncGroupDeleteRequest, z)
-	i := uint32(0)
+	waitingMax := uint32(cap(stor.freeDeleteReqChan)) - 1
+	waiting := make([]*asyncGroupDeleteRequest, waitingMax+1)
+	waitingIndex := uint32(0)
 	for {
 		select {
 		case req := <-stor.pendingDeleteReqChan:
-			j := i
-			for waiting[i] != nil {
-				i++
-				if i >= z {
-					i = 0
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
 				}
-				if i == j {
+				if waitingIndex == j {
 					panic("coding error: got more concurrent requests from pendingDeleteReqChan than should be available")
 				}
 			}
-			req.req.Rpcid = i
-			waiting[i] = req
-			i++
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
 			if stream == nil {
 				stor.lock.Lock()
 				if stor.client == nil {
@@ -890,6 +911,9 @@ func (stor *groupStore) handleDeleteStream() {
 				}
 				go func(reqs []*asyncGroupDeleteRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeDeleteResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
@@ -898,7 +922,7 @@ func (stor *groupStore) handleDeleteStream() {
 				}(wereWaiting)
 				break
 			}
-			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
 				// TODO: Debug log error?
 				break
 			}
@@ -1027,25 +1051,28 @@ func (stor *groupStore) handleLookupGroupStream() {
 	}
 	var err error
 	var stream pb.GroupStore_StreamLookupGroupClient
-	z := uint32(cap(stor.freeLookupGroupReqChan))
-	waiting := make([]*asyncGroupLookupGroupRequest, z)
-	i := uint32(0)
+	waitingMax := uint32(cap(stor.freeLookupGroupReqChan)) - 1
+	waiting := make([]*asyncGroupLookupGroupRequest, waitingMax+1)
+	waitingIndex := uint32(0)
 	for {
 		select {
 		case req := <-stor.pendingLookupGroupReqChan:
-			j := i
-			for waiting[i] != nil {
-				i++
-				if i >= z {
-					i = 0
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
 				}
-				if i == j {
+				if waitingIndex == j {
 					panic("coding error: got more concurrent requests from pendingLookupGroupReqChan than should be available")
 				}
 			}
-			req.req.Rpcid = i
-			waiting[i] = req
-			i++
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
 			if stream == nil {
 				stor.lock.Lock()
 				if stor.client == nil {
@@ -1086,6 +1113,9 @@ func (stor *groupStore) handleLookupGroupStream() {
 				}
 				go func(reqs []*asyncGroupLookupGroupRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeLookupGroupResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
@@ -1094,7 +1124,7 @@ func (stor *groupStore) handleLookupGroupStream() {
 				}(wereWaiting)
 				break
 			}
-			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
 				// TODO: Debug log error?
 				break
 			}
@@ -1224,25 +1254,28 @@ func (stor *groupStore) handleReadGroupStream() {
 	}
 	var err error
 	var stream pb.GroupStore_StreamReadGroupClient
-	z := uint32(cap(stor.freeReadGroupReqChan))
-	waiting := make([]*asyncGroupReadGroupRequest, z)
-	i := uint32(0)
+	waitingMax := uint32(cap(stor.freeReadGroupReqChan)) - 1
+	waiting := make([]*asyncGroupReadGroupRequest, waitingMax+1)
+	waitingIndex := uint32(0)
 	for {
 		select {
 		case req := <-stor.pendingReadGroupReqChan:
-			j := i
-			for waiting[i] != nil {
-				i++
-				if i >= z {
-					i = 0
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
 				}
-				if i == j {
+				if waitingIndex == j {
 					panic("coding error: got more concurrent requests from pendingReadGroupReqChan than should be available")
 				}
 			}
-			req.req.Rpcid = i
-			waiting[i] = req
-			i++
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
 			if stream == nil {
 				stor.lock.Lock()
 				if stor.client == nil {
@@ -1283,6 +1316,9 @@ func (stor *groupStore) handleReadGroupStream() {
 				}
 				go func(reqs []*asyncGroupReadGroupRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeReadGroupResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
@@ -1291,7 +1327,7 @@ func (stor *groupStore) handleReadGroupStream() {
 				}(wereWaiting)
 				break
 			}
-			if res.res.Rpcid < 0 || res.res.Rpcid >= z {
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
 				// TODO: Debug log error?
 				break
 			}
