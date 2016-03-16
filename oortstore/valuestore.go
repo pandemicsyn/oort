@@ -316,11 +316,15 @@ func (s *OortValueStore) ListenAndServe() {
 		for {
 			s.Lock()
 			var err error
-			l, err := net.Listen("tcp", s.Config.ListenAddr)
+			listenAddr := s.oort.GetListenAddr()
+			if listenAddr == "" {
+				log.Fatalln("No listen address specified in ring at address2")
+			}
+			l, err := net.Listen("tcp", listenAddr)
 			if err != nil {
 				log.Fatalln("Unable to bind to address:", err)
 			}
-			log.Println("ValueStore bound to:", s.Config.ListenAddr)
+			log.Println("ValueStore bound to:", listenAddr)
 			var opts []grpc.ServerOption
 			creds := credentials.NewTLS(s.serverTLSConfig)
 			opts = []grpc.ServerOption{grpc.Creds(creds)}
