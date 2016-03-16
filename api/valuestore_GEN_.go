@@ -273,6 +273,9 @@ func (stor *valueStore) handleLookupStream() {
 				}
 				go func(reqs []*asyncValueLookupRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeLookupResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
@@ -465,6 +468,9 @@ func (stor *valueStore) handleReadStream() {
 				}
 				go func(reqs []*asyncValueReadRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeReadResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
@@ -657,6 +663,9 @@ func (stor *valueStore) handleWriteStream() {
 				}
 				go func(reqs []*asyncValueWriteRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeWriteResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
@@ -851,6 +860,9 @@ func (stor *valueStore) handleDeleteStream() {
 				}
 				go func(reqs []*asyncValueDeleteRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeDeleteResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}

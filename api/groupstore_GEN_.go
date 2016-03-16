@@ -303,6 +303,9 @@ func (stor *groupStore) handleLookupStream() {
 				}
 				go func(reqs []*asyncGroupLookupRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeLookupResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
@@ -498,6 +501,9 @@ func (stor *groupStore) handleReadStream() {
 				}
 				go func(reqs []*asyncGroupReadRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeReadResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
@@ -693,6 +699,9 @@ func (stor *groupStore) handleWriteStream() {
 				}
 				go func(reqs []*asyncGroupWriteRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeWriteResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
@@ -890,6 +899,9 @@ func (stor *groupStore) handleDeleteStream() {
 				}
 				go func(reqs []*asyncGroupDeleteRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeDeleteResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
@@ -1086,6 +1098,9 @@ func (stor *groupStore) handleLookupGroupStream() {
 				}
 				go func(reqs []*asyncGroupLookupGroupRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeLookupGroupResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
@@ -1283,6 +1298,9 @@ func (stor *groupStore) handleReadGroupStream() {
 				}
 				go func(reqs []*asyncGroupReadGroupRequest) {
 					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
 						res := <-stor.freeReadGroupResChan
 						res.err = errors.New("receiver error")
 						res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}

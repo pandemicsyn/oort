@@ -230,6 +230,9 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
                     }
                     go func(reqs []*async{{$.T}}{{$R}}Request) {
                         for _, req := range reqs {
+                            if req == nil {
+                                continue
+                            }
                             res := <-stor.free{{$R}}ResChan
                             res.err = errors.New("receiver error")
                             res.res = &pb.{{$R}}Response{Rpcid: req.req.Rpcid}
