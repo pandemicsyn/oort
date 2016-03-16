@@ -12,424 +12,1407 @@ import (
 	"google.golang.org/grpc"
 )
 
-// TODO: I'm unsure on the handling of grpc errors; the ones grpc has, not that
-// it passes along. Should we disconnect everything on any grpc error, assuming
-// the transit is corrupted and therefore a reconnect required? Or can grpc
-// recover on its own? Also, should we retry requests that are idempotent?
-// Probably better to let the caller decide on the retry logic.
-
-// TODO: Background() calls should be replaced with a "real" contexts with
-// deadlines, etc.
-
-// TODO: I lock while asking the grpc client to make any stream. I'm not sure
-// if this is required. Needs testing.
-
 type groupStore struct {
-	lock          sync.Mutex
-	addr          string
-	opts          []grpc.DialOption
-	conn          *grpc.ClientConn
-	client        pb.GroupStoreClient
-	lookupStreams chan pb.GroupStore_StreamLookupClient
-	readStreams   chan pb.GroupStore_StreamReadClient
-	writeStreams  chan pb.GroupStore_StreamWriteClient
-	deleteStreams chan pb.GroupStore_StreamDeleteClient
+	lock             sync.Mutex
+	addr             string
+	opts             []grpc.DialOption
+	conn             *grpc.ClientConn
+	client           pb.GroupStoreClient
+	handlersDoneChan chan struct{}
 
-	lookupGroupStreams chan pb.GroupStore_StreamLookupGroupClient
-	readGroupStreams   chan pb.GroupStore_StreamReadGroupClient
+	pendingLookupReqChan chan *asyncGroupLookupRequest
+	freeLookupReqChan    chan *asyncGroupLookupRequest
+	freeLookupResChan    chan *asyncGroupLookupResponse
+
+	pendingReadReqChan chan *asyncGroupReadRequest
+	freeReadReqChan    chan *asyncGroupReadRequest
+	freeReadResChan    chan *asyncGroupReadResponse
+
+	pendingWriteReqChan chan *asyncGroupWriteRequest
+	freeWriteReqChan    chan *asyncGroupWriteRequest
+	freeWriteResChan    chan *asyncGroupWriteResponse
+
+	pendingDeleteReqChan chan *asyncGroupDeleteRequest
+	freeDeleteReqChan    chan *asyncGroupDeleteRequest
+	freeDeleteResChan    chan *asyncGroupDeleteResponse
+
+	pendingLookupGroupReqChan chan *asyncGroupLookupGroupRequest
+	freeLookupGroupReqChan    chan *asyncGroupLookupGroupRequest
+	freeLookupGroupResChan    chan *asyncGroupLookupGroupResponse
+
+	pendingReadGroupReqChan chan *asyncGroupReadGroupRequest
+	freeReadGroupReqChan    chan *asyncGroupReadGroupRequest
+	freeReadGroupResChan    chan *asyncGroupReadGroupResponse
 }
 
 // NewGroupStore creates a GroupStore connection via grpc to the given
 // address.
-func NewGroupStore(addr string, streams int, opts ...grpc.DialOption) (store.GroupStore, error) {
-	str := &groupStore{
-		addr: addr,
-		opts: opts,
-	}
-	str.lookupStreams = make(chan pb.GroupStore_StreamLookupClient, streams)
-	str.readStreams = make(chan pb.GroupStore_StreamReadClient, streams)
-	str.writeStreams = make(chan pb.GroupStore_StreamWriteClient, streams)
-	str.deleteStreams = make(chan pb.GroupStore_StreamDeleteClient, streams)
-
-	str.lookupGroupStreams = make(chan pb.GroupStore_StreamLookupGroupClient, streams)
-	str.readGroupStreams = make(chan pb.GroupStore_StreamReadGroupClient, streams)
-
-	for i := cap(str.lookupStreams); i > 0; i-- {
-		str.lookupStreams <- nil
-	}
-	for i := cap(str.readStreams); i > 0; i-- {
-		str.readStreams <- nil
-	}
-	for i := cap(str.writeStreams); i > 0; i-- {
-		str.writeStreams <- nil
-	}
-	for i := cap(str.deleteStreams); i > 0; i-- {
-		str.deleteStreams <- nil
+func NewGroupStore(addr string, concurrency int, opts ...grpc.DialOption) (store.GroupStore, error) {
+	stor := &groupStore{
+		addr:             addr,
+		opts:             opts,
+		handlersDoneChan: make(chan struct{}),
 	}
 
-	for i := cap(str.lookupGroupStreams); i > 0; i-- {
-		str.lookupGroupStreams <- nil
+	stor.pendingLookupReqChan = make(chan *asyncGroupLookupRequest, concurrency)
+	stor.freeLookupReqChan = make(chan *asyncGroupLookupRequest, concurrency)
+	stor.freeLookupResChan = make(chan *asyncGroupLookupResponse, concurrency)
+	for i := 0; i < cap(stor.freeLookupReqChan); i++ {
+		stor.freeLookupReqChan <- &asyncGroupLookupRequest{resChan: make(chan *asyncGroupLookupResponse, 1)}
 	}
-	for i := cap(str.readGroupStreams); i > 0; i-- {
-		str.readGroupStreams <- nil
+	for i := 0; i < cap(stor.freeLookupResChan); i++ {
+		stor.freeLookupResChan <- &asyncGroupLookupResponse{}
 	}
+	go stor.handleLookupStream()
 
-	return str, nil
+	stor.pendingReadReqChan = make(chan *asyncGroupReadRequest, concurrency)
+	stor.freeReadReqChan = make(chan *asyncGroupReadRequest, concurrency)
+	stor.freeReadResChan = make(chan *asyncGroupReadResponse, concurrency)
+	for i := 0; i < cap(stor.freeReadReqChan); i++ {
+		stor.freeReadReqChan <- &asyncGroupReadRequest{resChan: make(chan *asyncGroupReadResponse, 1)}
+	}
+	for i := 0; i < cap(stor.freeReadResChan); i++ {
+		stor.freeReadResChan <- &asyncGroupReadResponse{}
+	}
+	go stor.handleReadStream()
+
+	stor.pendingWriteReqChan = make(chan *asyncGroupWriteRequest, concurrency)
+	stor.freeWriteReqChan = make(chan *asyncGroupWriteRequest, concurrency)
+	stor.freeWriteResChan = make(chan *asyncGroupWriteResponse, concurrency)
+	for i := 0; i < cap(stor.freeWriteReqChan); i++ {
+		stor.freeWriteReqChan <- &asyncGroupWriteRequest{resChan: make(chan *asyncGroupWriteResponse, 1)}
+	}
+	for i := 0; i < cap(stor.freeWriteResChan); i++ {
+		stor.freeWriteResChan <- &asyncGroupWriteResponse{}
+	}
+	go stor.handleWriteStream()
+
+	stor.pendingDeleteReqChan = make(chan *asyncGroupDeleteRequest, concurrency)
+	stor.freeDeleteReqChan = make(chan *asyncGroupDeleteRequest, concurrency)
+	stor.freeDeleteResChan = make(chan *asyncGroupDeleteResponse, concurrency)
+	for i := 0; i < cap(stor.freeDeleteReqChan); i++ {
+		stor.freeDeleteReqChan <- &asyncGroupDeleteRequest{resChan: make(chan *asyncGroupDeleteResponse, 1)}
+	}
+	for i := 0; i < cap(stor.freeDeleteResChan); i++ {
+		stor.freeDeleteResChan <- &asyncGroupDeleteResponse{}
+	}
+	go stor.handleDeleteStream()
+
+	stor.pendingLookupGroupReqChan = make(chan *asyncGroupLookupGroupRequest, concurrency)
+	stor.freeLookupGroupReqChan = make(chan *asyncGroupLookupGroupRequest, concurrency)
+	stor.freeLookupGroupResChan = make(chan *asyncGroupLookupGroupResponse, concurrency)
+	for i := 0; i < cap(stor.freeLookupGroupReqChan); i++ {
+		stor.freeLookupGroupReqChan <- &asyncGroupLookupGroupRequest{resChan: make(chan *asyncGroupLookupGroupResponse, 1)}
+	}
+	for i := 0; i < cap(stor.freeLookupGroupResChan); i++ {
+		stor.freeLookupGroupResChan <- &asyncGroupLookupGroupResponse{}
+	}
+	go stor.handleLookupGroupStream()
+
+	stor.pendingReadGroupReqChan = make(chan *asyncGroupReadGroupRequest, concurrency)
+	stor.freeReadGroupReqChan = make(chan *asyncGroupReadGroupRequest, concurrency)
+	stor.freeReadGroupResChan = make(chan *asyncGroupReadGroupResponse, concurrency)
+	for i := 0; i < cap(stor.freeReadGroupReqChan); i++ {
+		stor.freeReadGroupReqChan <- &asyncGroupReadGroupRequest{resChan: make(chan *asyncGroupReadGroupResponse, 1)}
+	}
+	for i := 0; i < cap(stor.freeReadGroupResChan); i++ {
+		stor.freeReadGroupResChan <- &asyncGroupReadGroupResponse{}
+	}
+	go stor.handleReadGroupStream()
+
+	return stor, nil
 }
 
-func (str *groupStore) Startup(ctx context.Context) error {
-	str.lock.Lock()
-	err := str.startup()
-	str.lock.Unlock()
+func (stor *groupStore) Startup(ctx context.Context) error {
+	stor.lock.Lock()
+	err := stor.startup()
+	stor.lock.Unlock()
 	return err
 }
 
-func (str *groupStore) startup() error {
-	if str.conn != nil {
+func (stor *groupStore) startup() error {
+	if stor.conn != nil {
 		return nil
 	}
 	var err error
-	str.conn, err = grpc.Dial(str.addr, str.opts...)
+	stor.conn, err = grpc.Dial(stor.addr, stor.opts...)
 	if err != nil {
-		str.conn = nil
+		stor.conn = nil
 		return err
 	}
-	str.client = pb.NewGroupStoreClient(str.conn)
+	stor.client = pb.NewGroupStoreClient(stor.conn)
 	return nil
 }
 
-func (str *groupStore) Shutdown(ctx context.Context) error {
-	str.lock.Lock()
-	defer str.lock.Unlock()
-	if str.conn == nil {
+// Shutdown will close any existing connections; note that Startup may
+// automatically get called with any further activity, but it will use a new
+// connection. To ensure the groupStore has no further activity, use Close.
+func (stor *groupStore) Shutdown(ctx context.Context) error {
+	stor.lock.Lock()
+	err := stor.shutdown()
+	stor.lock.Unlock()
+	return err
+}
+
+func (stor *groupStore) shutdown() error {
+	if stor.conn == nil {
 		return nil
 	}
-	str.conn.Close()
-	str.conn = nil
-	str.client = nil
-	for i := cap(str.lookupStreams); i > 0; i-- {
-		<-str.lookupStreams
-		str.lookupStreams <- nil
-	}
-	for i := cap(str.readStreams); i > 0; i-- {
-		<-str.readStreams
-		str.readStreams <- nil
-	}
-	for i := cap(str.writeStreams); i > 0; i-- {
-		<-str.writeStreams
-		str.writeStreams <- nil
-	}
-	for i := cap(str.deleteStreams); i > 0; i-- {
-		<-str.deleteStreams
-		str.deleteStreams <- nil
-	}
+	stor.conn.Close()
+	stor.conn = nil
+	stor.client = nil
 	return nil
 }
 
-func (str *groupStore) EnableWrites(ctx context.Context) error {
+// Close will shutdown outgoing connectivity and stop all background
+// goroutines; note that the groupStore is no longer usable after a call to
+// Close, including using Startup.
+func (stor *groupStore) Close() {
+	stor.lock.Lock()
+	stor.shutdown()
+	close(stor.handlersDoneChan)
+	stor.lock.Unlock()
+}
+
+func (stor *groupStore) EnableWrites(ctx context.Context) error {
 	return nil
 }
 
-func (str *groupStore) DisableWrites(ctx context.Context) error {
+func (stor *groupStore) DisableWrites(ctx context.Context) error {
 	// TODO: I suppose we could implement toggling writes from this client;
 	// I'll leave that for later.
 	return errors.New("cannot disable writes with this client at this time")
 }
 
-func (str *groupStore) Flush(ctx context.Context) error {
+func (stor *groupStore) Flush(ctx context.Context) error {
 	// Nothing cached on this end, so nothing to flush.
 	return nil
 }
 
-func (str *groupStore) AuditPass(ctx context.Context) error {
+func (stor *groupStore) AuditPass(ctx context.Context) error {
 	return errors.New("audit passes not available with this client at this time")
 }
 
-func (str *groupStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
+func (stor *groupStore) Stats(ctx context.Context, debug bool) (fmt.Stringer, error) {
 	return noStats, nil
 }
 
-func (str *groupStore) ValueCap(ctx context.Context) (uint32, error) {
+func (stor *groupStore) ValueCap(ctx context.Context) (uint32, error) {
 	// TODO: This should be a (cached) value from the server. Servers don't
 	// change their value caps on the fly, so the cache can be kept until
 	// disconnect.
 	return 0xffffffff, nil
 }
 
-func (str *groupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64) (timestampmicro int64, length uint32, err error) {
-	// TODO: Pay attention to ctx.
-	var s pb.GroupStore_StreamLookupClient
-	select {
-	case s = <-str.lookupStreams:
-	case <-ctx.Done():
-		return 0, 0, ctx.Err()
+type asyncGroupLookupRequest struct {
+	req          pb.LookupRequest
+	resChan      chan *asyncGroupLookupResponse
+	canceledLock sync.Mutex
+	canceled     bool
+}
+
+type asyncGroupLookupResponse struct {
+	res *pb.LookupResponse
+	err error
+}
+
+func (stor *groupStore) handleLookupStream() {
+	resChan := make(chan *asyncGroupLookupResponse, cap(stor.freeLookupReqChan))
+	resFunc := func(stream pb.GroupStore_StreamLookupClient) {
+		var err error
+		var res *asyncGroupLookupResponse
+		for {
+			select {
+			case res = <-stor.freeLookupResChan:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			res.res, res.err = stream.Recv()
+			err = res.err
+			if err != nil {
+				res.res = nil
+			}
+			select {
+			case resChan <- res:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
 	}
-	if s == nil {
-		str.lock.Lock()
+	var err error
+	var stream pb.GroupStore_StreamLookupClient
+	waitingMax := uint32(cap(stor.freeLookupReqChan)) - 1
+	waiting := make([]*asyncGroupLookupRequest, waitingMax+1)
+	waitingIndex := uint32(0)
+	for {
 		select {
-		case <-ctx.Done():
-			str.lock.Unlock()
-			str.lookupStreams <- nil
-			return 0, 0, ctx.Err()
+		case req := <-stor.pendingLookupReqChan:
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
+				}
+				if waitingIndex == j {
+					panic("coding error: got more concurrent requests from pendingLookupReqChan than should be available")
+				}
+			}
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
+			if stream == nil {
+				stor.lock.Lock()
+				if stor.client == nil {
+					if err = stor.startup(); err != nil {
+						stor.lock.Unlock()
+						res := <-stor.freeLookupResChan
+						res.err = err
+						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+						break
+					}
+				}
+				stream, err = stor.client.StreamLookup(context.Background())
+				stor.lock.Unlock()
+				if err != nil {
+					res := <-stor.freeLookupResChan
+					res.err = err
+					res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
+					resChan <- res
+					break
+				}
+				go resFunc(stream)
+			}
+			if err = stream.Send(&req.req); err != nil {
+				stream = nil
+				res := <-stor.freeLookupResChan
+				res.err = err
+				res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
+				resChan <- res
+			}
+		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupLookupRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupLookupRequest) {
+					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
+						res := <-stor.freeLookupResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
+				// TODO: Debug log error?
+				break
+			}
+			req := waiting[res.res.Rpcid]
+			if req == nil {
+				// TODO: Debug log error?
+				break
+			}
+			waiting[res.res.Rpcid] = nil
+			req.canceledLock.Lock()
+			if !req.canceled {
+				req.resChan <- res
+			} else {
+				stor.freeLookupReqChan <- req
+				stor.freeLookupResChan <- res
+			}
+			req.canceledLock.Unlock()
+		case <-stor.handlersDoneChan:
+			return
+		}
+	}
+}
+
+func (stor *groupStore) Lookup(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64) (timestampMicro int64, length uint32, err error) {
+
+	var req *asyncGroupLookupRequest
+	select {
+	case req = <-stor.freeLookupReqChan:
+	case <-ctx.Done():
+
+		return 0, 0, ctx.Err()
+
+	}
+	req.canceled = false
+
+	req.req.KeyA = keyA
+	req.req.KeyB = keyB
+
+	req.req.ChildKeyA = childKeyA
+	req.req.ChildKeyB = childKeyB
+
+	select {
+	case stor.pendingLookupReqChan <- req:
+	case <-ctx.Done():
+		stor.freeLookupReqChan <- req
+
+		return 0, 0, ctx.Err()
+
+	}
+	var res *asyncGroupLookupResponse
+	select {
+	case res = <-req.resChan:
+	case <-ctx.Done():
+		req.canceledLock.Lock()
+		select {
+		case <-req.resChan:
 		default:
+			req.canceled = true
 		}
-		if str.client == nil {
-			if err := str.startup(); err != nil {
-				str.lock.Unlock()
-				str.lookupStreams <- nil
-				return 0, 0, err
-			}
-		}
-		s, err = str.client.StreamLookup(context.Background())
-		str.lock.Unlock()
-		if err != nil {
-			str.lookupStreams <- nil
-			return 0, 0, err
-		}
-	}
-	req := &pb.LookupRequest{
-		KeyA: keyA,
-		KeyB: keyB,
+		req.canceledLock.Unlock()
 
-		ChildKeyA: childKeyA,
-		ChildKeyB: childKeyB,
+		return 0, 0, ctx.Err()
+
 	}
-	if err = s.Send(req); err != nil {
-		str.lookupStreams <- nil
+	stor.freeLookupReqChan <- req
+	if res.err != nil {
+		err = res.err
+		stor.freeLookupResChan <- res
+
 		return 0, 0, err
+
 	}
-	res, err := s.Recv()
-	if err != nil {
-		str.lookupStreams <- nil
-		return 0, 0, err
+
+	timestampMicro = res.res.TimestampMicro
+	length = res.res.Length
+
+	if res.res.Err == "" {
+		err = nil
+	} else {
+		err = proto.TranslateErrorString(res.res.Err)
 	}
-	if res.Err != "" {
-		err = proto.TranslateErrorString(res.Err)
-	}
-	str.lookupStreams <- s
-	return res.TimestampMicro, res.Length, err
+	stor.freeLookupResChan <- res
+
+	return timestampMicro, length, err
+
 }
 
-func (str *groupStore) Read(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, value []byte) (timestampmicro int64, rvalue []byte, err error) {
-	// TODO: Pay attention to ctx.
-	rvalue = value
-	s := <-str.readStreams
-	if s == nil {
-		str.lock.Lock()
-		if str.client == nil {
-			if err := str.startup(); err != nil {
-				str.lock.Unlock()
-				str.readStreams <- nil
-				return 0, rvalue, err
+type asyncGroupReadRequest struct {
+	req          pb.ReadRequest
+	resChan      chan *asyncGroupReadResponse
+	canceledLock sync.Mutex
+	canceled     bool
+}
+
+type asyncGroupReadResponse struct {
+	res *pb.ReadResponse
+	err error
+}
+
+func (stor *groupStore) handleReadStream() {
+	resChan := make(chan *asyncGroupReadResponse, cap(stor.freeReadReqChan))
+	resFunc := func(stream pb.GroupStore_StreamReadClient) {
+		var err error
+		var res *asyncGroupReadResponse
+		for {
+			select {
+			case res = <-stor.freeReadResChan:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			res.res, res.err = stream.Recv()
+			err = res.err
+			if err != nil {
+				res.res = nil
+			}
+			select {
+			case resChan <- res:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			if err != nil {
+				return
 			}
 		}
-		s, err = str.client.StreamRead(context.Background())
-		str.lock.Unlock()
-		if err != nil {
-			str.readStreams <- nil
-			return 0, rvalue, err
-		}
 	}
-	req := &pb.ReadRequest{
-		KeyA: keyA,
-		KeyB: keyB,
-
-		ChildKeyA: childKeyA,
-		ChildKeyB: childKeyB,
-	}
-	if err = s.Send(req); err != nil {
-		str.readStreams <- nil
-		return 0, rvalue, err
-	}
-	res, err := s.Recv()
-	if err != nil {
-		str.readStreams <- nil
-		return 0, rvalue, err
-	}
-	rvalue = append(rvalue, res.Value...)
-	if res.Err != "" {
-		err = proto.TranslateErrorString(res.Err)
-	}
-	str.readStreams <- s
-	return res.TimestampMicro, rvalue, err
-}
-
-func (str *groupStore) Write(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64, value []byte) (oldtimestampmicro int64, err error) {
-	// TODO: Pay attention to ctx.
-	s := <-str.writeStreams
-	if s == nil {
-		str.lock.Lock()
-		if str.client == nil {
-			if err := str.startup(); err != nil {
-				str.lock.Unlock()
-				str.writeStreams <- nil
-				return 0, err
-			}
-		}
-		s, err = str.client.StreamWrite(context.Background())
-		str.lock.Unlock()
-		if err != nil {
-			str.writeStreams <- nil
-			return 0, err
-		}
-	}
-	req := &pb.WriteRequest{
-		KeyA: keyA,
-		KeyB: keyB,
-
-		ChildKeyA: childKeyA,
-		ChildKeyB: childKeyB,
-
-		TimestampMicro: timestampmicro,
-		Value:          value,
-	}
-	if err = s.Send(req); err != nil {
-		str.writeStreams <- nil
-		return 0, err
-	}
-	res, err := s.Recv()
-	if err != nil {
-		str.writeStreams <- nil
-		return 0, err
-	}
-	if res.Err != "" {
-		err = proto.TranslateErrorString(res.Err)
-	}
-	str.writeStreams <- s
-	return res.TimestampMicro, err
-}
-
-func (str *groupStore) Delete(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampmicro int64) (oldtimestampmicro int64, err error) {
-	// TODO: Pay attention to ctx.
-	s := <-str.deleteStreams
-	if s == nil {
-		str.lock.Lock()
-		if str.client == nil {
-			if err := str.startup(); err != nil {
-				str.lock.Unlock()
-				str.deleteStreams <- nil
-				return 0, err
-			}
-		}
-		s, err = str.client.StreamDelete(context.Background())
-		str.lock.Unlock()
-		if err != nil {
-			str.deleteStreams <- nil
-			return 0, err
-		}
-	}
-	req := &pb.DeleteRequest{
-		KeyA: keyA,
-		KeyB: keyB,
-
-		ChildKeyA: childKeyA,
-		ChildKeyB: childKeyB,
-
-		TimestampMicro: timestampmicro,
-	}
-	if err = s.Send(req); err != nil {
-		str.deleteStreams <- nil
-		return 0, err
-	}
-	res, err := s.Recv()
-	if err != nil {
-		str.deleteStreams <- nil
-		return 0, err
-	}
-	if res.Err != "" {
-		err = proto.TranslateErrorString(res.Err)
-	}
-	str.deleteStreams <- s
-	return res.TimestampMicro, err
-}
-
-func (str *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.LookupGroupItem, error) {
-	// TODO: Pay attention to ctx.
 	var err error
-	s := <-str.lookupGroupStreams
-	if s == nil {
-		str.lock.Lock()
-		if str.client == nil {
-			if err := str.startup(); err != nil {
-				str.lock.Unlock()
-				str.lookupGroupStreams <- nil
-				return nil, err
+	var stream pb.GroupStore_StreamReadClient
+	waitingMax := uint32(cap(stor.freeReadReqChan)) - 1
+	waiting := make([]*asyncGroupReadRequest, waitingMax+1)
+	waitingIndex := uint32(0)
+	for {
+		select {
+		case req := <-stor.pendingReadReqChan:
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
+				}
+				if waitingIndex == j {
+					panic("coding error: got more concurrent requests from pendingReadReqChan than should be available")
+				}
 			}
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
+			if stream == nil {
+				stor.lock.Lock()
+				if stor.client == nil {
+					if err = stor.startup(); err != nil {
+						stor.lock.Unlock()
+						res := <-stor.freeReadResChan
+						res.err = err
+						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+						break
+					}
+				}
+				stream, err = stor.client.StreamRead(context.Background())
+				stor.lock.Unlock()
+				if err != nil {
+					res := <-stor.freeReadResChan
+					res.err = err
+					res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
+					resChan <- res
+					break
+				}
+				go resFunc(stream)
+			}
+			if err = stream.Send(&req.req); err != nil {
+				stream = nil
+				res := <-stor.freeReadResChan
+				res.err = err
+				res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
+				resChan <- res
+			}
+		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupReadRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupReadRequest) {
+					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
+						res := <-stor.freeReadResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
+				// TODO: Debug log error?
+				break
+			}
+			req := waiting[res.res.Rpcid]
+			if req == nil {
+				// TODO: Debug log error?
+				break
+			}
+			waiting[res.res.Rpcid] = nil
+			req.canceledLock.Lock()
+			if !req.canceled {
+				req.resChan <- res
+			} else {
+				stor.freeReadReqChan <- req
+				stor.freeReadResChan <- res
+			}
+			req.canceledLock.Unlock()
+		case <-stor.handlersDoneChan:
+			return
 		}
-		s, err = str.client.StreamLookupGroup(context.Background())
-		str.lock.Unlock()
-		if err != nil {
-			str.lookupGroupStreams <- nil
-			return nil, err
-		}
 	}
-	req := &pb.LookupGroupRequest{
-		KeyA: parentKeyA,
-		KeyB: parentKeyB,
-	}
-	if err = s.Send(req); err != nil {
-		str.lookupGroupStreams <- nil
-		return nil, err
-	}
-	res, err := s.Recv()
-	if err != nil {
-		str.lookupGroupStreams <- nil
-		return nil, err
-	}
-	rv := make([]store.LookupGroupItem, len(res.Items))
-	for i, v := range res.Items {
-		rv[i].ChildKeyA = v.ChildKeyA
-		rv[i].ChildKeyB = v.ChildKeyB
-		rv[i].TimestampMicro = v.TimestampMicro
-		rv[i].Length = v.Length
-	}
-	if res.Err != "" {
-		err = proto.TranslateErrorString(res.Err)
-	}
-	str.lookupGroupStreams <- s
-	return rv, err
 }
 
-func (str *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint64) ([]store.ReadGroupItem, error) {
-	// TODO: Pay attention to ctx.
-	var err error
-	s := <-str.readGroupStreams
-	if s == nil {
-		str.lock.Lock()
-		if str.client == nil {
-			if err := str.startup(); err != nil {
-				str.lock.Unlock()
-				str.readGroupStreams <- nil
-				return nil, err
+func (stor *groupStore) Read(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, value []byte) (timestampMicro int64, rvalue []byte, err error) {
+
+	var req *asyncGroupReadRequest
+	select {
+	case req = <-stor.freeReadReqChan:
+	case <-ctx.Done():
+
+		return 0, rvalue, ctx.Err()
+
+	}
+	req.canceled = false
+
+	req.req.KeyA = keyA
+	req.req.KeyB = keyB
+
+	req.req.ChildKeyA = childKeyA
+	req.req.ChildKeyB = childKeyB
+
+	select {
+	case stor.pendingReadReqChan <- req:
+	case <-ctx.Done():
+		stor.freeReadReqChan <- req
+
+		return 0, rvalue, ctx.Err()
+
+	}
+	var res *asyncGroupReadResponse
+	select {
+	case res = <-req.resChan:
+	case <-ctx.Done():
+		req.canceledLock.Lock()
+		select {
+		case <-req.resChan:
+		default:
+			req.canceled = true
+		}
+		req.canceledLock.Unlock()
+
+		return 0, rvalue, ctx.Err()
+
+	}
+	stor.freeReadReqChan <- req
+	if res.err != nil {
+		err = res.err
+		stor.freeReadResChan <- res
+
+		return 0, rvalue, err
+
+	}
+
+	timestampMicro = res.res.TimestampMicro
+	rvalue = append(rvalue, res.res.Value...)
+
+	if res.res.Err == "" {
+		err = nil
+	} else {
+		err = proto.TranslateErrorString(res.res.Err)
+	}
+	stor.freeReadResChan <- res
+
+	return timestampMicro, rvalue, err
+
+}
+
+type asyncGroupWriteRequest struct {
+	req          pb.WriteRequest
+	resChan      chan *asyncGroupWriteResponse
+	canceledLock sync.Mutex
+	canceled     bool
+}
+
+type asyncGroupWriteResponse struct {
+	res *pb.WriteResponse
+	err error
+}
+
+func (stor *groupStore) handleWriteStream() {
+	resChan := make(chan *asyncGroupWriteResponse, cap(stor.freeWriteReqChan))
+	resFunc := func(stream pb.GroupStore_StreamWriteClient) {
+		var err error
+		var res *asyncGroupWriteResponse
+		for {
+			select {
+			case res = <-stor.freeWriteResChan:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			res.res, res.err = stream.Recv()
+			err = res.err
+			if err != nil {
+				res.res = nil
+			}
+			select {
+			case resChan <- res:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			if err != nil {
+				return
 			}
 		}
-		s, err = str.client.StreamReadGroup(context.Background())
-		str.lock.Unlock()
-		if err != nil {
-			str.readGroupStreams <- nil
-			return nil, err
+	}
+	var err error
+	var stream pb.GroupStore_StreamWriteClient
+	waitingMax := uint32(cap(stor.freeWriteReqChan)) - 1
+	waiting := make([]*asyncGroupWriteRequest, waitingMax+1)
+	waitingIndex := uint32(0)
+	for {
+		select {
+		case req := <-stor.pendingWriteReqChan:
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
+				}
+				if waitingIndex == j {
+					panic("coding error: got more concurrent requests from pendingWriteReqChan than should be available")
+				}
+			}
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
+			if stream == nil {
+				stor.lock.Lock()
+				if stor.client == nil {
+					if err = stor.startup(); err != nil {
+						stor.lock.Unlock()
+						res := <-stor.freeWriteResChan
+						res.err = err
+						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+						break
+					}
+				}
+				stream, err = stor.client.StreamWrite(context.Background())
+				stor.lock.Unlock()
+				if err != nil {
+					res := <-stor.freeWriteResChan
+					res.err = err
+					res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
+					resChan <- res
+					break
+				}
+				go resFunc(stream)
+			}
+			if err = stream.Send(&req.req); err != nil {
+				stream = nil
+				res := <-stor.freeWriteResChan
+				res.err = err
+				res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
+				resChan <- res
+			}
+		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupWriteRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupWriteRequest) {
+					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
+						res := <-stor.freeWriteResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
+				// TODO: Debug log error?
+				break
+			}
+			req := waiting[res.res.Rpcid]
+			if req == nil {
+				// TODO: Debug log error?
+				break
+			}
+			waiting[res.res.Rpcid] = nil
+			req.canceledLock.Lock()
+			if !req.canceled {
+				req.resChan <- res
+			} else {
+				stor.freeWriteReqChan <- req
+				stor.freeWriteResChan <- res
+			}
+			req.canceledLock.Unlock()
+		case <-stor.handlersDoneChan:
+			return
 		}
 	}
-	req := &pb.ReadGroupRequest{
-		KeyA: parentKeyA,
-		KeyB: parentKeyB,
+}
+
+func (stor *groupStore) Write(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampMicro int64, value []byte) (oldTimestampMicro int64, err error) {
+
+	var req *asyncGroupWriteRequest
+	select {
+	case req = <-stor.freeWriteReqChan:
+	case <-ctx.Done():
+
+		return 0, ctx.Err()
+
 	}
-	if err = s.Send(req); err != nil {
-		str.readGroupStreams <- nil
+	req.canceled = false
+
+	req.req.KeyA = keyA
+	req.req.KeyB = keyB
+
+	req.req.ChildKeyA = childKeyA
+	req.req.ChildKeyB = childKeyB
+
+	req.req.TimestampMicro = timestampMicro
+	req.req.Value = value
+
+	select {
+	case stor.pendingWriteReqChan <- req:
+	case <-ctx.Done():
+		stor.freeWriteReqChan <- req
+
+		return 0, ctx.Err()
+
+	}
+	var res *asyncGroupWriteResponse
+	select {
+	case res = <-req.resChan:
+	case <-ctx.Done():
+		req.canceledLock.Lock()
+		select {
+		case <-req.resChan:
+		default:
+			req.canceled = true
+		}
+		req.canceledLock.Unlock()
+
+		return 0, ctx.Err()
+
+	}
+	stor.freeWriteReqChan <- req
+	if res.err != nil {
+		err = res.err
+		stor.freeWriteResChan <- res
+
+		return 0, err
+
+	}
+
+	oldTimestampMicro = res.res.TimestampMicro
+
+	if res.res.Err == "" {
+		err = nil
+	} else {
+		err = proto.TranslateErrorString(res.res.Err)
+	}
+	stor.freeWriteResChan <- res
+
+	return oldTimestampMicro, err
+
+}
+
+type asyncGroupDeleteRequest struct {
+	req          pb.DeleteRequest
+	resChan      chan *asyncGroupDeleteResponse
+	canceledLock sync.Mutex
+	canceled     bool
+}
+
+type asyncGroupDeleteResponse struct {
+	res *pb.DeleteResponse
+	err error
+}
+
+func (stor *groupStore) handleDeleteStream() {
+	resChan := make(chan *asyncGroupDeleteResponse, cap(stor.freeDeleteReqChan))
+	resFunc := func(stream pb.GroupStore_StreamDeleteClient) {
+		var err error
+		var res *asyncGroupDeleteResponse
+		for {
+			select {
+			case res = <-stor.freeDeleteResChan:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			res.res, res.err = stream.Recv()
+			err = res.err
+			if err != nil {
+				res.res = nil
+			}
+			select {
+			case resChan <- res:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}
+	var err error
+	var stream pb.GroupStore_StreamDeleteClient
+	waitingMax := uint32(cap(stor.freeDeleteReqChan)) - 1
+	waiting := make([]*asyncGroupDeleteRequest, waitingMax+1)
+	waitingIndex := uint32(0)
+	for {
+		select {
+		case req := <-stor.pendingDeleteReqChan:
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
+				}
+				if waitingIndex == j {
+					panic("coding error: got more concurrent requests from pendingDeleteReqChan than should be available")
+				}
+			}
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
+			if stream == nil {
+				stor.lock.Lock()
+				if stor.client == nil {
+					if err = stor.startup(); err != nil {
+						stor.lock.Unlock()
+						res := <-stor.freeDeleteResChan
+						res.err = err
+						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+						break
+					}
+				}
+				stream, err = stor.client.StreamDelete(context.Background())
+				stor.lock.Unlock()
+				if err != nil {
+					res := <-stor.freeDeleteResChan
+					res.err = err
+					res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
+					resChan <- res
+					break
+				}
+				go resFunc(stream)
+			}
+			if err = stream.Send(&req.req); err != nil {
+				stream = nil
+				res := <-stor.freeDeleteResChan
+				res.err = err
+				res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
+				resChan <- res
+			}
+		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupDeleteRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupDeleteRequest) {
+					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
+						res := <-stor.freeDeleteResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
+				// TODO: Debug log error?
+				break
+			}
+			req := waiting[res.res.Rpcid]
+			if req == nil {
+				// TODO: Debug log error?
+				break
+			}
+			waiting[res.res.Rpcid] = nil
+			req.canceledLock.Lock()
+			if !req.canceled {
+				req.resChan <- res
+			} else {
+				stor.freeDeleteReqChan <- req
+				stor.freeDeleteResChan <- res
+			}
+			req.canceledLock.Unlock()
+		case <-stor.handlersDoneChan:
+			return
+		}
+	}
+}
+
+func (stor *groupStore) Delete(ctx context.Context, keyA, keyB uint64, childKeyA, childKeyB uint64, timestampMicro int64) (oldTimestampMicro int64, err error) {
+
+	var req *asyncGroupDeleteRequest
+	select {
+	case req = <-stor.freeDeleteReqChan:
+	case <-ctx.Done():
+
+		return 0, ctx.Err()
+
+	}
+	req.canceled = false
+
+	req.req.KeyA = keyA
+	req.req.KeyB = keyB
+
+	req.req.ChildKeyA = childKeyA
+	req.req.ChildKeyB = childKeyB
+
+	req.req.TimestampMicro = timestampMicro
+
+	select {
+	case stor.pendingDeleteReqChan <- req:
+	case <-ctx.Done():
+		stor.freeDeleteReqChan <- req
+
+		return 0, ctx.Err()
+
+	}
+	var res *asyncGroupDeleteResponse
+	select {
+	case res = <-req.resChan:
+	case <-ctx.Done():
+		req.canceledLock.Lock()
+		select {
+		case <-req.resChan:
+		default:
+			req.canceled = true
+		}
+		req.canceledLock.Unlock()
+
+		return 0, ctx.Err()
+
+	}
+	stor.freeDeleteReqChan <- req
+	if res.err != nil {
+		err = res.err
+		stor.freeDeleteResChan <- res
+
+		return 0, err
+
+	}
+
+	oldTimestampMicro = res.res.TimestampMicro
+
+	if res.res.Err == "" {
+		err = nil
+	} else {
+		err = proto.TranslateErrorString(res.res.Err)
+	}
+	stor.freeDeleteResChan <- res
+
+	return oldTimestampMicro, err
+
+}
+
+type asyncGroupLookupGroupRequest struct {
+	req          pb.LookupGroupRequest
+	resChan      chan *asyncGroupLookupGroupResponse
+	canceledLock sync.Mutex
+	canceled     bool
+}
+
+type asyncGroupLookupGroupResponse struct {
+	res *pb.LookupGroupResponse
+	err error
+}
+
+func (stor *groupStore) handleLookupGroupStream() {
+	resChan := make(chan *asyncGroupLookupGroupResponse, cap(stor.freeLookupGroupReqChan))
+	resFunc := func(stream pb.GroupStore_StreamLookupGroupClient) {
+		var err error
+		var res *asyncGroupLookupGroupResponse
+		for {
+			select {
+			case res = <-stor.freeLookupGroupResChan:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			res.res, res.err = stream.Recv()
+			err = res.err
+			if err != nil {
+				res.res = nil
+			}
+			select {
+			case resChan <- res:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}
+	var err error
+	var stream pb.GroupStore_StreamLookupGroupClient
+	waitingMax := uint32(cap(stor.freeLookupGroupReqChan)) - 1
+	waiting := make([]*asyncGroupLookupGroupRequest, waitingMax+1)
+	waitingIndex := uint32(0)
+	for {
+		select {
+		case req := <-stor.pendingLookupGroupReqChan:
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
+				}
+				if waitingIndex == j {
+					panic("coding error: got more concurrent requests from pendingLookupGroupReqChan than should be available")
+				}
+			}
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
+			if stream == nil {
+				stor.lock.Lock()
+				if stor.client == nil {
+					if err = stor.startup(); err != nil {
+						stor.lock.Unlock()
+						res := <-stor.freeLookupGroupResChan
+						res.err = err
+						res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+						break
+					}
+				}
+				stream, err = stor.client.StreamLookupGroup(context.Background())
+				stor.lock.Unlock()
+				if err != nil {
+					res := <-stor.freeLookupGroupResChan
+					res.err = err
+					res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
+					resChan <- res
+					break
+				}
+				go resFunc(stream)
+			}
+			if err = stream.Send(&req.req); err != nil {
+				stream = nil
+				res := <-stor.freeLookupGroupResChan
+				res.err = err
+				res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
+				resChan <- res
+			}
+		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupLookupGroupRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupLookupGroupRequest) {
+					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
+						res := <-stor.freeLookupGroupResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
+				// TODO: Debug log error?
+				break
+			}
+			req := waiting[res.res.Rpcid]
+			if req == nil {
+				// TODO: Debug log error?
+				break
+			}
+			waiting[res.res.Rpcid] = nil
+			req.canceledLock.Lock()
+			if !req.canceled {
+				req.resChan <- res
+			} else {
+				stor.freeLookupGroupReqChan <- req
+				stor.freeLookupGroupResChan <- res
+			}
+			req.canceledLock.Unlock()
+		case <-stor.handlersDoneChan:
+			return
+		}
+	}
+}
+
+func (stor *groupStore) LookupGroup(ctx context.Context, parentKeyA, parentKeyB uint64) (items []store.LookupGroupItem, err error) {
+
+	var req *asyncGroupLookupGroupRequest
+	select {
+	case req = <-stor.freeLookupGroupReqChan:
+	case <-ctx.Done():
+
+		return nil, ctx.Err()
+
+	}
+	req.canceled = false
+
+	req.req.KeyA = parentKeyA
+	req.req.KeyB = parentKeyB
+
+	select {
+	case stor.pendingLookupGroupReqChan <- req:
+	case <-ctx.Done():
+		stor.freeLookupGroupReqChan <- req
+
+		return nil, ctx.Err()
+
+	}
+	var res *asyncGroupLookupGroupResponse
+	select {
+	case res = <-req.resChan:
+	case <-ctx.Done():
+		req.canceledLock.Lock()
+		select {
+		case <-req.resChan:
+		default:
+			req.canceled = true
+		}
+		req.canceledLock.Unlock()
+
+		return nil, ctx.Err()
+
+	}
+	stor.freeLookupGroupReqChan <- req
+	if res.err != nil {
+		err = res.err
+		stor.freeLookupGroupResChan <- res
+
 		return nil, err
+
 	}
-	res, err := s.Recv()
-	if err != nil {
-		str.readGroupStreams <- nil
+
+	items = make([]store.LookupGroupItem, len(res.res.Items))
+	for i, v := range res.res.Items {
+		items[i].ChildKeyA = v.ChildKeyA
+		items[i].ChildKeyB = v.ChildKeyB
+		items[i].TimestampMicro = v.TimestampMicro
+		items[i].Length = v.Length
+	}
+
+	if res.res.Err == "" {
+		err = nil
+	} else {
+		err = proto.TranslateErrorString(res.res.Err)
+	}
+	stor.freeLookupGroupResChan <- res
+
+	return items, err
+
+}
+
+type asyncGroupReadGroupRequest struct {
+	req          pb.ReadGroupRequest
+	resChan      chan *asyncGroupReadGroupResponse
+	canceledLock sync.Mutex
+	canceled     bool
+}
+
+type asyncGroupReadGroupResponse struct {
+	res *pb.ReadGroupResponse
+	err error
+}
+
+func (stor *groupStore) handleReadGroupStream() {
+	resChan := make(chan *asyncGroupReadGroupResponse, cap(stor.freeReadGroupReqChan))
+	resFunc := func(stream pb.GroupStore_StreamReadGroupClient) {
+		var err error
+		var res *asyncGroupReadGroupResponse
+		for {
+			select {
+			case res = <-stor.freeReadGroupResChan:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			res.res, res.err = stream.Recv()
+			err = res.err
+			if err != nil {
+				res.res = nil
+			}
+			select {
+			case resChan <- res:
+			case <-stor.handlersDoneChan:
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}
+	var err error
+	var stream pb.GroupStore_StreamReadGroupClient
+	waitingMax := uint32(cap(stor.freeReadGroupReqChan)) - 1
+	waiting := make([]*asyncGroupReadGroupRequest, waitingMax+1)
+	waitingIndex := uint32(0)
+	for {
+		select {
+		case req := <-stor.pendingReadGroupReqChan:
+			j := waitingIndex
+			for waiting[waitingIndex] != nil {
+				waitingIndex++
+				if waitingIndex > waitingMax {
+					waitingIndex = 0
+				}
+				if waitingIndex == j {
+					panic("coding error: got more concurrent requests from pendingReadGroupReqChan than should be available")
+				}
+			}
+			req.req.Rpcid = waitingIndex
+			waiting[waitingIndex] = req
+			waitingIndex++
+			if waitingIndex > waitingMax {
+				waitingIndex = 0
+			}
+			if stream == nil {
+				stor.lock.Lock()
+				if stor.client == nil {
+					if err = stor.startup(); err != nil {
+						stor.lock.Unlock()
+						res := <-stor.freeReadGroupResChan
+						res.err = err
+						res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+						break
+					}
+				}
+				stream, err = stor.client.StreamReadGroup(context.Background())
+				stor.lock.Unlock()
+				if err != nil {
+					res := <-stor.freeReadGroupResChan
+					res.err = err
+					res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
+					resChan <- res
+					break
+				}
+				go resFunc(stream)
+			}
+			if err = stream.Send(&req.req); err != nil {
+				stream = nil
+				res := <-stor.freeReadGroupResChan
+				res.err = err
+				res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
+				resChan <- res
+			}
+		case res := <-resChan:
+			if res.res == nil {
+				// Receiver got unrecoverable error, so we'll have to
+				// respond with errors to all waiting requests.
+				wereWaiting := make([]*asyncGroupReadGroupRequest, len(waiting))
+				for i, v := range waiting {
+					wereWaiting[i] = v
+				}
+				go func(reqs []*asyncGroupReadGroupRequest) {
+					for _, req := range reqs {
+						if req == nil {
+							continue
+						}
+						res := <-stor.freeReadGroupResChan
+						res.err = errors.New("receiver error")
+						res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
+						resChan <- res
+					}
+				}(wereWaiting)
+				break
+			}
+			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
+				// TODO: Debug log error?
+				break
+			}
+			req := waiting[res.res.Rpcid]
+			if req == nil {
+				// TODO: Debug log error?
+				break
+			}
+			waiting[res.res.Rpcid] = nil
+			req.canceledLock.Lock()
+			if !req.canceled {
+				req.resChan <- res
+			} else {
+				stor.freeReadGroupReqChan <- req
+				stor.freeReadGroupResChan <- res
+			}
+			req.canceledLock.Unlock()
+		case <-stor.handlersDoneChan:
+			return
+		}
+	}
+}
+
+func (stor *groupStore) ReadGroup(ctx context.Context, parentKeyA, parentKeyB uint64) (items []store.ReadGroupItem, err error) {
+
+	var req *asyncGroupReadGroupRequest
+	select {
+	case req = <-stor.freeReadGroupReqChan:
+	case <-ctx.Done():
+
+		return nil, ctx.Err()
+
+	}
+	req.canceled = false
+
+	req.req.KeyA = parentKeyA
+	req.req.KeyB = parentKeyB
+
+	select {
+	case stor.pendingReadGroupReqChan <- req:
+	case <-ctx.Done():
+		stor.freeReadGroupReqChan <- req
+
+		return nil, ctx.Err()
+
+	}
+	var res *asyncGroupReadGroupResponse
+	select {
+	case res = <-req.resChan:
+	case <-ctx.Done():
+		req.canceledLock.Lock()
+		select {
+		case <-req.resChan:
+		default:
+			req.canceled = true
+		}
+		req.canceledLock.Unlock()
+
+		return nil, ctx.Err()
+
+	}
+	stor.freeReadGroupReqChan <- req
+	if res.err != nil {
+		err = res.err
+		stor.freeReadGroupResChan <- res
+
 		return nil, err
+
 	}
-	rv := make([]store.ReadGroupItem, len(res.Items))
-	for i, v := range res.Items {
-		rv[i].ChildKeyA = v.ChildKeyA
-		rv[i].ChildKeyB = v.ChildKeyB
-		rv[i].TimestampMicro = v.TimestampMicro
-		rv[i].Value = v.Value
+
+	items = make([]store.ReadGroupItem, len(res.res.Items))
+	for i, v := range res.res.Items {
+		items[i].ChildKeyA = v.ChildKeyA
+		items[i].ChildKeyB = v.ChildKeyB
+		items[i].TimestampMicro = v.TimestampMicro
+		items[i].Value = v.Value
 	}
-	str.readGroupStreams <- s
-	return rv, nil
+
+	if res.res.Err == "" {
+		err = nil
+	} else {
+		err = proto.TranslateErrorString(res.res.Err)
+	}
+	stor.freeReadGroupResChan <- res
+
+	return items, err
+
 }

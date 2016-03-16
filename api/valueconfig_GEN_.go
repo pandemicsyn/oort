@@ -1,5 +1,7 @@
 package api
 
+import "google.golang.org/grpc"
+
 // ReplValueStoreConfig defines the settings when calling NewValueStore.
 type ReplValueStoreConfig struct {
 	// LogDebug sets the func to use for debug messages. Defaults to not
@@ -17,12 +19,11 @@ type ReplValueStoreConfig struct {
 	// ConcurrentRequestsPerStore defines the concurrent requests per
 	// underlying connected store. Default: 10
 	ConcurrentRequestsPerStore int
-	// StreamsPerStore defines the grpc streams per underlying connected store.
-	// Default: Same as ConcurrentRequestsPerStore
-	StreamsPerStore int
 	// FailedConnectRetryDelay defines how many seconds must pass before
 	// retrying a failed connection. Default: 15 seconds
 	FailedConnectRetryDelay int
+	// GRPCOpts are any additional options you'd like to pass to GRPC.
+	GRPCOpts []grpc.DialOption
 }
 
 func resolveReplValueStoreConfig(c *ReplValueStoreConfig) *ReplValueStoreConfig {
@@ -38,12 +39,6 @@ func resolveReplValueStoreConfig(c *ReplValueStoreConfig) *ReplValueStoreConfig 
 	}
 	if cfg.ConcurrentRequestsPerStore < 1 {
 		cfg.ConcurrentRequestsPerStore = 1
-	}
-	if cfg.StreamsPerStore == 0 {
-		cfg.StreamsPerStore = 10
-	}
-	if cfg.StreamsPerStore < 1 {
-		cfg.StreamsPerStore = 1
 	}
 	if cfg.FailedConnectRetryDelay == 0 {
 		cfg.FailedConnectRetryDelay = 15

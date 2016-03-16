@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gholt/brimtime"
+	"github.com/gholt/ring"
 	"github.com/gholt/store"
 	"github.com/pandemicsyn/ftls"
 	"github.com/pandemicsyn/oort/api"
@@ -22,6 +23,8 @@ import (
 
 var vaddr = flag.String("vhost", "127.0.0.1:6379", "vstore addr")
 var gaddr = flag.String("ghost", "127.0.0.1:6380", "gstore addr")
+var vring = flag.String("vring", "vring.ring", "vstore ring (instead of vaddr)")
+var gring = flag.String("gring", "gring.ring", "gstore ring (instead of gaddr)")
 var groupmode = flag.Bool("g", false, "whether we're talking to a groupstore instance")
 var tls = flag.Bool("tls", true, "whether the server is speaking tls")
 var insecureSkipVerify = flag.Bool("insecure", false, "whether or not we should verify the cert")
@@ -310,7 +313,21 @@ func (c *Client) getValueClient() error {
 		}
 		opts = append(opts, opt)
 	}
-	c.vstore, err = api.NewValueStore(c.vaddr, 10, opts...)
+	if c.vring == "" {
+		c.vstore, err = api.NewValueStore(c.vaddr, 10, opts...)
+	} else {
+		var f *os.File
+		f, err = os.Open(c.vring)
+		if err == nil {
+			var r ring.Ring
+			r, err = ring.LoadRing(f)
+			if err == nil {
+				s := api.NewReplValueStore(&api.ReplValueStoreConfig{AddressIndex: 2, GRPCOpts: opts})
+				s.SetRing(r)
+				c.vstore = s
+			}
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("Unable to setup value store: %s", err.Error())
 	}
@@ -333,7 +350,21 @@ func (c *Client) getGroupClient() error {
 		}
 		opts = append(opts, opt)
 	}
-	c.gstore, err = api.NewGroupStore(c.gaddr, 10, opts...)
+	if c.gring == "" {
+		c.gstore, err = api.NewGroupStore(c.gaddr, 10, opts...)
+	} else {
+		var f *os.File
+		f, err = os.Open(c.gring)
+		if err == nil {
+			var r ring.Ring
+			r, err = ring.LoadRing(f)
+			if err == nil {
+				s := api.NewReplGroupStore(&api.ReplGroupStoreConfig{AddressIndex: 2, GRPCOpts: opts})
+				s.SetRing(r)
+				c.gstore = s
+			}
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("Unable to setup group store: %s", err.Error())
 	}
@@ -343,6 +374,8 @@ func (c *Client) getGroupClient() error {
 type Client struct {
 	vaddr  string
 	gaddr  string
+	vring  string
+	gring  string
 	gmode  bool
 	vconn  *grpc.ClientConn
 	vstore store.ValueStore
@@ -364,6 +397,8 @@ func main() {
 	client := Client{
 		vaddr: *vaddr,
 		gaddr: *gaddr,
+		vring: *vring,
+		gring: *gring,
 		gmode: *groupmode,
 	}
 	sm := "value"
