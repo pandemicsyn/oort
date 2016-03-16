@@ -171,25 +171,28 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
         }
         var err error
         var stream pb.{{$.T}}Store_Stream{{$R}}Client
-        z := uint32(cap(stor.free{{$R}}ReqChan))
-        waiting := make([]*async{{$.T}}{{$R}}Request, z)
-        i := uint32(0)
+        waitingMax := uint32(cap(stor.free{{$R}}ReqChan)) - 1
+        waiting := make([]*async{{$.T}}{{$R}}Request, waitingMax+1)
+        waitingIndex := uint32(0)
         for {
             select {
             case req := <-stor.pending{{$R}}ReqChan:
-                j := i
-                for waiting[i] != nil {
-                    i++
-                    if i >= z {
-                        i = 0
+                j := waitingIndex
+                for waiting[waitingIndex] != nil {
+                    waitingIndex++
+                    if waitingIndex > waitingMax {
+                        waitingIndex = 0
                     }
-                    if i == j {
+                    if waitingIndex == j {
                         panic("coding error: got more concurrent requests from pending{{$R}}ReqChan than should be available")
                     }
                 }
-                req.req.Rpcid = i
-                waiting[i] = req
-                i++
+                req.req.Rpcid = waitingIndex
+                waiting[waitingIndex] = req
+                waitingIndex++
+                if waitingIndex > waitingMax {
+                    waitingIndex = 0
+                }
                 if stream == nil {
                     stor.lock.Lock()
                     if stor.client == nil {
@@ -241,7 +244,7 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
                     }(wereWaiting)
                     break
                 }
-                if res.res.Rpcid < 0 || res.res.Rpcid >= z {
+                if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
                     // TODO: Debug log error?
                     break
                 }
