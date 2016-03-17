@@ -23,8 +23,8 @@ import (
 
 var vaddr = flag.String("vhost", "127.0.0.1:6379", "vstore addr")
 var gaddr = flag.String("ghost", "127.0.0.1:6380", "gstore addr")
-var vring = flag.String("vring", "vring.ring", "vstore ring (instead of vaddr)")
-var gring = flag.String("gring", "gring.ring", "gstore ring (instead of gaddr)")
+var vring = flag.String("vring", "", "vstore ring (instead of vaddr)")
+var gring = flag.String("gring", "", "gstore ring (instead of gaddr)")
 var groupmode = flag.Bool("g", false, "whether we're talking to a groupstore instance")
 var tls = flag.Bool("tls", true, "whether the server is speaking tls")
 var insecureSkipVerify = flag.Bool("insecure", false, "whether or not we should verify the cert")
