@@ -1,6 +1,7 @@
 package oort
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
@@ -26,9 +27,14 @@ type OortService interface {
 	Wait()
 }
 
+const (
+	DefaultBaseDir = "/var/lib"
+)
+
 type Server struct {
 	sync.RWMutex
 	serviceName string
+	cwd         string
 	ringFile    string
 	ring        ring.Ring
 	localID     uint64
@@ -43,9 +49,15 @@ type Server struct {
 	stopped           bool
 }
 
-func New(serviceName string) (*Server, error) {
+// New returns a instance of oort.Server for a given serviceName, and workingDir.
+// if workingDir is empty the default dir of "/var/lib/<servicename>" is used.
+func New(serviceName string, workingDir string) (*Server, error) {
+	if workingDir == "" {
+		workingDir = fmt.Sprintf("%s/%s", DefaultBaseDir, serviceName)
+	}
 	o := &Server{
 		serviceName:      serviceName,
+		cwd:              workingDir,
 		ch:               make(chan bool),
 		ShutdownComplete: make(chan bool),
 		waitGroup:        &sync.WaitGroup{},
