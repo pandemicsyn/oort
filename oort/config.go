@@ -109,13 +109,13 @@ func (o *Server) ObtainConfig() (err error) {
 		if err != nil {
 			return fmt.Errorf("Error while loading ring for config get via srv lookup: %s", err)
 		}
-		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("/etc/oort/%s/%d-oort.ring", o.serviceName, o.ring.Version()))
+		err = ring.PersistRingOrBuilder(o.ring, nil, fmt.Sprintf("%s/ring/%d-%s.ring", o.cwd, o.ring.Version(), o.serviceName))
 		if err != nil {
 			return err
 		}
 		o.localID = nc.Localid
 		o.ring.SetLocalNode(o.localID)
-		o.ringFile = fmt.Sprintf("/etc/oort/%s/%d-oort.ring", o.serviceName, o.ring.Version())
+		o.ringFile = fmt.Sprintf("%s/ring/%d-%s.ring", o.cwd, o.ring.Version(), o.serviceName)
 		err = o.loadCmdCtrlConfig()
 		if err != nil {
 			return err

@@ -32,24 +32,14 @@ clean:
 	rm -f packaging/root/usr/local/bin/oort-cli
 
 install: build
-	mkdir -p /etc/oort/value
-	mkdir -p /etc/oort/group
-	cp -av packaging/root/usr/local/bin/* $(GOPATH)/bin
-
-run:
-	go run oort-valued/*.go
+	mkdir -p /var/lib/oort-value/ring /var/lib/oort-value/data
+	mkdir -p /var/lib/oort-group/ring /var/lib/oort-group/data
+	install -t $(GOPATH)/bin packaging/root/usr/local/bin/*
 
 test:
 	go get ./...
 	go test -i ./...
 	go test ./...
-
-ring:
-	ring /tmp/oort.builder create replicas=3
-	ring /tmp/oort.builder add active=true capacity=1000 tier0=server1 tier1=z1 address0=127.0.0.1:8001 address1=127.0.0.2:8001 meta=onmetalv1
-	ring /tmp/oort.builder add active=true capacity=1000 tier0=server2 tier1=z2 address0=127.0.0.1:8002 address1=127.0.0.2:8002 meta=onmetalv1
-	ring /tmp/oort.builder add active=true capacity=1000 tier0=server3 tier1=z3 address0=127.0.0.1:8003 address1=127.0.0.2:8003 meta=onmetalv1
-	ring /tmp/oort.builder ring
 
 packages: clean deps build deb
 

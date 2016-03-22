@@ -11,8 +11,9 @@ oort
 * go install github.com/pandemicsyn/oort/oort-valued
 * go install github.com/pandemicsyn/oort/oort-groupd
 * go install github.com/pandemicsyn/oort/oort-cli
-* mkdir -p /etc/oort/value /etc/oort/group
-* If you'll be using the CmdCtrl interface you'll need to deploy your SSL key/crt to /etc/oort or whatever path you've specified in the ring config.
+* mkdir -p /var/lib/oort-valued/ring /var/lib/oort-groupd/ring
+* mkdir -p /var/lib/oort-valued/data /var/lib/oort-groupd/data
+* If you'll be using the CmdCtrl interface you'll need to deploy your SSL key/crt to /var/lib/oort-value or whatever path you've specified in the ring config.
 
 ### Oort Daemons/Binaries/Backends
 
@@ -20,21 +21,6 @@ oort
 * oort-groupd - The grpc speaking group storage daemon
 * oort-bench - The grpc speaking simple benchmark utility
 * oort-cli - A small redis-cli like utility for performing basic ops against the store's
-
-# installing a non-dev instance (i.e. you actually want an init script)
-
-Make sure you have a synd instance setup and running.
-
-1. mkdir -p /etc/oort/value
-2. touch /etc/default/oort-valued && /etc/default/oort-groupd
-3. go get -u github.com/pandemicsyn/oort/oort-valued && go install -a github.com/pandemicsyn/oort/oort-valued
-4. cp -av $GOHOME/github.com/pandemicsyn/oort/packaging/root/usr/share/oort/systemd/oort-valued.service /lib/systemd/system
-5. cp -av $GOHOME/github.com/pandemicsyn/oort/packaging/root/etc/oort/server.crt /etc/oort/value
-6. cp -av $GOHOME/github.com/pandemicsyn/oort/packaging/root/etc/oort/server.key /etc/oort/value
-7. systemctl start oort-valued
-8. journalctl -u oort-valued -f
-
-Rinse and repeat for oort-groupd (substitute the word "group" for "value")
 
 # Testing out a POC using cfs -> formic -> oort-valued | oort-groupd
 

@@ -14,6 +14,7 @@ import (
 
 var (
 	printVersionInfo = flag.Bool("version", false, "print version/build info")
+	cwd              = flag.String("cwd", "/var/lib/oort-group", "the working directory use")
 )
 var oortVersion string
 var ringVersion string
@@ -33,7 +34,7 @@ func main() {
 		fmt.Println("go version:", goVersion)
 		return
 	}
-	o, err := oort.New("group")
+	o, err := oort.New("group", *cwd)
 	if err != nil {
 		log.Fatalln("Unable to obtain config:", err)
 	}
