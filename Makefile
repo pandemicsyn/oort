@@ -40,23 +40,3 @@ test:
 	go get ./...
 	go test -i ./...
 	go test ./...
-
-packages: clean deps build deb
-
-deb:
-	fpm -s dir -t deb -n oort-valued -v $(VERSION) -p packaging/output/oort-valued-$(VERSION)_amd64.deb \
-		--deb-priority optional --category admin \
-		--force \
-		--iteration $(ITTERATION) \
-		--deb-compression bzip2 \
-	 	--after-install packaging/scripts/postinst.deb \
-	 	--before-remove packaging/scripts/prerm.deb \
-		--after-remove packaging/scripts/postrm.deb \
-		--url https://github.com/pandemicsyn/oort \
-		--description "Some sorta storage thingy" \
-		-m "Florian Hines <syn@ronin.io>" \
-		--license "Apache License 2.0" \
-		--vendor "oort" -a amd64 \
-		--config-files /etc/oort/oortd.toml-sample \
-		packaging/root/=/
-	cp packaging/output/oort-valued-$(VERSION)_amd64.deb packaging/output/oort-valued.deb.$(SHA)

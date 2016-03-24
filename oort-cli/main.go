@@ -29,9 +29,9 @@ var groupmode = flag.Bool("g", false, "whether we're talking to a groupstore ins
 var tls = flag.Bool("tls", true, "whether the server is speaking tls")
 var insecureSkipVerify = flag.Bool("insecure", false, "whether or not we should verify the cert")
 var mutualtls = flag.Bool("mutualtls", false, "whether or not the server expects mutual tls auth")
-var certfile = flag.String("cert", "/etc/oort/client.crt", "cert file to use")
-var keyfile = flag.String("key", "/etc/oort/client.key", "key file to use")
-var cafile = flag.String("ca", "/etc/oort/ca.pem", "ca file to use")
+var certfile = flag.String("cert", "/var/lib/oort-value/client.crt", "cert file to use")
+var keyfile = flag.String("key", "/var/lib/oort-value/client.key", "key file to use")
+var cafile = flag.String("ca", "/var/lib/oort-value/ca.pem", "ca file to use")
 
 var (
 	prompt    = "> "

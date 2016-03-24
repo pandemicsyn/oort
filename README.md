@@ -11,8 +11,8 @@ oort
 * go install github.com/pandemicsyn/oort/oort-valued
 * go install github.com/pandemicsyn/oort/oort-groupd
 * go install github.com/pandemicsyn/oort/oort-cli
-* mkdir -p /var/lib/oort-valued/ring /var/lib/oort-groupd/ring
-* mkdir -p /var/lib/oort-valued/data /var/lib/oort-groupd/data
+* mkdir -p /var/lib/oort-value/ring /var/lib/oort-group/ring
+* mkdir -p /var/lib/oort-value/data /var/lib/oort-group/data
 * If you'll be using the CmdCtrl interface you'll need to deploy your SSL key/crt to /var/lib/oort-value or whatever path you've specified in the ring config.
 
 ### Oort Daemons/Binaries/Backends

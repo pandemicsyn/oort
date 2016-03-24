@@ -50,7 +50,7 @@ func (o *Server) RingUpdate(newversion int64, ringBytes []byte) int64 {
 		log.Println("Provided ring version != version in ring")
 		return o.Ring().Version()
 	}
-	fname := fmt.Sprintf("/etc/oort/%s/%d.ring", o.serviceName, newring.Version())
+	fname := fmt.Sprintf("%s/ring/%d-%s.ring", o.cwd, newring.Version(), o.serviceName)
 	writeBytes(fname, &ringBytes)
 	o.SetRing(newring, fname)
 	return o.Ring().Version()
