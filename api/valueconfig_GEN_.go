@@ -4,6 +4,8 @@ import "google.golang.org/grpc"
 
 // ReplValueStoreConfig defines the settings when calling NewValueStore.
 type ReplValueStoreConfig struct {
+	// LogError sets the func to use for error messages. Defaults to stderr.
+	LogError func(fmt string, args ...interface{})
 	// LogDebug sets the func to use for debug messages. Defaults to not
 	// logging debug messages.
 	LogDebug func(fmt string, args ...interface{})
@@ -22,8 +24,22 @@ type ReplValueStoreConfig struct {
 	// FailedConnectRetryDelay defines how many seconds must pass before
 	// retrying a failed connection. Default: 15 seconds
 	FailedConnectRetryDelay int
-	// GRPCOpts are any additional options you'd like to pass to GRPC.
+	// GRPCOpts are any additional options you'd like to pass to GRPC when
+	// connecting to stores.
 	GRPCOpts []grpc.DialOption
+	// RingServer is the network address to use to connect to a ring server. An
+	// empty string will use the default DNS method of determining the ring
+	// server location.
+	RingServer string
+	// RingServerGRPCOpts are any additional options you'd like to pass to GRPC
+	// when connecting to the ring server.
+	RingServerGRPCOpts []grpc.DialOption
+	// RingCachePath is the full location file name where you'd like persist
+	// last received ring data, such as "/var/lib/myprog/ring/valuestore.ring".
+	// An empty string will disable caching. The cacher will need permission to
+	// create a new file with the path given plus a temporary suffix, and will
+	// then move that temporary file into place using the exact path given.
+	RingCachePath string
 }
 
 func resolveReplValueStoreConfig(c *ReplValueStoreConfig) *ReplValueStoreConfig {
