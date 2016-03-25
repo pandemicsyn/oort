@@ -7,6 +7,7 @@ import (
     "os"
     "path"
     "sync"
+    "sync/atomic"
     "time"
 
     "github.com/gholt/flog"
@@ -266,6 +267,38 @@ func (rs *Repl{{.T}}Store) ringServerConnector(exitChan chan struct{}) {
             sleeper()
             continue
         }
+        connDoneChan := make(chan struct{})
+        somethingICanTakeAnAddressOf := int32(0)
+        activity := &somethingICanTakeAnAddressOf
+        // This goroutine will detect when the exitChan is closed so it can
+        // close the conn so that the blocking stream.Recv will get an error
+        // and everything will unwind properly.
+        // However, if the conn errors out on its own and exitChan isn't
+        // closed, we're going to loop back around and try a new conn, but we
+        // need to clear out this goroutine, which is what the connDoneChan is
+        // for.
+        // One last thing is that if nothing happens for fifteen minutes, we
+        // can assume the conn has gone stale and close it, causing a loop
+        // around to try a new conn.
+        // It would be so much easier if Recv could use a timeout Context...
+        go func(c *grpc.ClientConn, a *int32, cdc chan struct{}) {
+            for {
+                select {
+                case <-exitChan:
+                case <-cdc:
+                case <-time.After(15*time.Minute):
+                    // I'm comfortable with time.After here since it's just
+                    // once per fifteen minutes or new conn.
+                    v := atomic.LoadInt32(a)
+                    if v != 0 {
+                        atomic.AddInt32(a, -v)
+                        continue
+                    }
+                }
+                break
+            }
+            c.Close()
+        }(conn, activity, connDoneChan)
         for {
             select {
             case <-exitChan:
@@ -279,6 +312,7 @@ func (rs *Repl{{.T}}Store) ringServerConnector(exitChan chan struct{}) {
                 rs.logDebug("repl{{.T}}Store: error with stream to ring service %s: %s", ringServer, err)
                 break
             }
+            atomic.AddInt32(activity, 1)
             // TODO: Make use of ring once that's a thing in the res. Right
             // now, just do some silliness to prototype the code.
             if res != nil {
@@ -290,7 +324,7 @@ func (rs *Repl{{.T}}Store) ringServerConnector(exitChan chan struct{}) {
                 }
             }
         }
-        conn.Close()
+        close(connDoneChan)
         sleeper()
     }
 }
