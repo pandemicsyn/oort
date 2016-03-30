@@ -11,7 +11,7 @@ After=syslog.target network.target
 # http://0pointer.de/public/systemd-man/systemd.exec.html
 [Service]
 Type=simple
-EnvironmentFile=/etc/default/oort-valued
+EnvironmentFile=-/etc/default/oort-valued
 ExecStart=/root/go/bin/oort-valued
 
 # it could take a long time to flush data to disk
