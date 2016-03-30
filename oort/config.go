@@ -142,10 +142,23 @@ func (o *Server) ObtainConfig() (err error) {
 	return nil
 }
 
-//TODO: need to remove the hack to add IAD3 identifier
+//TODO: need to remove the hack to add IAD3 identifier -- What hack? Not sure
+// what this refers to.
 func genServiceID(service, name, proto string) (string, error) {
 	h, _ := os.Hostname()
 	d := strings.SplitN(h, ".", 2)
+	// All-In-One defaults
+	if strings.HasSuffix(d[0], "-aio") {
+		// TODO: Not sure about name, proto -- are those ever *not* "syndicate"
+		// and "tcp"?
+		switch service {
+		case "value":
+			return h + ":8443", nil
+		case "group":
+			return h + ":8444", nil
+		}
+		panic("Unknown service " + service)
+	}
 	if len(d) != 2 {
 		return "", fmt.Errorf("Unable to determine FQDN, only got short name.")
 	}
