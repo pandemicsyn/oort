@@ -90,7 +90,7 @@ func (o *Server) ObtainConfig() (err error) {
 		s := &srvconf.SRVLoader{
 			SyndicateURL: e.Get("SYNDICATE_OVERRIDE"),
 		}
-		s.Record, err = genServiceID(o.serviceName, "syndicate", "tcp")
+		s.Record, err = GenServiceID(o.serviceName, "syndicate", "tcp")
 		if err != nil {
 			if e.Get("SYNDICATE_OVERRIDE") == "" {
 				log.Println(err)
@@ -144,7 +144,7 @@ func (o *Server) ObtainConfig() (err error) {
 
 //TODO: need to remove the hack to add IAD3 identifier -- What hack? Not sure
 // what this refers to.
-func genServiceID(service, name, proto string) (string, error) {
+func GenServiceID(service, name, proto string) (string, error) {
 	h, _ := os.Hostname()
 	d := strings.SplitN(h, ".", 2)
 	// All-In-One defaults
