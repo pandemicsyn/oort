@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -13,7 +14,8 @@ import (
 	"github.com/gholt/flog"
 	"github.com/gholt/ring"
 	"github.com/gholt/store"
-	pbTODO "github.com/pandemicsyn/oort/api/groupproto"
+	"github.com/pandemicsyn/oort/oort"
+	synpb "github.com/pandemicsyn/syndicate/api/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -34,6 +36,7 @@ type ReplGroupStore struct {
 	ringServer         string
 	ringServerGRPCOpts []grpc.DialOption
 	ringServerExitChan chan struct{}
+	ringClientID       string
 
 	storesLock sync.RWMutex
 	stores     map[string]*replGroupStoreAndTicketChan
@@ -59,6 +62,7 @@ func NewReplGroupStore(c *ReplGroupStoreConfig) *ReplGroupStore {
 		ringServer:                 cfg.RingServer,
 		ringServerGRPCOpts:         cfg.RingServerGRPCOpts,
 		ringCachePath:              cfg.RingCachePath,
+		ringClientID:               cfg.RingClientID,
 	}
 	if rs.logError == nil {
 		rs.logError = flog.Default.ErrorPrintf
@@ -248,11 +252,13 @@ func (rs *ReplGroupStore) ringServerConnector(exitChan chan struct{}) {
 		}
 		ringServer := rs.ringServer
 		if ringServer == "" {
-			// TODO: Use DNS to resolve the ringServer.
-			err := errors.New("resolving ring service not implemented yet.")
-			rs.logError("replGroupStore: error resolving ring service: %s", err)
-			sleeper()
-			continue
+			var err error
+			ringServer, err = oort.GenServiceID("group", "syndicate", "tcp")
+			if err != nil {
+				rs.logError("replGroupStore: error resolving ring service: %s", err)
+				sleeper()
+				continue
+			}
 		}
 		conn, err := grpc.Dial(ringServer, rs.ringServerGRPCOpts...)
 		if err != nil {
@@ -260,8 +266,7 @@ func (rs *ReplGroupStore) ringServerConnector(exitChan chan struct{}) {
 			sleeper()
 			continue
 		}
-		// TODO: This isn't the right stream type.
-		stream, err := pbTODO.NewGroupStoreClient(conn).StreamLookup(context.Background())
+		stream, err := synpb.NewSyndicateClient(conn).GetRingStream(context.Background(), &synpb.SubscriberID{Id: rs.ringClientID})
 		if err != nil {
 			rs.logError("replGroupStore: error creating stream with ring service %s: %s", ringServer, err)
 			sleeper()
@@ -305,22 +310,21 @@ func (rs *ReplGroupStore) ringServerConnector(exitChan chan struct{}) {
 				break
 			default:
 			}
-			// TODO: This isn't going to get the right res type since it's not
-			// the right stream type yet.
 			res, err := stream.Recv()
 			if err != nil {
 				rs.logDebug("replGroupStore: error with stream to ring service %s: %s", ringServer, err)
 				break
 			}
 			atomic.AddInt32(activity, 1)
-			// TODO: Make use of ring once that's a thing in the res. Right
-			// now, just do some silliness to prototype the code.
 			if res != nil {
-				if res == nil {
+				if r, err := ring.LoadRing(bytes.NewBuffer(res.Ring)); err != nil {
+					rs.logDebug("replGroupStore: error with ring received from stream to ring service %s: %s", ringServer, err)
+				} else {
 					// This will cache the ring if ringCachePath is not empty.
-					rs.SetRing(nil)
+					rs.SetRing(r)
 					// Resets the exponential sleeper since we had success.
 					sleeperTicks = 2
+					rs.logDebug("replGroupStore: got new ring from stream to ring service %s: %d", ringServer, res.Version)
 				}
 			}
 		}

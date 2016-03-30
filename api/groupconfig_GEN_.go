@@ -1,6 +1,14 @@
 package api
 
-import "google.golang.org/grpc"
+import (
+	"crypto/rand"
+	"encoding/binary"
+	"fmt"
+	"io"
+	"time"
+
+	"google.golang.org/grpc"
+)
 
 // ReplGroupStoreConfig defines the settings when calling NewGroupStore.
 type ReplGroupStoreConfig struct {
@@ -34,6 +42,10 @@ type ReplGroupStoreConfig struct {
 	// RingServerGRPCOpts are any additional options you'd like to pass to GRPC
 	// when connecting to the ring server.
 	RingServerGRPCOpts []grpc.DialOption
+	// RingClientID is a unique identifier for this client, used when
+	// registering with the RingServer. This allows the ring server to
+	// proactively clean up stale connections should a reconnection be needed.
+	RingClientID string
 	// RingCachePath is the full location file name where you'd like persist
 	// last received ring data, such as "/var/lib/myprog/ring/valuestore.ring".
 	// An empty string will disable caching. The cacher will need permission to
@@ -61,6 +73,23 @@ func resolveReplGroupStoreConfig(c *ReplGroupStoreConfig) *ReplGroupStoreConfig 
 	}
 	if cfg.FailedConnectRetryDelay < 1 {
 		cfg.FailedConnectRetryDelay = 1
+	}
+	if cfg.RingClientID == "" {
+		// Try to generate a random UUID according to RFC 4122.
+		uuid := make([]byte, 16)
+		n, err := io.ReadFull(rand.Reader, uuid)
+		if n != len(uuid) || err != nil {
+			// If rand read gives error, just use current time, we don't need
+			// true crypto really.
+			i := uint64(time.Now().UnixNano())
+			binary.BigEndian.PutUint64(uuid, i)
+			binary.BigEndian.PutUint64(uuid[8:], i)
+		}
+		// Variant bits; see section 4.1.1.
+		uuid[8] = uuid[8]&^0xc0 | 0x80
+		// Version 4 (pseudo-random); see section 4.1.3.
+		uuid[6] = uuid[6]&^0xf0 | 0x40
+		cfg.RingClientID = fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
 	}
 	return cfg
 }
