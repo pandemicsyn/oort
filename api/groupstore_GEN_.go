@@ -304,17 +304,21 @@ func (stor *groupStore) handleLookupStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncGroupLookupRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncGroupLookupRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeLookupResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -505,17 +509,21 @@ func (stor *groupStore) handleReadStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncGroupReadRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncGroupReadRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeReadResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -706,17 +714,21 @@ func (stor *groupStore) handleWriteStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncGroupWriteRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncGroupWriteRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeWriteResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -909,17 +921,21 @@ func (stor *groupStore) handleDeleteStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncGroupDeleteRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncGroupDeleteRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeDeleteResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -1111,17 +1127,21 @@ func (stor *groupStore) handleLookupGroupStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncGroupLookupGroupRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncGroupLookupGroupRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeLookupGroupResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.LookupGroupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -1314,17 +1334,21 @@ func (stor *groupStore) handleReadGroupStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncGroupReadGroupRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncGroupReadGroupRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeReadGroupResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.ReadGroupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
