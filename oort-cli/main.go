@@ -37,7 +37,7 @@ var (
 	prompt    = "> "
 	errprompt = "┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻> "
 	historyf  = filepath.Join(os.TempDir(), ".oort-cli-history")
-	cmdnames  = []string{"write", "write-hash", "read", "read-hash", "delete", "lookup", "lookup-group", "mode", "exit", "help"}
+	cmdnames  = []string{"write", "write-hash", "read", "read-hash", "read-group", "delete", "lookup", "lookup-group", "mode", "exit", "help"}
 )
 
 func lineCompleter(line string) (c []string) {
@@ -57,6 +57,7 @@ func (c *Client) printHelp() string {
 	write-hash <groupkey> <subkeyhasha> <subkeyhashb> <value>
 	read <groupkey> <subkey>
 	read-hash <groupkey> <subkeyhasha> <subkeyhashb>
+	read-group <groupkey> <subkey>
 	delete <groupkey> <subkey>
 	lookup <groupkey> <subkey>
 	lookup-group <key>
@@ -241,6 +242,19 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 			return "", err
 		}
 		return fmt.Sprintf("TIMESTAMPMICRO: %d\nVALUE: %s", timestampMicro, value), nil
+	case "read-group":
+		KeyA, KeyB := murmur3.Sum128([]byte(args))
+		items, err := c.gstore.ReadGroup(context.Background(), KeyA, KeyB)
+		if store.IsNotFound(err) {
+			return fmt.Sprintf("not found"), nil
+		} else if err != nil {
+			return "", err
+		}
+		keys := make([]string, len(items))
+		for k, v := range items {
+			keys[k] = fmt.Sprintf("TIMESTAMPMICRO: %d [ %d | %d] VALUE: %s", v.TimestampMicro, v.ChildKeyA, v.ChildKeyB, v.Value)
+		}
+		return fmt.Sprintf(strings.Join(keys, "\n")), nil
 	case "delete":
 		sarg := strings.SplitN(args, " ", 2)
 		if len(sarg) < 2 {
@@ -371,6 +385,7 @@ func (c *Client) getGroupClient() error {
 	return nil
 }
 
+// Client ...
 type Client struct {
 	vaddr  string
 	gaddr  string
