@@ -274,17 +274,21 @@ func (stor *valueStore) handleLookupStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncValueLookupRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncValueLookupRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeLookupResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.LookupResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -472,17 +476,21 @@ func (stor *valueStore) handleReadStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncValueReadRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncValueReadRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeReadResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.ReadResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -670,17 +678,21 @@ func (stor *valueStore) handleWriteStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncValueWriteRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncValueWriteRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeWriteResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.WriteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
@@ -870,17 +882,21 @@ func (stor *valueStore) handleDeleteStream() {
 				for i, v := range waiting {
 					wereWaiting[i] = v
 				}
-				go func(reqs []*asyncValueDeleteRequest) {
+				err := res.err
+				if err == nil {
+					err = errors.New("receiver had error, had to close any other waiting requests")
+				}
+				go func(reqs []*asyncValueDeleteRequest, err error) {
 					for _, req := range reqs {
 						if req == nil {
 							continue
 						}
 						res := <-stor.freeDeleteResChan
-						res.err = errors.New("receiver error")
+						res.err = err
 						res.res = &pb.DeleteResponse{Rpcid: req.req.Rpcid}
 						resChan <- res
 					}
-				}(wereWaiting)
+				}(wereWaiting, err)
 				break
 			}
 			if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {

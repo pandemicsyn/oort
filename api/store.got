@@ -231,17 +231,21 @@ func (stor *{{.t}}Store) ValueCap(ctx context.Context) (uint32, error) {
                     for i, v := range waiting {
                         wereWaiting[i] = v
                     }
-                    go func(reqs []*async{{$.T}}{{$R}}Request) {
+                    err := res.err
+                    if err == nil {
+                        err = errors.New("receiver had error, had to close any other waiting requests")
+                    }
+                    go func(reqs []*async{{$.T}}{{$R}}Request, err error) {
                         for _, req := range reqs {
                             if req == nil {
                                 continue
                             }
                             res := <-stor.free{{$R}}ResChan
-                            res.err = errors.New("receiver error")
+                            res.err = err
                             res.res = &pb.{{$R}}Response{Rpcid: req.req.Rpcid}
                             resChan <- res
                         }
-                    }(wereWaiting)
+                    }(wereWaiting, err)
                     break
                 }
                 if res.res.Rpcid < 0 || res.res.Rpcid > waitingMax {
