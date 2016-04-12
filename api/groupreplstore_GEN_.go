@@ -98,6 +98,7 @@ func (rs *ReplGroupStore) SetRing(r ring.Ring) {
 	rs.ringLock.Lock()
 	if rs.ringCachePath != "" {
 		dir, name := path.Split(rs.ringCachePath)
+		_ = os.MkdirAll(dir, 0755)
 		fp, err := ioutil.TempFile(dir, name)
 		if err != nil {
 			rs.logDebug("replGroupStore: error caching ring %q: %s", rs.ringCachePath, err)
