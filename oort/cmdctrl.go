@@ -17,6 +17,7 @@ func writeBytes(filename string, b *[]byte) error {
 	if dir == "" {
 		dir = "."
 	}
+	_ = os.MkdirAll(dir, 0755)
 	f, err := ioutil.TempFile(dir, name+".")
 	if err != nil {
 		return err
