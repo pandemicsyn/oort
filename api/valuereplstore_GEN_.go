@@ -84,10 +84,21 @@ func NewReplValueStore(c *ReplValueStoreConfig) *ReplValueStore {
 	return rs
 }
 
-func (rs *ReplValueStore) Ring() ring.Ring {
+func (rs *ReplValueStore) Ring(ctx context.Context) ring.Ring {
+	var r ring.Ring
 	rs.ringLock.RLock()
-	r := rs.ring
+	r = rs.ring
 	rs.ringLock.RUnlock()
+	for r == nil {
+		select {
+		case <-time.After(250 * time.Millisecond):
+		case <-ctx.Done():
+			return nil
+		}
+		rs.ringLock.RLock()
+		r = rs.ring
+		rs.ringLock.RUnlock()
+	}
 	return r
 }
 
@@ -149,9 +160,7 @@ func (rs *ReplValueStore) SetRing(r ring.Ring) {
 }
 
 func (rs *ReplValueStore) storesFor(ctx context.Context, keyA uint64) ([]*replValueStoreAndTicketChan, error) {
-	rs.ringLock.RLock()
-	r := rs.ring
-	rs.ringLock.RUnlock()
+	r := rs.Ring(ctx)
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()

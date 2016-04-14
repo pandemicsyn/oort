@@ -84,10 +84,21 @@ func NewReplGroupStore(c *ReplGroupStoreConfig) *ReplGroupStore {
 	return rs
 }
 
-func (rs *ReplGroupStore) Ring() ring.Ring {
+func (rs *ReplGroupStore) Ring(ctx context.Context) ring.Ring {
+	var r ring.Ring
 	rs.ringLock.RLock()
-	r := rs.ring
+	r = rs.ring
 	rs.ringLock.RUnlock()
+	for r == nil {
+		select {
+		case <-time.After(250 * time.Millisecond):
+		case <-ctx.Done():
+			return nil
+		}
+		rs.ringLock.RLock()
+		r = rs.ring
+		rs.ringLock.RUnlock()
+	}
 	return r
 }
 
@@ -149,9 +160,7 @@ func (rs *ReplGroupStore) SetRing(r ring.Ring) {
 }
 
 func (rs *ReplGroupStore) storesFor(ctx context.Context, keyA uint64) ([]*replGroupStoreAndTicketChan, error) {
-	rs.ringLock.RLock()
-	r := rs.ring
-	rs.ringLock.RUnlock()
+	r := rs.Ring(ctx)
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
