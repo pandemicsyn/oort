@@ -4,12 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/pandemicsyn/oort/oort"
 	"github.com/pandemicsyn/oort/oortstore"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -45,6 +47,8 @@ func main() {
 	}
 	o.SetBackend(backend)
 	o.Serve()
+	http.Handle("/metrics", prometheus.Handler())
+	go http.ListenAndServe(":9100", nil)
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	for {
