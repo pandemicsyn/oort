@@ -1,10 +1,10 @@
 machine:
   pre:
-    - wget https://storage.googleapis.com/golang/go1.5.3.linux-amd64.tar.gz
-    - mkdir ~/go1.5.3
-    - tar -C ~/go1.5.3 -xzf go1.5.3.linux-amd64.tar.gz
+    - wget https://storage.googleapis.com/golang/go1.6.1.linux-amd64.tar.gz
+    - mkdir ~/go1.6.1
+    - tar -C ~/go1.6.1 -xzf go1.6.1.linux-amd64.tar.gz
   environment:
-    GOROOT: ${HOME}/go1.5.3/go
+    GOROOT: ${HOME}/go1.6.1/go
     GO15VENDOREXPERIMENT: 1
     GOPATH: ${HOME}/go
     PATH: $GOPATH/bin:${GOROOT}/bin:${PATH}
