@@ -180,5 +180,5 @@ func GetRingServer(servicename string) (string, error) {
 	if len(addrs) == 0 {
 		return "", fmt.Errorf("Syndicate SRV lookup is empty")
 	}
-	return fmt.Sprintf("%s:%s", addrs[0].Target, addrs[0].Port), nil
+	return fmt.Sprintf("%s:%d", addrs[0].Target, addrs[0].Port), nil
 }
