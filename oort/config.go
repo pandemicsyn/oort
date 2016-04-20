@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -147,20 +148,37 @@ func (o *Server) ObtainConfig() (err error) {
 func GenServiceID(service, name, proto string) (string, error) {
 	h, _ := os.Hostname()
 	d := strings.SplitN(h, ".", 2)
+	if len(d) != 2 {
+		return "", fmt.Errorf("Unable to determine FQDN, only got short name.")
+	}
+	return fmt.Sprintf("_%s-%s._%s.%s", service, name, proto, d[1]), nil
+}
+
+func GetRingServer(servicename string) (string, error) {
 	// All-In-One defaults
+	h, _ := os.Hostname()
+	d := strings.SplitN(h, ".", 2)
 	if strings.HasSuffix(d[0], "-aio") {
 		// TODO: Not sure about name, proto -- are those ever *not* "syndicate"
 		// and "tcp"?
-		switch service {
+		switch servicename {
 		case "value":
 			return h + ":8443", nil
 		case "group":
 			return h + ":8444", nil
 		}
-		panic("Unknown service " + service)
+		panic("Unknown service " + servicename)
 	}
-	if len(d) != 2 {
-		return "", fmt.Errorf("Unable to determine FQDN, only got short name.")
+	service, err := GenServiceID(servicename, "syndicate", "tcp")
+	if err != nil {
+		return "", err
 	}
-	return fmt.Sprintf("_%s-%s._%s.%s", service, name, proto, d[1]), nil
+	_, addrs, err := net.LookupSRV("", "", service)
+	if err != nil {
+		return "", err
+	}
+	if len(addrs) == 0 {
+		return "", fmt.Errorf("Syndicate SRV lookup is empty")
+	}
+	return fmt.Sprintf("%s:%s", addrs[0].Target, addrs[0].Port), nil
 }
