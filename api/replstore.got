@@ -263,7 +263,8 @@ func (rs *Repl{{.T}}Store) ringServerConnector(exitChan chan struct{}) {
         ringServer := rs.ringServer
         if ringServer == "" {
             var err error
-            ringServer, err = oort.GenServiceID("{{.t}}", "syndicate", "tcp")
+
+            ringServer, err = oort.GetRingServer("{{.t}}")
             if err != nil {
                 rs.logError("repl{{.T}}Store: error resolving ring service: %s", err)
                 sleeper()
