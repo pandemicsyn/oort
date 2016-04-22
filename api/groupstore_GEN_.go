@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/gholt/store"
+	"github.com/pandemicsyn/ftls"
 	pb "github.com/pandemicsyn/oort/api/groupproto"
 	"github.com/pandemicsyn/oort/api/proto"
 	"golang.org/x/net/context"
@@ -15,6 +16,7 @@ import (
 type groupStore struct {
 	lock             sync.Mutex
 	addr             string
+	ftlsc            *ftls.Config
 	opts             []grpc.DialOption
 	conn             *grpc.ClientConn
 	client           pb.GroupStoreClient
@@ -47,9 +49,10 @@ type groupStore struct {
 
 // NewGroupStore creates a GroupStore connection via grpc to the given
 // address.
-func NewGroupStore(addr string, concurrency int, opts ...grpc.DialOption) (store.GroupStore, error) {
+func NewGroupStore(addr string, concurrency int, ftlsConfig *ftls.Config, opts ...grpc.DialOption) (store.GroupStore, error) {
 	stor := &groupStore{
 		addr:             addr,
+		ftlsc:            ftlsConfig,
 		opts:             opts,
 		handlersDoneChan: make(chan struct{}),
 	}
@@ -135,7 +138,15 @@ func (stor *groupStore) startup() error {
 		return nil
 	}
 	var err error
-	stor.conn, err = grpc.Dial(stor.addr, stor.opts...)
+	creds, err := ftls.NewGRPCClientDialOpt(stor.ftlsc)
+	if err != nil {
+		stor.conn = nil
+		return err
+	}
+	opts := make([]grpc.DialOption, len(stor.opts))
+	copy(opts, stor.opts)
+	opts = append(opts, creds)
+	stor.conn, err = grpc.Dial(stor.addr, opts...)
 	if err != nil {
 		stor.conn = nil
 		return err
