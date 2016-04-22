@@ -23,7 +23,6 @@ import (
 var vdirect = flag.String("vdirect", "", "Use specific direct value store ip:port instead of default SRV replicated value store")
 var gdirect = flag.String("gdirect", "", "Use specific direct group store ip:port instead of default SRV replicated group store")
 var groupmode = flag.Bool("g", false, "whether we're talking to a groupstore instance")
-var tls = flag.Bool("tls", true, "whether the server is speaking tls")
 var insecureSkipVerify = flag.Bool("insecure", false, "whether or not we should verify the cert")
 var mutualtls = flag.Bool("mutualtls", false, "whether or not the server expects mutual tls auth")
 var certfile = flag.String("cert", "client.crt", "cert file to use")
@@ -311,23 +310,29 @@ func (c *Client) parseGroupCmd(line string) (string, error) {
 func (c *Client) getValueClient() error {
 	var err error
 	var opts []grpc.DialOption
-	if *tls {
-		opt, err := ftls.NewGRPCClientDialOpt(&ftls.Config{
-			MutualTLS:          *mutualtls,
-			InsecureSkipVerify: *insecureSkipVerify,
-			CertFile:           *certfile,
-			KeyFile:            *keyfile,
-			CAFile:             *cafile,
-		})
-		if err != nil {
-			return fmt.Errorf("Unable to setup tls: %s", err.Error())
-		}
-		opts = append(opts, opt)
+	tlsConfig := &ftls.Config{
+		MutualTLS:          *mutualtls,
+		InsecureSkipVerify: *insecureSkipVerify,
+		CertFile:           *certfile,
+		KeyFile:            *keyfile,
+		CAFile:             *cafile,
+	}
+	rOpts, err := ftls.NewGRPCClientDialOpt(&ftls.Config{
+		MutualTLS: false,
+		CAFile:    *cafile,
+	})
+	if err != nil {
+		return err
 	}
 	if c.vdirect != "" {
-		c.vstore, err = api.NewValueStore(c.vdirect, 10, opts...)
+		c.vstore, err = api.NewValueStore(c.vdirect, 10, tlsConfig, opts...)
 	} else {
-		c.vstore = api.NewReplValueStore(&api.ReplValueStoreConfig{AddressIndex: 2, GRPCOpts: opts, RingServerGRPCOpts: opts})
+		c.vstore = api.NewReplValueStore(&api.ReplValueStoreConfig{
+			AddressIndex:       2,
+			StoreFTLSConfig:    tlsConfig,
+			GRPCOpts:           opts,
+			RingServerGRPCOpts: []grpc.DialOption{rOpts},
+		})
 		if err := c.vstore.Startup(context.Background()); err != nil {
 			return fmt.Errorf("Unable to start value store client: %s", err)
 		}
@@ -341,23 +346,29 @@ func (c *Client) getValueClient() error {
 func (c *Client) getGroupClient() error {
 	var err error
 	var opts []grpc.DialOption
-	if *tls {
-		opt, err := ftls.NewGRPCClientDialOpt(&ftls.Config{
-			MutualTLS:          *mutualtls,
-			InsecureSkipVerify: *insecureSkipVerify,
-			CertFile:           *certfile,
-			KeyFile:            *keyfile,
-			CAFile:             *cafile,
-		})
-		if err != nil {
-			return fmt.Errorf("Unable to setup tls: %s", err.Error())
-		}
-		opts = append(opts, opt)
+	tlsConfig := &ftls.Config{
+		MutualTLS:          *mutualtls,
+		InsecureSkipVerify: *insecureSkipVerify,
+		CertFile:           *certfile,
+		KeyFile:            *keyfile,
+		CAFile:             *cafile,
+	}
+	rOpts, err := ftls.NewGRPCClientDialOpt(&ftls.Config{
+		MutualTLS: false,
+		CAFile:    *cafile,
+	})
+	if err != nil {
+		return err
 	}
 	if c.gdirect != "" {
-		c.gstore, err = api.NewGroupStore(c.gdirect, 10, opts...)
+		c.gstore, err = api.NewGroupStore(c.gdirect, 10, tlsConfig, opts...)
 	} else {
-		c.gstore = api.NewReplGroupStore(&api.ReplGroupStoreConfig{AddressIndex: 2, GRPCOpts: opts, RingServerGRPCOpts: opts})
+		c.gstore = api.NewReplGroupStore(&api.ReplGroupStoreConfig{
+			AddressIndex:       2,
+			StoreFTLSConfig:    tlsConfig,
+			GRPCOpts:           opts,
+			RingServerGRPCOpts: []grpc.DialOption{rOpts},
+		})
 		if err := c.gstore.Startup(context.Background()); err != nil {
 			return fmt.Errorf("Unable to start group store client: %s", err)
 		}
