@@ -14,6 +14,7 @@ import (
 	"github.com/gholt/flog"
 	"github.com/gholt/ring"
 	"github.com/gholt/store"
+	"github.com/pandemicsyn/ftls"
 	"github.com/pandemicsyn/oort/oort"
 	synpb "github.com/pandemicsyn/syndicate/api/proto"
 	"golang.org/x/net/context"
@@ -28,6 +29,7 @@ type ReplValueStore struct {
 	valueCap                   int
 	concurrentRequestsPerStore int
 	failedConnectRetryDelay    int
+	ftlsConfig                 *ftls.Config
 	grpcOpts                   []grpc.DialOption
 
 	ringLock           sync.RWMutex
@@ -57,6 +59,7 @@ func NewReplValueStore(c *ReplValueStoreConfig) *ReplValueStore {
 		valueCap:                   int(cfg.ValueCap),
 		concurrentRequestsPerStore: cfg.ConcurrentRequestsPerStore,
 		failedConnectRetryDelay:    cfg.FailedConnectRetryDelay,
+		ftlsConfig:                 cfg.StoreFTLSConfig,
 		grpcOpts:                   cfg.GRPCOpts,
 		stores:                     make(map[string]*replValueStoreAndTicketChan),
 		ringServer:                 cfg.RingServer,
@@ -207,7 +210,7 @@ func (rs *ReplValueStore) storesFor(ctx context.Context, keyA uint64) ([]*replVa
 						tc <- struct{}{}
 					}
 					ss[i] = &replValueStoreAndTicketChan{ticketChan: tc}
-					ss[i].store, err = NewValueStore(as[i], rs.concurrentRequestsPerStore, rs.grpcOpts...)
+					ss[i].store, err = NewValueStore(as[i], rs.concurrentRequestsPerStore, rs.ftlsConfig, rs.grpcOpts...)
 					if err != nil {
 						ss[i].store = errorValueStore(fmt.Sprintf("could not create store for %s: %s", as[i], err))
 						// Launch goroutine to clear out the error store after

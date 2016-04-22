@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/pandemicsyn/ftls"
 	"google.golang.org/grpc"
 )
 
@@ -32,6 +33,9 @@ type ReplValueStoreConfig struct {
 	// FailedConnectRetryDelay defines how many seconds must pass before
 	// retrying a failed connection. Default: 15 seconds
 	FailedConnectRetryDelay int
+	// SToreFTLSConfig is the ftls config you want use to build a tls.Config for
+	// each grpc client.
+	StoreFTLSConfig *ftls.Config
 	// GRPCOpts are any additional options you'd like to pass to GRPC when
 	// connecting to stores.
 	GRPCOpts []grpc.DialOption
