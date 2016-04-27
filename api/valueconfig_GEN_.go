@@ -33,11 +33,11 @@ type ReplValueStoreConfig struct {
 	// FailedConnectRetryDelay defines how many seconds must pass before
 	// retrying a failed connection. Default: 15 seconds
 	FailedConnectRetryDelay int
-	// SToreFTLSConfig is the ftls config you want use to build a tls.Config for
-	// each grpc client.
+	// StoreFTLSConfig is the ftls config you want use to build a tls.Config for
+	// each grpc client used to communicate to the Store.
 	StoreFTLSConfig *ftls.Config
-	// GRPCOpts are any additional options you'd like to pass to GRPC when
-	// connecting to stores.
+	// GRPCOpts are any additional reusable options you'd like to pass to GRPC
+	// when connecting to stores.
 	GRPCOpts []grpc.DialOption
 	// RingServer is the network address to use to connect to a ring server. An
 	// empty string will use the default DNS method of determining the ring
