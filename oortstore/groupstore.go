@@ -147,7 +147,6 @@ func (s *OortGroupStore) Write(ctx context.Context, req *groupproto.WriteRequest
 	var err error
 	resp.TimestampMicro, err = s.gs.Write(ctx, req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, req.TimestampMicro, req.Value)
 	if err != nil {
-		log.Println(err)
 		resp.Err = proto.TranslateError(err)
 	}
 	return &resp, nil
@@ -167,7 +166,6 @@ func (s *OortGroupStore) StreamWrite(stream groupproto.GroupStore_StreamWriteSer
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, err = s.gs.Write(stream.Context(), req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, req.TimestampMicro, req.Value)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -200,7 +198,6 @@ func (s *OortGroupStore) StreamRead(stream groupproto.GroupStore_StreamReadServe
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, resp.Value, err = s.gs.Read(stream.Context(), req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, resp.Value)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -233,7 +230,6 @@ func (s *OortGroupStore) StreamLookup(stream groupproto.GroupStore_StreamLookupS
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, resp.Length, err = s.gs.Lookup(stream.Context(), req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -377,7 +373,6 @@ func (s *OortGroupStore) StreamDelete(stream groupproto.GroupStore_StreamDeleteS
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, err = s.gs.Delete(stream.Context(), req.KeyA, req.KeyB, req.ChildKeyA, req.ChildKeyB, req.TimestampMicro)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -416,7 +411,6 @@ func (s *OortGroupStore) Stop() {
 func (s *OortGroupStore) Stats() []byte {
 	stats, err := s.gs.Stats(context.Background(), true)
 	if err != nil {
-		log.Println(err)
 		return nil
 	}
 	return []byte(stats.String())

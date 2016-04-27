@@ -147,7 +147,6 @@ func (s *OortValueStore) Write(ctx context.Context, req *valueproto.WriteRequest
 	var err error
 	resp.TimestampMicro, err = s.vs.Write(ctx, req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 	if err != nil {
-		log.Println(err)
 		resp.Err = proto.TranslateError(err)
 	}
 	return &resp, nil
@@ -167,7 +166,6 @@ func (s *OortValueStore) StreamWrite(stream valueproto.ValueStore_StreamWriteSer
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, err = s.vs.Write(stream.Context(), req.KeyA, req.KeyB, req.TimestampMicro, req.Value)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -201,7 +199,6 @@ func (s *OortValueStore) StreamRead(stream valueproto.ValueStore_StreamReadServe
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, resp.Value, err = s.vs.Read(stream.Context(), req.KeyA, req.KeyB, resp.Value)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -234,7 +231,6 @@ func (s *OortValueStore) StreamLookup(stream valueproto.ValueStore_StreamLookupS
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, resp.Length, err = s.vs.Lookup(stream.Context(), req.KeyA, req.KeyB)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -267,7 +263,6 @@ func (s *OortValueStore) StreamDelete(stream valueproto.ValueStore_StreamDeleteS
 		resp.Rpcid = req.Rpcid
 		resp.TimestampMicro, err = s.vs.Delete(stream.Context(), req.KeyA, req.KeyB, req.TimestampMicro)
 		if err != nil {
-			log.Println(err)
 			resp.Err = proto.TranslateError(err)
 		}
 		if err := stream.Send(&resp); err != nil {
@@ -306,7 +301,6 @@ func (s *OortValueStore) Stop() {
 func (s *OortValueStore) Stats() []byte {
 	stats, err := s.vs.Stats(context.Background(), true)
 	if err != nil {
-		log.Println(err)
 		return nil
 	}
 	return []byte(stats.String())
