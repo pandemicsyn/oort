@@ -11,12 +11,14 @@ import (
 
 	"github.com/pandemicsyn/oort/oort"
 	"github.com/pandemicsyn/oort/oortstore"
+	"github.com/pandemicsyn/syndicate/utils/sysmetrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	printVersionInfo = flag.Bool("version", false, "print version/build info")
-	cwd              = flag.String("cwd", "/var/lib/oort-value", "the working directory use")
+	printVersionInfo  = flag.Bool("version", false, "print version/build info")
+	cwd               = flag.String("cwd", "/var/lib/oort-value", "the working directory use")
+	enabledCollectors = flag.String("collectors", sysmetrics.FilterAvailableCollectors(sysmetrics.DefaultCollectors), "Comma-separated list of collectors to use.")
 )
 var oortVersion string
 var ringVersion string
@@ -24,6 +26,17 @@ var valuestoreVersion string
 var cmdctrlVersion string
 var goVersion string
 var buildDate string
+
+func setupMetrics() {
+	collectors, err := sysmetrics.LoadCollectors(*enabledCollectors)
+	if err != nil {
+		log.Fatalf("Couldn't load collectors: %s", err)
+	}
+	nodeCollector := sysmetrics.New(collectors)
+	prometheus.MustRegister(nodeCollector)
+	http.Handle("/metrics", prometheus.Handler())
+	go http.ListenAndServe(":9100", nil)
+}
 
 func main() {
 	flag.Parse()
@@ -47,8 +60,9 @@ func main() {
 	}
 	o.SetBackend(backend)
 	o.Serve()
-	http.Handle("/metrics", prometheus.Handler())
-	go http.ListenAndServe(":9100", nil)
+
+	setupMetrics()
+
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	for {
