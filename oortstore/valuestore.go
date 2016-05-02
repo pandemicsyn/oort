@@ -17,6 +17,7 @@ import (
 	"github.com/pandemicsyn/oort/api/proto"
 	"github.com/pandemicsyn/oort/api/valueproto"
 	"github.com/pandemicsyn/oort/oort"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -120,6 +121,21 @@ func (s *OortValueStore) start() {
 		log.Println("TCPMsgRing Listen() returned, shutdown?")
 	}(s.msgRing)
 	go func(t *ring.TCPMsgRing) {
+		mValues := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "Values",
+			Help: "Current number of values stored.",
+		})
+		mValueBytes := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "ValueBytes",
+			Help: "Current number of values stored.",
+		})
+		mLookups := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "Lookups",
+			Help: "Count of lookup requests executed.",
+		})
+		prometheus.Register(mValues)
+		prometheus.Register(mValueBytes)
+		prometheus.Register(mLookups)
 		tcpMsgRingStats := t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
@@ -128,10 +144,17 @@ func (s *OortValueStore) start() {
 			stats, err := s.vs.Stats(context.Background(), false)
 			if err != nil {
 				log.Printf("stats error: %s\n", err)
+			} else if s, ok := stats.(*store.ValueStoreStats); ok {
+				mValues.Set(float64(s.Values))
+				mValueBytes.Set(float64(s.ValueBytes))
+				mLookups.Add(float64(s.Lookups))
 			} else {
 				log.Printf("%s\n", stats)
 			}
 		}
+		prometheus.Unregister(mValues)
+		prometheus.Unregister(mValueBytes)
+		prometheus.Unregister(mLookups)
 	}(s.msgRing)
 }
 
