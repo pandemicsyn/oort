@@ -127,7 +127,7 @@ func (s *OortValueStore) start() {
 		})
 		mValueBytes := prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "ValueBytes",
-			Help: "Current number of values stored.",
+			Help: "Current number of bytes for the values stored.",
 		})
 		mLookups := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "Lookups",
@@ -171,103 +171,103 @@ func (s *OortValueStore) start() {
 		})
 		mOutBulkSets := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "OutBulkSets",
-			Help: "OutBulkSets is the number of outgoing bulk-set messages in response to incoming pull replication messages.",
+			Help: "Count of outgoing bulk-set messages in response to incoming pull replication messages.",
 		})
 		mOutBulkSetValues := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "OutBulkSetValues",
-			Help: "OutBulkSetValues is the number of values in outgoing bulk-set messages; these bulk-set messages are those in response to incoming pull-replication messages.",
+			Help: "Count of values in outgoing bulk-set messages; these bulk-set messages are those in response to incoming pull-replication messages.",
 		})
 		mOutBulkSetPushes := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "OutBulkSetPushes",
-			Help: "OutBulkSetPushes is the number of outgoing bulk-set messages due to push replication.",
+			Help: "Count of outgoing bulk-set messages due to push replication.",
 		})
 		mOutBulkSetPushValues := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "OutBulkSetPushValues",
-			Help: "OutBulkSetPushValues is the number of values in outgoing bulk-set messages; these bulk-set messages are those due to push replication.",
+			Help: "Count of values in outgoing bulk-set messages; these bulk-set messages are those due to push replication.",
 		})
 		mInBulkSets := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSets",
-			Help: "InBulkSets is the number of incoming bulk-set messages.",
+			Help: "Count of incoming bulk-set messages.",
 		})
 		mInBulkSetDrops := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetDrops",
-			Help: "InBulkSetDrops is the number of incoming bulk-set messages dropped due to the local system being overworked at the time.",
+			Help: "Count of incoming bulk-set messages dropped due to the local system being overworked at the time.",
 		})
 		mInBulkSetInvalids := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetInvalids",
-			Help: "InBulkSetInvalids is the number of incoming bulk-set messages that couldn't be parsed.",
+			Help: "Count of incoming bulk-set messages that couldn't be parsed.",
 		})
 		mInBulkSetWrites := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetWrites",
-			Help: "InBulkSetWrites is the number of writes due to incoming bulk-set messages.",
+			Help: "Count of writes due to incoming bulk-set messages.",
 		})
 		mInBulkSetWriteErrors := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetWriteErrors",
-			Help: "InBulkSetWriteErrors is the number of errors returned from writes due to incoming bulk-set messages.",
+			Help: "Count of errors returned from writes due to incoming bulk-set messages.",
 		})
 		mInBulkSetWritesOverridden := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetWritesOverridden",
-			Help: "InBulkSetWritesOverridden is the number of writes from incoming bulk-set messages that result in no change.",
+			Help: "Count of writes from incoming bulk-set messages that result in no change.",
 		})
 		mOutBulkSetAcks := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "OutBulkSetAcks",
-			Help: "OutBulkSetAcks is the number of outgoing bulk-set-ack messages.",
+			Help: "Count of outgoing bulk-set-ack messages.",
 		})
 		mInBulkSetAcks := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetAcks",
-			Help: "InBulkSetAcks is the number of incoming bulk-set-ack messages.",
+			Help: "Count of incoming bulk-set-ack messages.",
 		})
 		mInBulkSetAckDrops := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetAckDrops",
-			Help: "InBulkSetAckDrops is the number of incoming bulk-set-ack messages dropped due to the local system being overworked at the time.",
+			Help: "Count of incoming bulk-set-ack messages dropped due to the local system being overworked at the time.",
 		})
 		mInBulkSetAckInvalids := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetAckInvalids",
-			Help: "InBulkSetAckInvalids is the number of incoming bulk-set-ack messages that couldn't be parsed.",
+			Help: "Count of incoming bulk-set-ack messages that couldn't be parsed.",
 		})
 		mInBulkSetAckWrites := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetAckWrites",
-			Help: "InBulkSetAckWrites is the number of writes (for local removal) due to incoming bulk-set-ack messages.",
+			Help: "Count of writes (for local removal) due to incoming bulk-set-ack messages.",
 		})
 		mInBulkSetAckWriteErrors := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetAckWriteErrors",
-			Help: "InBulkSetAckWriteErrors is the number of errors returned from writes due to incoming bulk-set-ack messages.",
+			Help: "Count of errors returned from writes due to incoming bulk-set-ack messages.",
 		})
 		mInBulkSetAckWritesOverridden := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InBulkSetAckWritesOverridden",
-			Help: "InBulkSetAckWritesOverridden is the number of writes from incoming bulk-set-ack messages that result in no change.",
+			Help: "Count of writes from incoming bulk-set-ack messages that result in no change.",
 		})
 		mOutPullReplications := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "OutPullReplications",
-			Help: "OutPullReplications is the number of outgoing pull-replication messages.",
+			Help: "Count of outgoing pull-replication messages.",
 		})
-		mOutPullReplicationSeconds := prometheus.NewCounter(prometheus.CounterOpts{
+		mOutPullReplicationSeconds := prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "OutPullReplicationSeconds",
-			Help: "OutPullReplicationSeconds is how long the last out pull replication pass took.",
+			Help: "How long the last out pull replication pass took.",
 		})
 		mInPullReplications := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InPullReplications",
-			Help: "InPullReplications is the number of incoming pull-replication messages.",
+			Help: "Count of incoming pull-replication messages.",
 		})
 		mInPullReplicationDrops := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InPullReplicationDrops",
-			Help: "InPullReplicationDrops is the number of incoming pull-replication messages droppped due to the local system being overworked at the time.",
+			Help: "Count of incoming pull-replication messages droppped due to the local system being overworked at the time.",
 		})
 		mInPullReplicationInvalids := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "InPullReplicationInvalids",
-			Help: "InPullReplicationInvalids is the number of incoming pull-replication messages that couldn't be parsed.",
+			Help: "Count of incoming pull-replication messages that couldn't be parsed.",
 		})
 		mExpiredDeletions := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "ExpiredDeletions",
-			Help: "ExpiredDeletions is the number of recent deletes that have become old enough to be completely discarded.",
+			Help: "Count of recent deletes that have become old enough to be completely discarded.",
 		})
 		mCompactions := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "Compactions",
-			Help: "Compactions is the number of disk file sets compacted due to their contents exceeding a staleness threshold. For example, this happens when enough of the values have been overwritten or deleted in more recent operations.",
+			Help: "Count of disk file sets compacted due to their contents exceeding a staleness threshold. For example, this happens when enough of the values have been overwritten or deleted in more recent operations.",
 		})
 		mSmallFileCompactions := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "SmallFileCompactions",
-			Help: "SmallFileCompactions is the number of disk file sets compacted due to the entire file size being too small. For example, this may happen when the store is shutdown and restarted.",
+			Help: "Count of disk file sets compacted due to the entire file size being too small. For example, this may happen when the store is shutdown and restarted.",
 		})
 		prometheus.Register(mValues)
 		prometheus.Register(mValueBytes)
