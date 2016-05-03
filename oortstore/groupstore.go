@@ -145,6 +145,10 @@ func (s *OortGroupStore) start() {
 			Name: "LookupGroupItems",
 			Help: "Count of items lookup-group requests have returned.",
 		})
+		mLookupGroupErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "LookupGroupErrors",
+			Help: "Count of errors lookup-group requests have returned.",
+		})
 		mReads := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "Reads",
 			Help: "Count of read requests executed.",
@@ -159,7 +163,11 @@ func (s *OortGroupStore) start() {
 		})
 		mReadGroupItems := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "ReadGroupItems",
-			Help: "Count of items read-group requests have returned..",
+			Help: "Count of items read-group requests have returned.",
+		})
+		mReadGroupErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "ReadGroupErrors",
+			Help: "Count of errors read-group requests have returned.",
 		})
 		mWrites := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "Writes",
@@ -291,10 +299,12 @@ func (s *OortGroupStore) start() {
 		prometheus.Register(mLookupErrors)
 		prometheus.Register(mLookupGroups)
 		prometheus.Register(mLookupGroupItems)
+		prometheus.Register(mLookupGroupErrors)
 		prometheus.Register(mReads)
 		prometheus.Register(mReadErrors)
 		prometheus.Register(mReadGroups)
 		prometheus.Register(mReadGroupItems)
+		prometheus.Register(mReadGroupErrors)
 		prometheus.Register(mWrites)
 		prometheus.Register(mWriteErrors)
 		prometheus.Register(mWritesOverridden)
@@ -341,10 +351,12 @@ func (s *OortGroupStore) start() {
 				mLookupErrors.Add(float64(s.LookupErrors))
 				mLookupGroups.Add(float64(s.LookupGroups))
 				mLookupGroupItems.Add(float64(s.LookupGroupItems))
+				mLookupGroupErrors.Add(float64(s.LookupGroupErrors))
 				mReads.Add(float64(s.Reads))
 				mReadErrors.Add(float64(s.ReadErrors))
 				mReadGroups.Add(float64(s.ReadGroups))
 				mReadGroupItems.Add(float64(s.ReadGroupItems))
+				mReadGroupErrors.Add(float64(s.ReadGroupErrors))
 				mWrites.Add(float64(s.Writes))
 				mWriteErrors.Add(float64(s.WriteErrors))
 				mWritesOverridden.Add(float64(s.WritesOverridden))
@@ -386,10 +398,12 @@ func (s *OortGroupStore) start() {
 		prometheus.Unregister(mLookupErrors)
 		prometheus.Unregister(mLookupGroups)
 		prometheus.Unregister(mLookupGroupItems)
+		prometheus.Unregister(mLookupGroupErrors)
 		prometheus.Unregister(mReads)
 		prometheus.Unregister(mReadErrors)
 		prometheus.Unregister(mReadGroups)
 		prometheus.Unregister(mReadGroupItems)
+		prometheus.Unregister(mReadGroupErrors)
 		prometheus.Unregister(mWrites)
 		prometheus.Unregister(mWriteErrors)
 		prometheus.Unregister(mWritesOverridden)
