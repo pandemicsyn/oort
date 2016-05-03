@@ -17,6 +17,7 @@ import (
 	"github.com/pandemicsyn/oort/api/proto"
 	"github.com/pandemicsyn/oort/api/valueproto"
 	"github.com/pandemicsyn/oort/oort"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -120,6 +121,191 @@ func (s *OortValueStore) start() {
 		log.Println("TCPMsgRing Listen() returned, shutdown?")
 	}(s.msgRing)
 	go func(t *ring.TCPMsgRing) {
+		mValues := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "Values",
+			Help: "Current number of values stored.",
+		})
+		mValueBytes := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "ValueBytes",
+			Help: "Current number of bytes for the values stored.",
+		})
+		mLookups := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "Lookups",
+			Help: "Count of lookup requests executed.",
+		})
+		mLookupErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "LookupErrors",
+			Help: "Count of lookup requests executed resulting in errors.",
+		})
+		mReads := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "Reads",
+			Help: "Count of read requests executed.",
+		})
+		mReadErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "ReadErrors",
+			Help: "Count of read requests executed resulting in errors.",
+		})
+		mWrites := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "Writes",
+			Help: "Count of write requests executed.",
+		})
+		mWriteErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "WriteErrors",
+			Help: "Count of write requests executed resulting in errors.",
+		})
+		mWritesOverridden := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "WritesOverridden",
+			Help: "Count of write requests that were outdated or repeated.",
+		})
+		mDeletes := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "Deletes",
+			Help: "Count of delete requests executed.",
+		})
+		mDeleteErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "DeleteErrors",
+			Help: "Count of delete requests executed resulting in errors.",
+		})
+		mDeletesOverridden := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "DeletesOverridden",
+			Help: "Count of delete requests that were outdated or repeated.",
+		})
+		mOutBulkSets := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "OutBulkSets",
+			Help: "Count of outgoing bulk-set messages in response to incoming pull replication messages.",
+		})
+		mOutBulkSetValues := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "OutBulkSetValues",
+			Help: "Count of values in outgoing bulk-set messages; these bulk-set messages are those in response to incoming pull-replication messages.",
+		})
+		mOutBulkSetPushes := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "OutBulkSetPushes",
+			Help: "Count of outgoing bulk-set messages due to push replication.",
+		})
+		mOutBulkSetPushValues := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "OutBulkSetPushValues",
+			Help: "Count of values in outgoing bulk-set messages; these bulk-set messages are those due to push replication.",
+		})
+		mInBulkSets := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSets",
+			Help: "Count of incoming bulk-set messages.",
+		})
+		mInBulkSetDrops := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetDrops",
+			Help: "Count of incoming bulk-set messages dropped due to the local system being overworked at the time.",
+		})
+		mInBulkSetInvalids := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetInvalids",
+			Help: "Count of incoming bulk-set messages that couldn't be parsed.",
+		})
+		mInBulkSetWrites := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetWrites",
+			Help: "Count of writes due to incoming bulk-set messages.",
+		})
+		mInBulkSetWriteErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetWriteErrors",
+			Help: "Count of errors returned from writes due to incoming bulk-set messages.",
+		})
+		mInBulkSetWritesOverridden := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetWritesOverridden",
+			Help: "Count of writes from incoming bulk-set messages that result in no change.",
+		})
+		mOutBulkSetAcks := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "OutBulkSetAcks",
+			Help: "Count of outgoing bulk-set-ack messages.",
+		})
+		mInBulkSetAcks := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetAcks",
+			Help: "Count of incoming bulk-set-ack messages.",
+		})
+		mInBulkSetAckDrops := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetAckDrops",
+			Help: "Count of incoming bulk-set-ack messages dropped due to the local system being overworked at the time.",
+		})
+		mInBulkSetAckInvalids := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetAckInvalids",
+			Help: "Count of incoming bulk-set-ack messages that couldn't be parsed.",
+		})
+		mInBulkSetAckWrites := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetAckWrites",
+			Help: "Count of writes (for local removal) due to incoming bulk-set-ack messages.",
+		})
+		mInBulkSetAckWriteErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetAckWriteErrors",
+			Help: "Count of errors returned from writes due to incoming bulk-set-ack messages.",
+		})
+		mInBulkSetAckWritesOverridden := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InBulkSetAckWritesOverridden",
+			Help: "Count of writes from incoming bulk-set-ack messages that result in no change.",
+		})
+		mOutPullReplications := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "OutPullReplications",
+			Help: "Count of outgoing pull-replication messages.",
+		})
+		mOutPullReplicationSeconds := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "OutPullReplicationSeconds",
+			Help: "How long the last out pull replication pass took.",
+		})
+		mInPullReplications := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InPullReplications",
+			Help: "Count of incoming pull-replication messages.",
+		})
+		mInPullReplicationDrops := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InPullReplicationDrops",
+			Help: "Count of incoming pull-replication messages droppped due to the local system being overworked at the time.",
+		})
+		mInPullReplicationInvalids := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "InPullReplicationInvalids",
+			Help: "Count of incoming pull-replication messages that couldn't be parsed.",
+		})
+		mExpiredDeletions := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "ExpiredDeletions",
+			Help: "Count of recent deletes that have become old enough to be completely discarded.",
+		})
+		mCompactions := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "Compactions",
+			Help: "Count of disk file sets compacted due to their contents exceeding a staleness threshold. For example, this happens when enough of the values have been overwritten or deleted in more recent operations.",
+		})
+		mSmallFileCompactions := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "SmallFileCompactions",
+			Help: "Count of disk file sets compacted due to the entire file size being too small. For example, this may happen when the store is shutdown and restarted.",
+		})
+		prometheus.Register(mValues)
+		prometheus.Register(mValueBytes)
+		prometheus.Register(mLookups)
+		prometheus.Register(mLookupErrors)
+		prometheus.Register(mReads)
+		prometheus.Register(mReadErrors)
+		prometheus.Register(mWrites)
+		prometheus.Register(mWriteErrors)
+		prometheus.Register(mWritesOverridden)
+		prometheus.Register(mDeletes)
+		prometheus.Register(mDeleteErrors)
+		prometheus.Register(mDeletesOverridden)
+		prometheus.Register(mOutBulkSets)
+		prometheus.Register(mOutBulkSetValues)
+		prometheus.Register(mOutBulkSetPushes)
+		prometheus.Register(mOutBulkSetPushValues)
+		prometheus.Register(mInBulkSets)
+		prometheus.Register(mInBulkSetDrops)
+		prometheus.Register(mInBulkSetInvalids)
+		prometheus.Register(mInBulkSetWrites)
+		prometheus.Register(mInBulkSetWriteErrors)
+		prometheus.Register(mInBulkSetWritesOverridden)
+		prometheus.Register(mOutBulkSetAcks)
+		prometheus.Register(mInBulkSetAcks)
+		prometheus.Register(mInBulkSetAckDrops)
+		prometheus.Register(mInBulkSetAckInvalids)
+		prometheus.Register(mInBulkSetAckWrites)
+		prometheus.Register(mInBulkSetAckWriteErrors)
+		prometheus.Register(mInBulkSetAckWritesOverridden)
+		prometheus.Register(mOutPullReplications)
+		prometheus.Register(mOutPullReplicationSeconds)
+		prometheus.Register(mInPullReplications)
+		prometheus.Register(mInPullReplicationDrops)
+		prometheus.Register(mInPullReplicationInvalids)
+		prometheus.Register(mExpiredDeletions)
+		prometheus.Register(mCompactions)
+		prometheus.Register(mSmallFileCompactions)
 		tcpMsgRingStats := t.Stats(false)
 		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
@@ -128,10 +314,85 @@ func (s *OortValueStore) start() {
 			stats, err := s.vs.Stats(context.Background(), false)
 			if err != nil {
 				log.Printf("stats error: %s\n", err)
+			} else if s, ok := stats.(*store.ValueStoreStats); ok {
+				mValues.Set(float64(s.Values))
+				mValueBytes.Set(float64(s.ValueBytes))
+				mLookups.Add(float64(s.Lookups))
+				mLookupErrors.Add(float64(s.LookupErrors))
+				mReads.Add(float64(s.Reads))
+				mReadErrors.Add(float64(s.ReadErrors))
+				mWrites.Add(float64(s.Writes))
+				mWriteErrors.Add(float64(s.WriteErrors))
+				mWritesOverridden.Add(float64(s.WritesOverridden))
+				mDeletes.Add(float64(s.Deletes))
+				mDeleteErrors.Add(float64(s.DeleteErrors))
+				mDeletesOverridden.Add(float64(s.DeletesOverridden))
+				mOutBulkSets.Add(float64(s.OutBulkSets))
+				mOutBulkSetValues.Add(float64(s.OutBulkSetValues))
+				mOutBulkSetPushes.Add(float64(s.OutBulkSetPushes))
+				mOutBulkSetPushValues.Add(float64(s.OutBulkSetPushValues))
+				mInBulkSets.Add(float64(s.InBulkSets))
+				mInBulkSetDrops.Add(float64(s.InBulkSetDrops))
+				mInBulkSetInvalids.Add(float64(s.InBulkSetInvalids))
+				mInBulkSetWrites.Add(float64(s.InBulkSetWrites))
+				mInBulkSetWriteErrors.Add(float64(s.InBulkSetWriteErrors))
+				mInBulkSetWritesOverridden.Add(float64(s.InBulkSetWritesOverridden))
+				mOutBulkSetAcks.Add(float64(s.OutBulkSetAcks))
+				mInBulkSetAcks.Add(float64(s.InBulkSetAcks))
+				mInBulkSetAckDrops.Add(float64(s.InBulkSetAckDrops))
+				mInBulkSetAckInvalids.Add(float64(s.InBulkSetAckInvalids))
+				mInBulkSetAckWrites.Add(float64(s.InBulkSetAckWrites))
+				mInBulkSetAckWriteErrors.Add(float64(s.InBulkSetAckWriteErrors))
+				mInBulkSetAckWritesOverridden.Add(float64(s.InBulkSetAckWritesOverridden))
+				mOutPullReplications.Add(float64(s.OutPullReplications))
+				mOutPullReplicationSeconds.Set(float64(s.OutPullReplicationNanoseconds) / 1000000000)
+				mInPullReplications.Add(float64(s.InPullReplications))
+				mInPullReplicationDrops.Add(float64(s.InPullReplicationDrops))
+				mInPullReplicationInvalids.Add(float64(s.InPullReplicationInvalids))
+				mExpiredDeletions.Add(float64(s.ExpiredDeletions))
+				mCompactions.Add(float64(s.Compactions))
+				mSmallFileCompactions.Add(float64(s.SmallFileCompactions))
 			} else {
 				log.Printf("%s\n", stats)
 			}
 		}
+		prometheus.Unregister(mValues)
+		prometheus.Unregister(mValueBytes)
+		prometheus.Unregister(mLookups)
+		prometheus.Unregister(mLookupErrors)
+		prometheus.Unregister(mReads)
+		prometheus.Unregister(mReadErrors)
+		prometheus.Unregister(mWrites)
+		prometheus.Unregister(mWriteErrors)
+		prometheus.Unregister(mWritesOverridden)
+		prometheus.Unregister(mDeletes)
+		prometheus.Unregister(mDeleteErrors)
+		prometheus.Unregister(mDeletesOverridden)
+		prometheus.Unregister(mOutBulkSets)
+		prometheus.Unregister(mOutBulkSetValues)
+		prometheus.Unregister(mOutBulkSetPushes)
+		prometheus.Unregister(mOutBulkSetPushValues)
+		prometheus.Unregister(mInBulkSets)
+		prometheus.Unregister(mInBulkSetDrops)
+		prometheus.Unregister(mInBulkSetInvalids)
+		prometheus.Unregister(mInBulkSetWrites)
+		prometheus.Unregister(mInBulkSetWriteErrors)
+		prometheus.Unregister(mInBulkSetWritesOverridden)
+		prometheus.Unregister(mOutBulkSetAcks)
+		prometheus.Unregister(mInBulkSetAcks)
+		prometheus.Unregister(mInBulkSetAckDrops)
+		prometheus.Unregister(mInBulkSetAckInvalids)
+		prometheus.Unregister(mInBulkSetAckWrites)
+		prometheus.Unregister(mInBulkSetAckWriteErrors)
+		prometheus.Unregister(mInBulkSetAckWritesOverridden)
+		prometheus.Unregister(mOutPullReplications)
+		prometheus.Unregister(mOutPullReplicationSeconds)
+		prometheus.Unregister(mInPullReplications)
+		prometheus.Unregister(mInPullReplicationDrops)
+		prometheus.Unregister(mInPullReplicationInvalids)
+		prometheus.Unregister(mExpiredDeletions)
+		prometheus.Unregister(mCompactions)
+		prometheus.Unregister(mSmallFileCompactions)
 	}(s.msgRing)
 }
 
