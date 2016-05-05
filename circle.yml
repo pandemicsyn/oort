@@ -30,6 +30,6 @@ test:
   pre:
     - go version
   override:
-    - make test
+    - cd $HOME/.go_project/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME && make test
   post:
-    - GOOS=linux GOARCH=amd64 make build
+    - cd $HOME/.go_project/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME && GOOS=linux GOARCH=amd64 make build
