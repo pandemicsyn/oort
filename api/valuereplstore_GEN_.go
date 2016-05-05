@@ -452,7 +452,7 @@ func (rs *ReplValueStore) Lookup(ctx context.Context, keyA, keyB uint64) (int64,
 		if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
 			timestampMicro = ret.timestampMicro
 			length = ret.length
-			hadNotFoundErr = store.IsNotFound(ret.err.Err())
+			hadNotFoundErr = ret.err != nil && store.IsNotFound(ret.err.Err())
 		}
 		if ret.err != nil {
 			errs = append(errs, ret.err)
@@ -514,7 +514,7 @@ func (rs *ReplValueStore) Read(ctx context.Context, keyA uint64, keyB uint64, va
 		if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
 			timestampMicro = ret.timestampMicro
 			rvalue = ret.value
-			hadNotFoundErr = store.IsNotFound(ret.err.Err())
+			hadNotFoundErr = ret.err != nil && store.IsNotFound(ret.err.Err())
 		}
 		if ret.err != nil {
 			errs = append(errs, ret.err)
