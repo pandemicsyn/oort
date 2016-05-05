@@ -445,22 +445,20 @@ func (rs *ReplValueStore) Lookup(ctx context.Context, keyA, keyB uint64) (int64,
 	}
 	var timestampMicro int64
 	var length uint32
-	var notFound bool
+	var hadNotFoundErr bool
 	var errs ReplValueStoreErrorSlice
 	for _ = range stores {
 		ret := <-ec
 		if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
 			timestampMicro = ret.timestampMicro
 			length = ret.length
-			if ret.err != nil {
-				notFound = store.IsNotFound(ret.err.Err())
-			}
+			hadNotFoundErr = store.IsNotFound(ret.err.Err())
 		}
 		if ret.err != nil {
 			errs = append(errs, ret.err)
 		}
 	}
-	if notFound {
+	if hadNotFoundErr {
 		nferrs := make(ReplValueStoreErrorNotFound, len(errs))
 		for i, v := range errs {
 			nferrs[i] = v
@@ -509,16 +507,14 @@ func (rs *ReplValueStore) Read(ctx context.Context, keyA uint64, keyB uint64, va
 	}
 	var timestampMicro int64
 	var rvalue []byte
-	var notFound bool
+	var hadNotFoundErr bool
 	var errs ReplValueStoreErrorSlice
 	for _ = range stores {
 		ret := <-ec
 		if ret.timestampMicro > timestampMicro || timestampMicro == 0 {
 			timestampMicro = ret.timestampMicro
 			rvalue = ret.value
-			if ret.err != nil {
-				notFound = store.IsNotFound(ret.err.Err())
-			}
+			hadNotFoundErr = store.IsNotFound(ret.err.Err())
 		}
 		if ret.err != nil {
 			errs = append(errs, ret.err)
@@ -527,7 +523,7 @@ func (rs *ReplValueStore) Read(ctx context.Context, keyA uint64, keyB uint64, va
 	if value != nil && rvalue != nil {
 		rvalue = append(value, rvalue...)
 	}
-	if notFound {
+	if hadNotFoundErr {
 		nferrs := make(ReplValueStoreErrorNotFound, len(errs))
 		for i, v := range errs {
 			nferrs[i] = v
