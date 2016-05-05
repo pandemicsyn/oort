@@ -1,24 +1,27 @@
 machine:
-  pre:
-    - wget https://storage.googleapis.com/golang/go1.6.1.linux-amd64.tar.gz
-    - mkdir ~/go1.6.1
-    - tar -C ~/go1.6.1 -xzf go1.6.1.linux-amd64.tar.gz
   environment:
-    GOROOT: ${HOME}/go1.6.1/go
-    GO15VENDOREXPERIMENT: 1
-    GOPATH: ${HOME}/go
-    PATH: $GOPATH/bin:${GOROOT}/bin:${PATH}
-    PPATH: ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
-    BUILDPATH: $PPATH/packaging/root/usr/local/bin
+    GOVER: 1.6.2
+    GOROOT: ${HOME}/go$GOVER/go
+    GO15VENDOREXPERIMENT: 0
+    BUILDPATH: ${HOME}/${CIRCLE_PROJECT_REPONAME}/build
+    PATH: ${GOROOT}/bin:${PATH}
   post:
+    - sudo rm -rf $GOROOT
+    - sudo rm -rf /usr/local/go
+    - mkdir -v -p $GOROOT
+    - if [ ! -e go$GOVER.linux-amd64.tar.gz ]; then curl -o go$GOVER.linux-amd64.tar.gz https://storage.googleapis.com/golang/go$GOVER.linux-amd64.tar.gz; fi
+    - tar -C ~/go$GOVER -xzf go$GOVER.linux-amd64.tar.gz
     - go version
-    - echo $PPATH
 dependencies:
-  pre:
-    - mkdir -p ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
-    - mv ~/$CIRCLE_PROJECT_REPONAME ${HOME}/go/src/github.com/$CIRCLE_PROJECT_USERNAME
-    - ln -s $PPATH ~/$CIRCLE_PROJECT_REPONAME
+  cache_directories:
+    - ~/go$GOVERSION.linux-amd64.tar.gz
   override:
+    - go get github.com/tools/godep
+    - go install github.com/tools/godep
+    - mkdir -p $HOME/.go_project/src/github.com/$CIRCLE_PROJECT_USERNAME
+    - ln -fs $HOME/$CIRCLE_PROJECT_REPONAME $HOME/.go_project/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+    - |
+      echo 'export GOPATH=$GOPATH:$HOME/.go_project' >> ~/.circlerc
     - go get -v github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/...
 general:
   artifacts:
