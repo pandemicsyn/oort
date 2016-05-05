@@ -47,6 +47,8 @@ type OortValueConfig struct {
 	CertFile           string
 	KeyFile            string
 	CAFile             string
+	MetricsAddr        string
+	MetricsCollectors  string
 }
 
 func NewValueStore(oort *oort.Server) (*OortValueStore, error) {
