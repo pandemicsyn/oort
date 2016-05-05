@@ -47,6 +47,8 @@ type OortGroupConfig struct {
 	CertFile           string
 	KeyFile            string
 	CAFile             string
+	MetricsAddr        string
+	MetricsCollectors  string
 }
 
 func NewGroupStore(oort *oort.Server) (*OortGroupStore, error) {
