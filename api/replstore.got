@@ -276,13 +276,13 @@ func (rs *Repl{{.T}}Store) ringServerConnector(exitChan chan struct{}) {
         }
         conn, err := grpc.Dial(ringServer, rs.ringServerGRPCOpts...)
         if err != nil {
-            rs.logError("repl{{.T}}Store: error connecting to ring service %s: %s", ringServer, err)
+            rs.logError("repl{{.T}}Store: error connecting to ring service %q: %s", ringServer, err)
             sleeper()
             continue
         }
         stream, err := synpb.NewSyndicateClient(conn).GetRingStream(context.Background(), &synpb.SubscriberID{Id: rs.ringClientID})
         if err != nil {
-            rs.logError("repl{{.T}}Store: error creating stream with ring service %s: %s", ringServer, err)
+            rs.logError("repl{{.T}}Store: error creating stream with ring service %q: %s", ringServer, err)
             sleeper()
             continue
         }
@@ -326,19 +326,19 @@ func (rs *Repl{{.T}}Store) ringServerConnector(exitChan chan struct{}) {
             }
             res, err := stream.Recv()
             if err != nil {
-                rs.logDebug("repl{{.T}}Store: error with stream to ring service %s: %s", ringServer, err)
+                rs.logDebug("repl{{.T}}Store: error with stream to ring service %q: %s", ringServer, err)
                 break
             }
             atomic.AddInt32(activity, 1)
             if res != nil {
                 if r, err := ring.LoadRing(bytes.NewBuffer(res.Ring)); err != nil {
-                    rs.logDebug("repl{{.T}}Store: error with ring received from stream to ring service %s: %s", ringServer, err)
+                    rs.logDebug("repl{{.T}}Store: error with ring received from stream to ring service %q: %s", ringServer, err)
                 } else {
                     // This will cache the ring if ringCachePath is not empty.
                     rs.SetRing(r)
                     // Resets the exponential sleeper since we had success.
                     sleeperTicks = 2
-                    rs.logDebug("repl{{.T}}Store: got new ring from stream to ring service %s: %d", ringServer, res.Version)
+                    rs.logDebug("repl{{.T}}Store: got new ring from stream to ring service %q: %d", ringServer, res.Version)
                 }
             }
         }
@@ -486,6 +486,7 @@ func (rs *Repl{{.T}}Store) Read(ctx context.Context, keyA uint64, keyB uint64{{i
     ec := make(chan *rettype)
     stores, err := rs.storesFor(ctx, keyA)
     if err != nil {
+        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: error from storesFor: %s", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, err)
         return 0, nil, err
     }
     for _, s := range stores {
@@ -523,22 +524,25 @@ func (rs *Repl{{.T}}Store) Read(ctx context.Context, keyA uint64, keyB uint64{{i
     if value != nil && rvalue != nil {
         rvalue = append(value, rvalue...)
     }
+    for _, err := range errs {
+        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: error during read: %s", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, err)
+    }
     if hadNotFoundErr {
         nferrs := make(Repl{{.T}}StoreErrorNotFound, len(errs))
         for i, v := range errs {
             nferrs[i] = v
         }
+        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point1: %d %q %v", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, rvalue, nferrs)
         return timestampMicro, rvalue, nferrs
     }
     if len(errs) < len(stores) {
-        for _, err := range errs {
-            rs.logDebug("repl{{.T}}Store: error during read: %s", err)
-        }
         errs = nil
     }
     if errs == nil {
+        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point2: %d %q", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, rvalue)
         return timestampMicro, rvalue, nil
     }
+    rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point3: %d %q %v", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, rvalue, errs)
     return timestampMicro, rvalue, errs
 }
 

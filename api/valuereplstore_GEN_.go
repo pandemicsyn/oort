@@ -276,13 +276,13 @@ func (rs *ReplValueStore) ringServerConnector(exitChan chan struct{}) {
 		}
 		conn, err := grpc.Dial(ringServer, rs.ringServerGRPCOpts...)
 		if err != nil {
-			rs.logError("replValueStore: error connecting to ring service %s: %s", ringServer, err)
+			rs.logError("replValueStore: error connecting to ring service %q: %s", ringServer, err)
 			sleeper()
 			continue
 		}
 		stream, err := synpb.NewSyndicateClient(conn).GetRingStream(context.Background(), &synpb.SubscriberID{Id: rs.ringClientID})
 		if err != nil {
-			rs.logError("replValueStore: error creating stream with ring service %s: %s", ringServer, err)
+			rs.logError("replValueStore: error creating stream with ring service %q: %s", ringServer, err)
 			sleeper()
 			continue
 		}
@@ -326,19 +326,19 @@ func (rs *ReplValueStore) ringServerConnector(exitChan chan struct{}) {
 			}
 			res, err := stream.Recv()
 			if err != nil {
-				rs.logDebug("replValueStore: error with stream to ring service %s: %s", ringServer, err)
+				rs.logDebug("replValueStore: error with stream to ring service %q: %s", ringServer, err)
 				break
 			}
 			atomic.AddInt32(activity, 1)
 			if res != nil {
 				if r, err := ring.LoadRing(bytes.NewBuffer(res.Ring)); err != nil {
-					rs.logDebug("replValueStore: error with ring received from stream to ring service %s: %s", ringServer, err)
+					rs.logDebug("replValueStore: error with ring received from stream to ring service %q: %s", ringServer, err)
 				} else {
 					// This will cache the ring if ringCachePath is not empty.
 					rs.SetRing(r)
 					// Resets the exponential sleeper since we had success.
 					sleeperTicks = 2
-					rs.logDebug("replValueStore: got new ring from stream to ring service %s: %d", ringServer, res.Version)
+					rs.logDebug("replValueStore: got new ring from stream to ring service %q: %d", ringServer, res.Version)
 				}
 			}
 		}
@@ -486,6 +486,7 @@ func (rs *ReplValueStore) Read(ctx context.Context, keyA uint64, keyB uint64, va
 	ec := make(chan *rettype)
 	stores, err := rs.storesFor(ctx, keyA)
 	if err != nil {
+		rs.logDebug("replValueStore Read %x %x: error from storesFor: %s", keyA, keyB, err)
 		return 0, nil, err
 	}
 	for _, s := range stores {
@@ -523,22 +524,25 @@ func (rs *ReplValueStore) Read(ctx context.Context, keyA uint64, keyB uint64, va
 	if value != nil && rvalue != nil {
 		rvalue = append(value, rvalue...)
 	}
+	for _, err := range errs {
+		rs.logDebug("replValueStore Read %x %x: error during read: %s", keyA, keyB, err)
+	}
 	if hadNotFoundErr {
 		nferrs := make(ReplValueStoreErrorNotFound, len(errs))
 		for i, v := range errs {
 			nferrs[i] = v
 		}
+		rs.logDebug("replValueStore Read %x %x: returning at point1: %d %q %v", keyA, keyB, timestampMicro, rvalue, nferrs)
 		return timestampMicro, rvalue, nferrs
 	}
 	if len(errs) < len(stores) {
-		for _, err := range errs {
-			rs.logDebug("replValueStore: error during read: %s", err)
-		}
 		errs = nil
 	}
 	if errs == nil {
+		rs.logDebug("replValueStore Read %x %x: returning at point2: %d %q", keyA, keyB, timestampMicro, rvalue)
 		return timestampMicro, rvalue, nil
 	}
+	rs.logDebug("replValueStore Read %x %x: returning at point3: %d %q %v", keyA, keyB, timestampMicro, rvalue, errs)
 	return timestampMicro, rvalue, errs
 }
 
