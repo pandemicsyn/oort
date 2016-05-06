@@ -47,6 +47,7 @@ type Server struct {
 	CmdCtrlConfig     cmdctrl.ConfigOpts
 	cmdCtrlLoopActive bool
 	stopped           bool
+	binaryUpgrade     *cmdctrl.GithubUpdater
 }
 
 // New returns a instance of oort.Server for a given serviceName, and workingDir.
@@ -67,6 +68,15 @@ func New(serviceName string, workingDir string) (*Server, error) {
 	if err != nil {
 		return o, err
 	}
+	o.binaryUpgrade = cmdctrl.NewGithubUpdater(
+		"cfs-binary-release",
+		"getcfs",
+		"oort-valued",
+		"/usr/local/bin/oort-valued",
+		fmt.Sprintf("%s/%s.canary", workingDir, serviceName),
+		"",
+	)
+
 	return o, err
 }
 
