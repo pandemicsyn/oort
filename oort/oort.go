@@ -53,7 +53,7 @@ type Server struct {
 // New returns a instance of oort.Server for a given serviceName, workingDir, and buildVersion.
 // if workingDir is empty the default dir of "/var/lib/<servicename>" is used.
 // if buildVersion is empty the default version of "DEV" will be passed on to the self-upgrade service.
-func New(serviceName, workingDir, buildVersion string) (*Server, error) {
+func New(serviceName, workingDir string, binaryUpdater *cmdctrl.GithubUpdater) (*Server, error) {
 	if workingDir == "" {
 		workingDir = fmt.Sprintf("%s/%s", DefaultBaseDir, serviceName)
 	}
@@ -69,14 +69,7 @@ func New(serviceName, workingDir, buildVersion string) (*Server, error) {
 	if err != nil {
 		return o, err
 	}
-	o.binaryUpgrade = cmdctrl.NewGithubUpdater(
-		"cfs-binary-release",
-		"getcfs",
-		"oort-valued",
-		"/usr/local/bin/oort-valued",
-		fmt.Sprintf("%s/%s.canary", workingDir, serviceName),
-		buildVersion,
-	)
+	o.binaryUpgrade = binaryUpdater
 	return o, err
 }
 
