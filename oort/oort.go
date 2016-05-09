@@ -47,11 +47,13 @@ type Server struct {
 	CmdCtrlConfig     cmdctrl.ConfigOpts
 	cmdCtrlLoopActive bool
 	stopped           bool
+	binaryUpgrade     *cmdctrl.GithubUpdater
 }
 
-// New returns a instance of oort.Server for a given serviceName, and workingDir.
+// New returns a instance of oort.Server for a given serviceName, workingDir, and buildVersion.
 // if workingDir is empty the default dir of "/var/lib/<servicename>" is used.
-func New(serviceName string, workingDir string) (*Server, error) {
+// if buildVersion is empty the default version of "DEV" will be passed on to the self-upgrade service.
+func New(serviceName, workingDir string, binaryUpdater *cmdctrl.GithubUpdater) (*Server, error) {
 	if workingDir == "" {
 		workingDir = fmt.Sprintf("%s/%s", DefaultBaseDir, serviceName)
 	}
@@ -67,6 +69,7 @@ func New(serviceName string, workingDir string) (*Server, error) {
 	if err != nil {
 		return o, err
 	}
+	o.binaryUpgrade = binaryUpdater
 	return o, err
 }
 

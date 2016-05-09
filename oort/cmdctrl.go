@@ -142,3 +142,13 @@ func (o *Server) Exit() error {
 	defer o.shutdownFinished()
 	return nil
 }
+
+func (o *Server) SelfUpgrade(version string, bindiff, checksum []byte) (bool, string) {
+	o.cmdCtrlLock.Lock()
+	defer o.cmdCtrlLock.Unlock()
+	err := o.binaryUpgrade.Upgrade(version)
+	if err != nil {
+		return false, err.Error()
+	}
+	return true, ""
+}

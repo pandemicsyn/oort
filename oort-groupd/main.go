@@ -8,9 +8,23 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/pandemicsyn/cmdctrl"
 	"github.com/pandemicsyn/oort/oort"
 	"github.com/pandemicsyn/oort/oortstore"
 	"github.com/pandemicsyn/syndicate/utils/sysmetrics"
+)
+
+const (
+	//ServiceName is the internal name of this oort instance
+	ServiceName = "value"
+	//BinaryName is the name of this services executable (used for binary upgrades)
+	BinaryName = "oort-valued"
+	//BinaryPath is the absolute path and name of this executable (used for binary upgrades)
+	BinaryPath = "/usr/local/bin/oort-valued"
+	//GithubRepo is the github repo where production releases are (used for binary upgrades)
+	GithubRepo = "cfs-binary-release"
+	//GithubProject is the github project where proudction release are (used for binary upgrades)
+	GithubProject = "getcfs"
 )
 
 var (
@@ -36,7 +50,16 @@ func main() {
 		fmt.Println("go version:", goVersion)
 		return
 	}
-	o, err := oort.New("group", *cwd)
+
+	updater := cmdctrl.NewGithubUpdater(
+		GithubRepo,
+		GithubProject,
+		BinaryName,
+		BinaryPath,
+		fmt.Sprintf("%s/%s.canary", *cwd, ServiceName),
+		oortVersion,
+	)
+	o, err := oort.New(ServiceName, *cwd, updater)
 	if err != nil {
 		log.Fatalln("Unable to obtain config:", err)
 	}
