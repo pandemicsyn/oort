@@ -16,11 +16,11 @@ import (
 
 const (
 	//ServiceName is the internal name of this oort instance
-	ServiceName = "value"
+	ServiceName = "group"
 	//BinaryName is the name of this services executable (used for binary upgrades)
-	BinaryName = "oort-valued"
+	BinaryName = "oort-groupd"
 	//BinaryPath is the absolute path and name of this executable (used for binary upgrades)
-	BinaryPath = "/usr/local/bin/oort-valued"
+	BinaryPath = "/usr/local/bin/oort-groupd"
 	//GithubRepo is the github repo where production releases are (used for binary upgrades)
 	GithubRepo = "cfs-binary-release"
 	//GithubProject is the github project where proudction release are (used for binary upgrades)
