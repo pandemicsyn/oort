@@ -143,6 +143,7 @@ func (o *Server) Exit() error {
 	return nil
 }
 
+// SelfUpgrade deploys an updated binary to disk using cmdctrl.GithubUpdater
 func (o *Server) SelfUpgrade(version string, bindiff, checksum []byte) (bool, string) {
 	o.cmdCtrlLock.Lock()
 	defer o.cmdCtrlLock.Unlock()
@@ -151,4 +152,11 @@ func (o *Server) SelfUpgrade(version string, bindiff, checksum []byte) (bool, st
 		return false, err.Error()
 	}
 	return true, ""
+}
+
+// SoftwareVersion returns the version of the currently running instance
+func (o *Server) SoftwareVersion() string {
+	o.cmdCtrlLock.RLock()
+	defer o.cmdCtrlLock.RUnlock()
+	return o.binaryUpgrade.GetCurrentVersion()
 }
