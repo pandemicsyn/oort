@@ -532,17 +532,17 @@ func (rs *Repl{{.T}}Store) Read(ctx context.Context, keyA uint64, keyB uint64{{i
         for i, v := range errs {
             nferrs[i] = v
         }
-        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point1: %d %q %v", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, rvalue, nferrs)
+        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point1: %d %d %v", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, len(rvalue), nferrs)
         return timestampMicro, rvalue, nferrs
     }
     if len(errs) < len(stores) {
         errs = nil
     }
     if errs == nil {
-        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point2: %d %q", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, rvalue)
+        rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point2: %d %d", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, len(rvalue))
         return timestampMicro, rvalue, nil
     }
-    rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point3: %d %q %v", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, rvalue, errs)
+    rs.logDebug("repl{{.T}}Store Read %x %x{{if eq .t "group"}} %x %x{{end}}: returning at point3: %d %d %v", keyA, keyB{{if eq .t "group"}}, childKeyA, childKeyB{{end}}, timestampMicro, len(rvalue), errs)
     return timestampMicro, rvalue, errs
 }
 
