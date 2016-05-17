@@ -123,6 +123,90 @@ func (s *OortGroupStore) start() {
 		log.Println("TCPMsgRing Listen() returned, shutdown?")
 	}(s.msgRing)
 	go func(t *ring.TCPMsgRing) {
+		mRingChanges := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "RingChanges",
+			Help: "Number of received ring changes.",
+		})
+		mRingChangeCloses := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "RingChangeCloses",
+			Help: "Number of connections closed due to ring changes.",
+		})
+		mMsgToNodes := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToNodes",
+			Help: "Number of times MsgToNode function has been called; single message to single node.",
+		})
+		mMsgToNodeNoRings := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToNodeNoRings",
+			Help: "Number of times MsgToNode function has been called with no ring yet available.",
+		})
+		mMsgToNodeNoNodes := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToNodeNoNodes",
+			Help: "Number of times MsgToNode function has been called with no matching node.",
+		})
+		mMsgToOtherReplicas := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToOtherReplicas",
+			Help: "Number of times MsgToOtherReplicas function has been called; single message to all replicas, excluding the local replica if responsible.",
+		})
+		mMsgToOtherReplicasNoRings := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToOtherReplicasNoRings",
+			Help: "Number of times MsgToOtherReplicas function has been called with no ring yet available.",
+		})
+		mListenErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "ListenErrors",
+			Help: "Number of errors trying to establish a TCP listener.",
+		})
+		mIncomingConnections := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "IncomingConnections",
+			Help: "Number of incoming TCP connections made.",
+		})
+		mDials := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "Dials",
+			Help: "Number of attempts to establish outgoing TCP connections.",
+		})
+		mDialErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "DialErrors",
+			Help: "Number of errors trying to establish outgoing TCP connections.",
+		})
+		mOutgoingConnections := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "OutgoingConnections",
+			Help: "Number of outgoing TCP connections established.",
+		})
+		mMsgChanCreations := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgChanCreations",
+			Help: "Number of internal message channels created.",
+		})
+		mMsgToAddrs := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToAddrs",
+			Help: "Number times internal function msgToAddr has been called.",
+		})
+		mMsgToAddrQueues := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToAddrQueues",
+			Help: "Number of messages msgToAddr successfully queued.",
+		})
+		mMsgToAddrTimeoutDrops := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToAddrTimeoutDrops",
+			Help: "Number of messages msgToAddr dropped after timeout.",
+		})
+		mMsgToAddrShutdownDrops := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgToAddrShutdownDrops",
+			Help: "Number of messages msgToAddr dropped due to a shutdown.",
+		})
+		mMsgReads := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgReads",
+			Help: "Number of incoming messages read.",
+		})
+		mMsgReadErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgReadErrors",
+			Help: "Number of errors reading incoming messages.",
+		})
+		mMsgWrites := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgWrites",
+			Help: "Number of outgoing messages written.",
+		})
+		mMsgWriteErrors := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "MsgWriteErrors",
+			Help: "Number of errors writing outgoing messages.",
+		})
 		mValues := prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "Values",
 			Help: "Current number of values stored.",
@@ -295,6 +379,27 @@ func (s *OortGroupStore) start() {
 			Name: "SmallFileCompactions",
 			Help: "Count of disk file sets compacted due to the entire file size being too small. For example, this may happen when the store is shutdown and restarted.",
 		})
+		prometheus.Register(mRingChanges)
+		prometheus.Register(mRingChangeCloses)
+		prometheus.Register(mMsgToNodes)
+		prometheus.Register(mMsgToNodeNoRings)
+		prometheus.Register(mMsgToNodeNoNodes)
+		prometheus.Register(mMsgToOtherReplicas)
+		prometheus.Register(mMsgToOtherReplicasNoRings)
+		prometheus.Register(mListenErrors)
+		prometheus.Register(mIncomingConnections)
+		prometheus.Register(mDials)
+		prometheus.Register(mDialErrors)
+		prometheus.Register(mOutgoingConnections)
+		prometheus.Register(mMsgChanCreations)
+		prometheus.Register(mMsgToAddrs)
+		prometheus.Register(mMsgToAddrQueues)
+		prometheus.Register(mMsgToAddrTimeoutDrops)
+		prometheus.Register(mMsgToAddrShutdownDrops)
+		prometheus.Register(mMsgReads)
+		prometheus.Register(mMsgReadErrors)
+		prometheus.Register(mMsgWrites)
+		prometheus.Register(mMsgWriteErrors)
 		prometheus.Register(mValues)
 		prometheus.Register(mValueBytes)
 		prometheus.Register(mLookups)
@@ -342,7 +447,27 @@ func (s *OortGroupStore) start() {
 		for !tcpMsgRingStats.Shutdown {
 			time.Sleep(time.Minute)
 			tcpMsgRingStats = t.Stats(false)
-			log.Printf("%v\n", tcpMsgRingStats)
+			mRingChanges.Add(float64(tcpMsgRingStats.RingChanges))
+			mRingChangeCloses.Add(float64(tcpMsgRingStats.RingChangeCloses))
+			mMsgToNodes.Add(float64(tcpMsgRingStats.MsgToNodes))
+			mMsgToNodeNoRings.Add(float64(tcpMsgRingStats.MsgToNodeNoRings))
+			mMsgToNodeNoNodes.Add(float64(tcpMsgRingStats.MsgToNodeNoNodes))
+			mMsgToOtherReplicas.Add(float64(tcpMsgRingStats.MsgToOtherReplicas))
+			mMsgToOtherReplicasNoRings.Add(float64(tcpMsgRingStats.MsgToOtherReplicasNoRings))
+			mListenErrors.Add(float64(tcpMsgRingStats.ListenErrors))
+			mIncomingConnections.Add(float64(tcpMsgRingStats.IncomingConnections))
+			mDials.Add(float64(tcpMsgRingStats.Dials))
+			mDialErrors.Add(float64(tcpMsgRingStats.DialErrors))
+			mOutgoingConnections.Add(float64(tcpMsgRingStats.OutgoingConnections))
+			mMsgChanCreations.Add(float64(tcpMsgRingStats.MsgChanCreations))
+			mMsgToAddrs.Add(float64(tcpMsgRingStats.MsgToAddrs))
+			mMsgToAddrQueues.Add(float64(tcpMsgRingStats.MsgToAddrQueues))
+			mMsgToAddrTimeoutDrops.Add(float64(tcpMsgRingStats.MsgToAddrTimeoutDrops))
+			mMsgToAddrShutdownDrops.Add(float64(tcpMsgRingStats.MsgToAddrShutdownDrops))
+			mMsgReads.Add(float64(tcpMsgRingStats.MsgReads))
+			mMsgReadErrors.Add(float64(tcpMsgRingStats.MsgReadErrors))
+			mMsgWrites.Add(float64(tcpMsgRingStats.MsgWrites))
+			mMsgWriteErrors.Add(float64(tcpMsgRingStats.MsgWriteErrors))
 			stats, err := s.gs.Stats(context.Background(), false)
 			if err != nil {
 				log.Printf("stats error: %s\n", err)
@@ -394,6 +519,27 @@ func (s *OortGroupStore) start() {
 				log.Printf("%s\n", stats)
 			}
 		}
+		prometheus.Unregister(mRingChanges)
+		prometheus.Unregister(mRingChangeCloses)
+		prometheus.Unregister(mMsgToNodes)
+		prometheus.Unregister(mMsgToNodeNoRings)
+		prometheus.Unregister(mMsgToNodeNoNodes)
+		prometheus.Unregister(mMsgToOtherReplicas)
+		prometheus.Unregister(mMsgToOtherReplicasNoRings)
+		prometheus.Unregister(mListenErrors)
+		prometheus.Unregister(mIncomingConnections)
+		prometheus.Unregister(mDials)
+		prometheus.Unregister(mDialErrors)
+		prometheus.Unregister(mOutgoingConnections)
+		prometheus.Unregister(mMsgChanCreations)
+		prometheus.Unregister(mMsgToAddrs)
+		prometheus.Unregister(mMsgToAddrQueues)
+		prometheus.Unregister(mMsgToAddrTimeoutDrops)
+		prometheus.Unregister(mMsgToAddrShutdownDrops)
+		prometheus.Unregister(mMsgReads)
+		prometheus.Unregister(mMsgReadErrors)
+		prometheus.Unregister(mMsgWrites)
+		prometheus.Unregister(mMsgWriteErrors)
 		prometheus.Unregister(mValues)
 		prometheus.Unregister(mValueBytes)
 		prometheus.Unregister(mLookups)
