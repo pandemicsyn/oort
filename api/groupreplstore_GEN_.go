@@ -532,17 +532,17 @@ func (rs *ReplGroupStore) Read(ctx context.Context, keyA uint64, keyB uint64, ch
 		for i, v := range errs {
 			nferrs[i] = v
 		}
-		rs.logDebug("replGroupStore Read %x %x %x %x: returning at point1: %d %q %v", keyA, keyB, childKeyA, childKeyB, timestampMicro, rvalue, nferrs)
+		rs.logDebug("replGroupStore Read %x %x %x %x: returning at point1: %d %d %v", keyA, keyB, childKeyA, childKeyB, timestampMicro, len(rvalue), nferrs)
 		return timestampMicro, rvalue, nferrs
 	}
 	if len(errs) < len(stores) {
 		errs = nil
 	}
 	if errs == nil {
-		rs.logDebug("replGroupStore Read %x %x %x %x: returning at point2: %d %q", keyA, keyB, childKeyA, childKeyB, timestampMicro, rvalue)
+		rs.logDebug("replGroupStore Read %x %x %x %x: returning at point2: %d %d", keyA, keyB, childKeyA, childKeyB, timestampMicro, len(rvalue))
 		return timestampMicro, rvalue, nil
 	}
-	rs.logDebug("replGroupStore Read %x %x %x %x: returning at point3: %d %q %v", keyA, keyB, childKeyA, childKeyB, timestampMicro, rvalue, errs)
+	rs.logDebug("replGroupStore Read %x %x %x %x: returning at point3: %d %d %v", keyA, keyB, childKeyA, childKeyB, timestampMicro, len(rvalue), errs)
 	return timestampMicro, rvalue, errs
 }
 
