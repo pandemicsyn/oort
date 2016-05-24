@@ -785,6 +785,9 @@ func (stor *groupStore) Write(ctx context.Context, keyA, keyB uint64, childKeyA,
 	req.req.ChildKeyB = childKeyB
 
 	req.req.TimestampMicro = timestampMicro
+	if len(value) == 0 {
+		panic(fmt.Sprintf("REMOVEME %s asked to Write a zlv", stor.addr))
+	}
 	req.req.Value = value
 
 	select {

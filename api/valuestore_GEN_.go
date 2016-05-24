@@ -746,6 +746,9 @@ func (stor *valueStore) Write(ctx context.Context, keyA, keyB uint64, timestampM
 	req.req.KeyB = keyB
 
 	req.req.TimestampMicro = timestampMicro
+	if len(value) == 0 {
+		panic(fmt.Sprintf("REMOVEME %s asked to Write a zlv", stor.addr))
+	}
 	req.req.Value = value
 
 	select {
