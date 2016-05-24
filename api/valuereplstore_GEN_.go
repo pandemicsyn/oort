@@ -547,6 +547,9 @@ func (rs *ReplValueStore) Read(ctx context.Context, keyA uint64, keyB uint64, va
 }
 
 func (rs *ReplValueStore) Write(ctx context.Context, keyA uint64, keyB uint64, timestampMicro int64, value []byte) (int64, error) {
+	if len(value) == 0 {
+		panic(fmt.Sprintf("REMOVEME ReplValueStore asked to Write a zlv"))
+	}
 	if len(value) > rs.valueCap {
 		return 0, fmt.Errorf("value length of %d > %d", len(value), rs.valueCap)
 	}
@@ -565,6 +568,9 @@ func (rs *ReplValueStore) Write(ctx context.Context, keyA uint64, keyB uint64, t
 			var err error
 			select {
 			case <-s.ticketChan:
+				if len(value) == 0 {
+					panic(fmt.Sprintf("REMOVEME inside ReplValueStore asked to Write a zlv"))
+				}
 				ret.oldTimestampMicro, err = s.store.Write(ctx, keyA, keyB, timestampMicro, value)
 				s.ticketChan <- struct{}{}
 			case <-ctx.Done():
